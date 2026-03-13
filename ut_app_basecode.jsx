@@ -1590,7 +1590,7 @@ function ChitsPage({ chits, setChits, userList }) {
   const needsRouteSelect = requiresChitRouteSelection(user);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState("");
-  const [form, setForm] = useState({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"" });
+  const [form, setForm] = useState({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
   const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText] = useState("");
 
@@ -1598,6 +1598,13 @@ function ChitsPage({ chits, setChits, userList }) {
   const visible = chits.filter(c => canViewChit(user, c));
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
+
+  const loadChitPDF = (field, file) => {
+    if (!file || file.type !== "application/pdf") { fire("⚠ Please select a PDF file."); return; }
+    const reader = new FileReader();
+    reader.onload = e => setForm(s => ({ ...s, [field]: { fileName: file.name, dataUrl: e.target.result } }));
+    reader.readAsDataURL(file);
+  };
 
   const getPlatoons = (company) => {
     const pcs = userList.filter(u => normalizeCompany(u.company) === company && u.role === "plt_cdr");
@@ -1613,6 +1620,9 @@ function ChitsPage({ chits, setChits, userList }) {
 
   const submit = () => {
     if (!form.date || !form.reason) return;
+    if (!form.routingSheet || !form.chitDoc) {
+      fire("⚠ Both PDFs are required: Routing Sheet and CHIT Document."); return;
+    }
     if (needsRouteSelect && (!form.routeCompany || !form.routePlatoon)) {
       fire("⚠ Please select your company and platoon."); return;
     }
@@ -1635,10 +1645,11 @@ function ChitsPage({ chits, setChits, userList }) {
       status: "Pending",
       currentStage: 1,
       stages,
+      docs: { routingSheet: form.routingSheet, chitDoc: form.chitDoc },
     };
     setChits(prev => [...prev, c]);
     setShowModal(false);
-    setForm({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"" });
+    setForm({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
     fire("✅ CHIT submitted and routed to your chain of command.");
   };
 
@@ -1711,6 +1722,19 @@ function ChitsPage({ chits, setChits, userList }) {
             </div>
             <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · Absent: {c.date}</div>
             {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", fontStyle:"italic", marginTop:"0.2rem" }}>{c.notes}</div>}
+
+            {/* Attached documents */}
+            {c.docs && (
+              <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginTop:"0.55rem" }}>
+                <span style={{ fontFamily:"Oswald", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
+                {c.docs.routingSheet && (
+                  <a href={c.docs.routingSheet.dataUrl} download={c.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
+                )}
+                {c.docs.chitDoc && (
+                  <a href={c.docs.chitDoc.dataUrl} download={c.docs.chitDoc.fileName} className="btn btn-outline btn-sm">📄 CHIT Document</a>
+                )}
+              </div>
+            )}
 
             {/* Stage tracker */}
             {c.stages && (
@@ -1816,6 +1840,56 @@ function ChitsPage({ chits, setChits, userList }) {
             <label className="input-label">Notes (optional)</label>
             <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} />
           </div>
+
+          {/* ── Required PDFs ── */}
+          <div style={{ borderTop:"1px solid #eee", paddingTop:"0.85rem", marginTop:"0.25rem" }}>
+            <div style={{ fontFamily:"Oswald", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.65rem" }}>
+              Required Documents
+            </div>
+
+            {/* Routing Sheet */}
+            <div className="input-group">
+              <label className="input-label">
+                Routing Sheet <span style={{ color:"#C0392B" }}>*</span>
+              </label>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                <label htmlFor="chit-routing-sheet" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                  {form.routingSheet ? "↑ Replace PDF" : "↑ Upload PDF"}
+                </label>
+                <input
+                  id="chit-routing-sheet" type="file" accept=".pdf,application/pdf"
+                  style={{ display:"none" }}
+                  onChange={e => { loadChitPDF("routingSheet", e.target.files[0]); e.target.value = ""; }}
+                />
+                {form.routingSheet
+                  ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {form.routingSheet.fileName}</span>
+                  : <span style={{ fontSize:"0.75rem", color:"#C0392B" }}>Required</span>
+                }
+              </div>
+            </div>
+
+            {/* CHIT Document */}
+            <div className="input-group">
+              <label className="input-label">
+                CHIT Document <span style={{ color:"#C0392B" }}>*</span>
+              </label>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                <label htmlFor="chit-doc" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                  {form.chitDoc ? "↑ Replace PDF" : "↑ Upload PDF"}
+                </label>
+                <input
+                  id="chit-doc" type="file" accept=".pdf,application/pdf"
+                  style={{ display:"none" }}
+                  onChange={e => { loadChitPDF("chitDoc", e.target.files[0]); e.target.value = ""; }}
+                />
+                {form.chitDoc
+                  ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {form.chitDoc.fileName}</span>
+                  : <span style={{ fontSize:"0.75rem", color:"#C0392B" }}>Required</span>
+                }
+              </div>
+            </div>
+          </div>
+
           <div style={{ background:"#f5f2ee", borderRadius:"8px", padding:"0.65rem", fontSize:"0.8rem", color:"#666", marginBottom:"1rem" }}>
             Your CHIT routes to: <strong>{routeHint()}</strong>
           </div>
@@ -2051,13 +2125,20 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   const canSubmit = canSubmitChit(user); // same Big Four restriction
   const needsRouteSelect = requiresChitRouteSelection(user);
   const [showModal, setShowModal]         = useState(false);
-  const [submitForm, setSubmitForm]       = useState({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"" });
+  const [submitForm, setSubmitForm]       = useState({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"", fitrepDoc:null, routingSheet:null });
   const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText]     = useState("");
   const [toast, setToast]                 = useState("");
   const [filter, setFilter]               = useState("");
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
+
+  const loadFitrepPDF = (field, file) => {
+    if (!file || file.type !== "application/pdf") { fire("⚠ Please select a PDF file."); return; }
+    const reader = new FileReader();
+    reader.onload = e => setSubmitForm(s => ({ ...s, [field]: { fileName: file.name, dataUrl: e.target.result } }));
+    reader.readAsDataURL(file);
+  };
 
   // Only show FITREPs the user is permitted to see (routing line + subject)
   const visible  = fitrebs.filter(f => canViewFitrep(user, f));
@@ -2077,6 +2158,9 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
 
   const handleSubmit = () => {
     if (!submitForm.period) return;
+    if (!submitForm.fitrepDoc || !submitForm.routingSheet) {
+      fire("⚠ Both PDFs are required: FITREP Document and Routing Sheet."); return;
+    }
     if (needsRouteSelect && (!submitForm.routeCompany || !submitForm.routePlatoon)) {
       fire("⚠ Please select your company and platoon."); return;
     }
@@ -2098,10 +2182,11 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
       status: "Pending",
       currentStage: 1,
       stages,
+      docs: { fitrepDoc: submitForm.fitrepDoc, routingSheet: submitForm.routingSheet },
     };
     setFitrebs(prev => [...prev, f]);
     setShowModal(false);
-    setSubmitForm({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"" });
+    setSubmitForm({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"", fitrepDoc:null, routingSheet:null });
     fire("✅ FITREP submitted and routed to your chain of command.");
   };
 
@@ -2206,6 +2291,18 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
 
             {/* Stage tracker — uses per-fitrep stages */}
             <div className="fitrep-body">
+              {/* Attached documents */}
+              {f.docs && (
+                <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginBottom:"0.75rem" }}>
+                  <span style={{ fontFamily:"Oswald", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
+                  {f.docs.fitrepDoc && (
+                    <a href={f.docs.fitrepDoc.dataUrl} download={f.docs.fitrepDoc.fileName} className="btn btn-outline btn-sm">📄 FITREP Document</a>
+                  )}
+                  {f.docs.routingSheet && (
+                    <a href={f.docs.routingSheet.dataUrl} download={f.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
+                  )}
+                </div>
+              )}
               <div className="stage-track">
                 {f.stages.map((s, i) => {
                   const done   = i < f.currentStage;
@@ -2305,6 +2402,56 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
             <label className="input-label">Notes (optional)</label>
             <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} value={submitForm.notes} onChange={e => setSubmitForm(s => ({ ...s, notes:e.target.value }))} />
           </div>
+
+          {/* ── Required PDFs ── */}
+          <div style={{ borderTop:"1px solid #eee", paddingTop:"0.85rem", marginTop:"0.25rem" }}>
+            <div style={{ fontFamily:"Oswald", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.65rem" }}>
+              Required Documents
+            </div>
+
+            {/* FITREP Document */}
+            <div className="input-group">
+              <label className="input-label">
+                FITREP Document <span style={{ color:"#C0392B" }}>*</span>
+              </label>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                <label htmlFor="fitrep-doc" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                  {submitForm.fitrepDoc ? "↑ Replace PDF" : "↑ Upload PDF"}
+                </label>
+                <input
+                  id="fitrep-doc" type="file" accept=".pdf,application/pdf"
+                  style={{ display:"none" }}
+                  onChange={e => { loadFitrepPDF("fitrepDoc", e.target.files[0]); e.target.value = ""; }}
+                />
+                {submitForm.fitrepDoc
+                  ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {submitForm.fitrepDoc.fileName}</span>
+                  : <span style={{ fontSize:"0.75rem", color:"#C0392B" }}>Required</span>
+                }
+              </div>
+            </div>
+
+            {/* Routing Sheet */}
+            <div className="input-group">
+              <label className="input-label">
+                Routing Sheet <span style={{ color:"#C0392B" }}>*</span>
+              </label>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                <label htmlFor="fitrep-routing-sheet" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                  {submitForm.routingSheet ? "↑ Replace PDF" : "↑ Upload PDF"}
+                </label>
+                <input
+                  id="fitrep-routing-sheet" type="file" accept=".pdf,application/pdf"
+                  style={{ display:"none" }}
+                  onChange={e => { loadFitrepPDF("routingSheet", e.target.files[0]); e.target.value = ""; }}
+                />
+                {submitForm.routingSheet
+                  ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {submitForm.routingSheet.fileName}</span>
+                  : <span style={{ fontSize:"0.75rem", color:"#C0392B" }}>Required</span>
+                }
+              </div>
+            </div>
+          </div>
+
           <div style={{ background:"#f5f2ee", borderRadius:"8px", padding:"0.65rem", fontSize:"0.8rem", color:"#666", marginBottom:"1rem" }}>
             Your FITREP routes to: <strong>{routeHint()}</strong>
           </div>
