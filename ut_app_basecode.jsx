@@ -460,16 +460,17 @@ const PT = [
   ]},
 ];
 
-const LEADLAB = [
-  { title:"Land Navigation", date:"Mar 12",
-    objectives:["Identify terrain features on a map","Plot an 8-digit grid coordinate","Navigate 3 points in under 90 min"],
-    notes:"Bring protractor, compass, pencil. MGRS map issued at 1345." },
-  { title:"React to Contact", date:"Mar 26",
-    objectives:["Identify threat direction","Issue a SALUTE report","Execute squad battle drill"],
-    notes:"ACU/camouflage required. No live ammo." },
-  { title:"Leadership Reaction Course", date:"Apr 9",
-    objectives:["Complete obstacle with assigned team","Issue and receive clear OPORD","Debrief AAR"],
-    notes:"Teams assigned day prior." },
+const LEADLAB_INIT = [
+  { id:1, title:"Land Navigation",          date:"Mar 12", notes:"Bring protractor, compass, pencil. MGRS map issued at 1345." },
+  { id:2, title:"React to Contact",         date:"Mar 26", notes:"ACU/camouflage required. No live ammo." },
+  { id:3, title:"Leadership Reaction Course", date:"Apr 9",  notes:"Teams assigned day prior." },
+];
+
+// Three fixed PT sessions per week. OPS (and other seniors) upload PDFs here.
+const PT_SESSIONS = [
+  { key:"monday",    day:"Monday",    type:"BN PT",      desc:"Battalion-wide formation PT",    color:"#BF5700" },
+  { key:"wednesday", day:"Wednesday", type:"Company PT", desc:"Company-level physical training", color:"#003087" },
+  { key:"thursday",  day:"Thursday",  type:"FEP",        desc:"Fitness Enhancement Program",    color:"#2A7D4F" },
 ];
 
 const INIT_CHITS = [];
@@ -1326,61 +1327,259 @@ function StructurePage({ userList }) {
   );
 }
 
-function TrainingPage() {
+function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
   const { user } = useAuth();
-  const [tab, setTab] = useState("pt");
-  const [open, setOpen] = useState({ 0:true, 1:false, 2:false });
+  const canUploadPT = canEdit(user, "pt");     // OPS, PTO, and other seniors
+  const canEditLL   = user.role === "traino";  // TRAINO only for LL notes
+
+  const [tab, setTab]           = useState("pt");
+  const [toast, setToast]       = useState("");
+  const [editingLL, setEditingLL] = useState(null); // id of session being edited
+  const [llDraft, setLlDraft]   = useState({});
+  const [showAddLL, setShowAddLL] = useState(false);
+  const [newLL, setNewLL]       = useState({ title:"", date:"", notes:"" });
+
+  const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+
+  // ── PT upload / remove ──────────────────────────────────────
+  const handlePTUpload = (key, file) => {
+    if (!file) return;
+    if (file.type !== "application/pdf") { fire("⚠ Please select a PDF file."); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      setPtPlans(prev => ({
+        ...prev,
+        [key]: { fileName: file.name, dataUrl: e.target.result, uploadedBy: user.name, uploadedAt: new Date().toLocaleDateString() },
+      }));
+      fire("✅ PT plan uploaded.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePTPlan = key => {
+    setPtPlans(prev => ({ ...prev, [key]: null }));
+    fire("PT plan removed.");
+  };
+
+  // ── LL session management ───────────────────────────────────
+  const startEditLL = ll => {
+    setEditingLL(ll.id);
+    setLlDraft({ title: ll.title, date: ll.date, notes: ll.notes });
+  };
+
+  const saveEditLL = () => {
+    setLlSessions(prev => prev.map(s => s.id === editingLL ? { ...s, ...llDraft } : s));
+    setEditingLL(null);
+    fire("✅ Session updated.");
+  };
+
+  const addLLSession = () => {
+    if (!newLL.title || !newLL.date) return;
+    setLlSessions(prev => [...prev, { id: Date.now(), ...newLL }]);
+    setNewLL({ title:"", date:"", notes:"" });
+    setShowAddLL(false);
+    fire("✅ Leadership Lab session added.");
+  };
+
+  const deleteLLSession = id => {
+    setLlSessions(prev => prev.filter(s => s.id !== id));
+    fire("Session removed.");
+  };
+
   return (
     <div>
       <div className="page-title">Training <span>Plans</span></div>
-      <div className="page-sub">Weekly PT and Leadership Lab Schedules</div>
-      <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1.25rem", borderBottom:"2px solid #eee", paddingBottom:"-2px" }}>
-        {["pt","leadlab"].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ padding:"0.5rem 1rem", fontFamily:"Oswald", fontSize:"0.8rem", letterSpacing:"1.5px", textTransform:"uppercase", cursor:"pointer", background:"none", border:"none", borderBottom: tab===t ? "2px solid #BF5700":"2px solid transparent", color: tab===t ? "#BF5700":"#888", marginBottom:"-2px" }}>
-            {t === "pt" ? "PT Plan" : "LeadLab"}
-          </button>
+      <div className="page-sub">Weekly PT schedules and Leadership Lab notes</div>
+
+      {toast && <div className="alert alert-green">{toast}</div>}
+
+      {/* Tab bar */}
+      <div style={{ display:"flex", borderBottom:"2px solid #eee", marginBottom:"1.25rem" }}>
+        {[["pt","PT Plan"],["leadlab","LeadLab"]].map(([t, label]) => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            padding:"0.5rem 1.2rem", fontFamily:"Oswald", fontSize:"0.8rem", letterSpacing:"1.5px",
+            textTransform:"uppercase", cursor:"pointer", background:"none", border:"none",
+            borderBottom: tab===t ? "2px solid #BF5700" : "2px solid transparent",
+            color: tab===t ? "#BF5700" : "#888", marginBottom:"-2px",
+          }}>{label}</button>
         ))}
       </div>
+
+      {/* ── PT PLAN TAB ─────────────────────────────────────── */}
       {tab === "pt" && (
-        <>
-          <div className="alert">💪 ACFT goal: All Mids score 60+ per event by Apr 30.</div>
-      {canEdit(user,"pt") && (
-        <div style={{marginBottom:"0.75rem"}}>
-          <span style={{fontFamily:"Oswald",fontSize:"0.72rem",letterSpacing:"1.5px",textTransform:"uppercase",color:"#BF5700"}}>✏ PTO Edit Mode — you can update this plan</span>
+        <div>
+          {canUploadPT && (
+            <div className="alert">
+              ✏ <strong>OPS / PTO — Upload Mode:</strong> Use the buttons below to post this week's PT plan PDFs.
+            </div>
+          )}
+
+          {PT_SESSIONS.map(s => {
+            const plan = ptPlans[s.key];
+            const inputId = `pt-file-${s.key}`;
+            return (
+              <div key={s.key} style={{ background:"white", borderRadius:"10px", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", border:"1px solid rgba(191,87,0,0.1)", borderTop:`4px solid ${s.color}`, padding:"1.25rem", marginBottom:"1.25rem" }}>
+                {/* Session header */}
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.9rem" }}>
+                  <div>
+                    <div style={{ fontFamily:"Oswald", fontSize:"1.05rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"1.5px" }}>
+                      {s.day} — <span style={{ color: s.color }}>{s.type}</span>
+                    </div>
+                    <div style={{ fontSize:"0.78rem", color:"#888", marginTop:"2px" }}>{s.desc}</div>
+                  </div>
+                  {canUploadPT && (
+                    <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+                      <label htmlFor={inputId} className="btn btn-orange btn-sm" style={{ cursor:"pointer" }}>
+                        ↑ {plan ? "Replace PDF" : "Upload PDF"}
+                      </label>
+                      <input
+                        id={inputId} type="file" accept=".pdf,application/pdf"
+                        style={{ display:"none" }}
+                        onChange={e => { handlePTUpload(s.key, e.target.files[0]); e.target.value = ""; }}
+                      />
+                      {plan && (
+                        <button className="btn btn-outline btn-sm" onClick={() => removePTPlan(s.key)}>✕ Remove</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* PDF viewer or empty state */}
+                {plan ? (
+                  <div>
+                    <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.65rem", flexWrap:"wrap" }}>
+                      <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {plan.fileName}</span>
+                      <span style={{ fontSize:"0.72rem", color:"#aaa" }}>Uploaded by {plan.uploadedBy} · {plan.uploadedAt}</span>
+                      <a href={plan.dataUrl} download={plan.fileName} className="btn btn-outline btn-sm">⬇ Download</a>
+                    </div>
+                    <iframe
+                      src={plan.dataUrl}
+                      title={`${s.day} ${s.type} Plan`}
+                      style={{ width:"100%", height:"620px", border:"1px solid #eee", borderRadius:"6px", display:"block" }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ textAlign:"center", padding:"2.5rem 1rem", background:"#faf8f5", borderRadius:"8px", border:"2px dashed #e0d8d0" }}>
+                    <div style={{ fontSize:"2.2rem", marginBottom:"0.4rem" }}>📋</div>
+                    <div style={{ fontFamily:"Oswald", fontSize:"0.82rem", letterSpacing:"1px", textTransform:"uppercase", color:"#bbb" }}>
+                      No plan uploaded for this week
+                    </div>
+                    {canUploadPT && (
+                      <div style={{ fontSize:"0.78rem", color:"#BF5700", marginTop:"0.4rem" }}>
+                        Use the Upload PDF button above.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
-          {PT.map((d,i) => (
-            <div className="pt-block" key={i}>
-              <div className="pt-header" onClick={() => setOpen(s => ({ ...s, [i]:!s[i] }))}>
-                <span>{d.day} — {d.focus}</span>
-                <span>{open[i] ? "▲" : "▼"}</span>
-              </div>
-              {open[i] && d.exercises.map((ex,j) => (
-                <div className="pt-row" key={j}>
-                  <div className="pt-name">{ex.name}</div>
-                  <div className="pt-sets">{ex.sets}</div>
-                  {ex.notes && <div className="pt-notes">{ex.notes}</div>}
+
+      {/* ── LEADLAB TAB ─────────────────────────────────────── */}
+      {tab === "leadlab" && (
+        <div>
+          {canEditLL && (
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1rem", flexWrap:"wrap", gap:"0.5rem" }}>
+              <span style={{ fontFamily:"Oswald", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#BF5700" }}>
+                ✏ TRAINO — you can add and edit sessions
+              </span>
+              <button className="btn btn-orange btn-sm" onClick={() => setShowAddLL(true)}>+ Add Session</button>
+            </div>
+          )}
+
+          {llSessions.length === 0 && (
+            <div className="empty">
+              <div style={{ fontSize:"2rem" }}>🗺</div>
+              <div style={{ marginTop:"0.5rem" }}>No Leadership Lab sessions scheduled yet.</div>
+            </div>
+          )}
+
+          {llSessions.map(ll => (
+            <div className="card" key={ll.id} style={{ marginBottom:"1rem" }}>
+              {editingLL === ll.id ? (
+                /* ── Edit mode (TRAINO only) ── */
+                <div>
+                  <div style={{ fontFamily:"Oswald", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#BF5700", marginBottom:"0.75rem" }}>
+                    ✏ Editing Session
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Title</label>
+                    <input className="input" value={llDraft.title} onChange={e => setLlDraft(d => ({ ...d, title:e.target.value }))} />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Date</label>
+                    <input className="input" type="date" value={llDraft.date} onChange={e => setLlDraft(d => ({ ...d, date:e.target.value }))} />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Notes</label>
+                    <textarea
+                      className="input" style={{ minHeight:"100px", resize:"vertical" }}
+                      value={llDraft.notes}
+                      onChange={e => setLlDraft(d => ({ ...d, notes:e.target.value }))}
+                    />
+                  </div>
+                  <div style={{ display:"flex", gap:"0.5rem", justifyContent:"flex-end" }}>
+                    <button className="btn btn-outline btn-sm" onClick={() => setEditingLL(null)}>Cancel</button>
+                    <button className="btn btn-orange btn-sm" onClick={saveEditLL}>Save</button>
+                  </div>
                 </div>
-              ))}
+              ) : (
+                /* ── View mode ── */
+                <div>
+                  <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom: ll.notes ? "0.75rem" : 0 }}>
+                    <div>
+                      <div style={{ fontFamily:"Oswald", fontSize:"1rem", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase" }}>{ll.title}</div>
+                      <span className="badge badge-orange" style={{ marginTop:"0.3rem" }}>{ll.date}</span>
+                    </div>
+                    {canEditLL && (
+                      <div style={{ display:"flex", gap:"0.4rem" }}>
+                        <button className="btn btn-outline btn-sm" onClick={() => startEditLL(ll)}>✏ Edit</button>
+                        <button className="btn btn-sm" style={{ background:"transparent", border:"1.5px solid #C0392B", color:"#C0392B" }} onClick={() => deleteLLSession(ll.id)}>🗑</button>
+                      </div>
+                    )}
+                  </div>
+                  {ll.notes ? (
+                    <div style={{ background:"#f5f2ee", borderRadius:"6px", padding:"0.65rem 0.85rem", fontSize:"0.85rem", color:"#555", lineHeight:1.6 }}>
+                      {ll.notes}
+                    </div>
+                  ) : (
+                    canEditLL && (
+                      <div style={{ fontSize:"0.78rem", color:"#aaa", fontStyle:"italic" }}>No notes yet — click Edit to add.</div>
+                    )
+                  )}
+                </div>
+              )}
             </div>
           ))}
-        </>
-      )}
-      {tab === "leadlab" && canEdit(user,"leadlab") && (
-        <div style={{marginBottom:"0.75rem"}}>
-          <span style={{fontFamily:"Oswald",fontSize:"0.72rem",letterSpacing:"1.5px",textTransform:"uppercase",color:"#BF5700"}}>✏ TRAINO Edit Mode — you can update this schedule</span>
+
+          {/* Add session modal */}
+          {showAddLL && (
+            <Modal title="Add Leadership Lab Session" onClose={() => setShowAddLL(false)}>
+              <div className="input-group">
+                <label className="input-label">Title</label>
+                <input className="input" placeholder="e.g. Land Navigation" value={newLL.title} onChange={e => setNewLL(s => ({ ...s, title:e.target.value }))} />
+              </div>
+              <div className="input-group">
+                <label className="input-label">Date</label>
+                <input className="input" type="date" value={newLL.date} onChange={e => setNewLL(s => ({ ...s, date:e.target.value }))} />
+              </div>
+              <div className="input-group">
+                <label className="input-label">Notes</label>
+                <textarea className="input" style={{ minHeight:"90px", resize:"vertical" }}
+                  placeholder="Equipment, uniform, location, objectives…"
+                  value={newLL.notes} onChange={e => setNewLL(s => ({ ...s, notes:e.target.value }))}
+                />
+              </div>
+              <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
+                <button className="btn btn-outline" onClick={() => setShowAddLL(false)}>Cancel</button>
+                <button className="btn btn-orange" onClick={addLLSession}>Add Session</button>
+              </div>
+            </Modal>
+          )}
         </div>
       )}
-      {tab === "leadlab" && LEADLAB.map((ll,i) => (
-        <div className="card" key={i}>
-          <div className="card-header"><span className="card-title">{ll.title}</span><span className="badge badge-orange">{ll.date}</span></div>
-          <div style={{ marginBottom:"0.75rem" }}>
-            <div style={{ fontFamily:"Oswald", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.35rem" }}>Objectives</div>
-            {ll.objectives.map((o,j) => <div key={j} style={{ display:"flex", gap:"0.5rem", fontSize:"0.86rem", marginBottom:"0.2rem" }}><span style={{ color:"#BF5700", flexShrink:0 }}>▸</span>{o}</div>)}
-          </div>
-          <div style={{ background:"#f5f2ee", borderRadius:"6px", padding:"0.6rem 0.8rem", fontSize:"0.8rem", color:"#666" }}>📋 {ll.notes}</div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -2146,6 +2345,10 @@ export default function App() {
   const [chits, setChits]         = useState(INIT_CHITS);
   const [fitrebs, setFitrebs]     = useState(INIT_FITREBS);
   const [showAccount, setShowAccount] = useState(false);
+  // PT plan PDFs: one per session key (monday/wednesday/thursday). Null until OPS uploads.
+  const [ptPlans, setPtPlans]     = useState({ monday:null, wednesday:null, thursday:null });
+  // LL session list: TRAINO manages text notes; everyone reads.
+  const [llSessions, setLlSessions] = useState(LEADLAB_INIT);
   // userList: populated from Google Sheet on mount; empty until fetch completes
   const [userList, setUserList]   = useState([]);
   // sheetSynced: true only after the Sheets fetch resolves OR rejects (never while in-flight)
@@ -2210,7 +2413,7 @@ export default function App() {
     if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} />;
     if (page === "calendar")   return <CalendarPage />;
     if (page === "structure")  return <StructurePage userList={userList} />;
-    if (page === "training")   return <TrainingPage />;
+    if (page === "training")   return <TrainingPage ptPlans={ptPlans} setPtPlans={setPtPlans} llSessions={llSessions} setLlSessions={setLlSessions} />;
     if (page === "chits")      return <ChitsPage chits={chits} setChits={setChits} userList={userList} />;
     if (page === "fitreps")    return <FitrepsPage fitrebs={fitrebs} setFitrebs={setFitrebs} userList={userList} />;
     if (page === "roster")     return <RosterPage userList={userList} />;
