@@ -311,11 +311,16 @@ function sheetRowToUser(row, index) {
   const classVal   = (row.class || "").trim();
 
   // Company: "BN Staff" → "BN", "A 1st" → "Marines", "B" → "Navy Alpha", etc.
-  const companyKey = companyRaw === "BN Staff" ? "BN Staff" : companyRaw.charAt(0);
-  const company    = COMPANY_MAP[companyKey] || companyRaw;
+  // If company column doesn't start with A/B/C (e.g. "2nd PC"), fall back to billet prefix
+  let companyKey;
+  if (companyRaw === "BN Staff") companyKey = "BN Staff";
+  else if (/^[ABC]\b/.test(companyRaw)) companyKey = companyRaw.charAt(0);
+  else if (/^[ABC]\s/.test(billetRaw)) companyKey = billetRaw.charAt(0);
+  else companyKey = companyRaw;
+  const company = COMPANY_MAP[companyKey] || companyRaw;
 
-  // Platoon: extract from company column if it has a number (e.g. "A 1st" → "1st PC")
-  const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i);
+  // Platoon: extract from company or billet if it has a number (e.g. "A 1st" → "1st PC")
+  const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i) || billetRaw.match(/(\d+(?:st|nd|rd|th))/i);
   const platoon = platoonMatch ? `${platoonMatch[1]} PC` : billetRaw;
 
   // Name: strip rank prefix (MIDN, GySgt, SSgt, OC, Sgt, etc.)
