@@ -251,18 +251,97 @@ const FORMS = [
   { id:4, title:"Uniform Accountability Survey",   deadline:"Mar 20", responses:12, total:82, status:"Open",   type:"Admin" },
 ];
 
-// ─── GOOGLE SHEETS CONFIG ────────────────────────────────────
-// HOW TO CONNECT YOUR ROSTER GOOGLE SHEET:
-//   1. Open your Google Sheet
-//   2. File → Share → Publish to web → Sheet1 → CSV → Publish
-//   3. Copy the published CSV URL and paste it below
-//   4. The sheet MUST have these column headers in row 1 (exact names):
-//        id | name | rank | role | company | platoon | email | phone | mustChangePassword
-//      role values:  bn_cdr | xo | ops | sel | co_cdr | plt_cdr | adj | pto | traino | academics | mid | nco | oc
-//      mustChangePassword: TRUE or FALSE
-//   5. Save — the app will pull live data on each page load.
+// ─── GOOGLE SHEETS CONFIG (Option B — Private Sheet via Apps Script) ──
+// HOW TO CONNECT YOUR PRIVATE ROSTER GOOGLE SHEET:
+//   1. Open your Google Sheet → Extensions → Apps Script
+//   2. Paste the code from google_apps_script.js into Code.gs
+//   3. Set SECRET_TOKEN and SHEET_NAME in the script
+//   4. Deploy → New Deployment → Web App (Execute as: Me, Access: Anyone)
+//   5. Copy the deployment URL and paste below
+//   6. Set the same token below
+//   7. Save — the app will pull live data on each page load.
 //      If the URL is empty, the hardcoded USERS array above is used as a fallback.
-const SHEETS_CSV_URL = ""; // ← paste your published CSV URL here
+const SHEETS_API_URL   = ""; // ← Apps Script web app URL
+const SHEETS_API_TOKEN = ""; // ← must match SECRET_TOKEN in Apps Script
+
+// Sheet columns A→J: company, name, class, email, phone number, major, campus, eid, password, billet
+// Maps sheet company prefix → app company name
+const COMPANY_MAP = {
+  "BN Staff": "BN",
+  "A":        "Marines",
+  "B":        "Navy Alpha",
+  "C":        "Navy Bravo",
+};
+
+// Maps sheet billet → app role
+const BILLET_TO_ROLE = {
+  "BNCO":   "bn_cdr",
+  "BNXO":   "xo",
+  "OPS":    "ops",
+  "SEL":    "sel",
+  "ADJ":    "adj",
+  "PTO":    "pto",
+  "TRAINO": "traino",
+  "AO":     "academics",
+  "A CC":   "co_cdr",
+  "B CC":   "co_cdr",
+  "C CC":   "co_cdr",
+  "A SEL":  "sel",
+  "B SEL":  "sel",
+  "C SEL":  "sel",
+  "1st PC": "plt_cdr",
+  "2nd PC": "plt_cdr",
+  "3rd PC": "plt_cdr",
+  "AOPS":   "mid",
+  "PAO":    "mid",
+  "SUPPO":  "mid",
+  "BGDO":   "mid",
+  "COC":    "mid",
+  "CGC":    "mid",
+  "MIR":    "mid",
+};
+
+// Converts a sheet row object → app user object
+function sheetRowToUser(row, index) {
+  const companyRaw = (row.company || "").trim();
+  const billetRaw  = (row.billet || "").trim();
+  const nameRaw    = (row.name || "").trim();
+  const classVal   = (row.class || "").trim();
+
+  // Company: "BN Staff" → "BN", "A 1st" → "Marines", "B" → "Navy Alpha", etc.
+  const companyKey = companyRaw === "BN Staff" ? "BN Staff" : companyRaw.charAt(0);
+  const company    = COMPANY_MAP[companyKey] || companyRaw;
+
+  // Platoon: extract from company column if it has a number (e.g. "A 1st" → "1st PC")
+  const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i);
+  const platoon = platoonMatch ? `${platoonMatch[1]} PC` : billetRaw;
+
+  // Name: strip rank prefix (MIDN, GySgt, SSgt, OC, Sgt, etc.)
+  const name = nameRaw.replace(/^(MIDN|GySgt|GySGT|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
+
+  // Rank: "1/C"→"MIDN 1/C", "GySgt"→"GySgt", etc.
+  const rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
+
+  // Role from billet
+  const role = BILLET_TO_ROLE[billetRaw] || "mid";
+
+  return {
+    id:       (row.eid || `sheet-${index}`).trim(),
+    name,
+    rank,
+    role,
+    company,
+    platoon,
+    password: (row.password || "").trim(),
+    email:    (row.email || "").trim(),
+    phone:    (row.phone_number || row.phone || "").trim(),
+    major:    (row.major || "").trim(),
+    campus:   (row.campus || "").trim(),
+    eid:      (row.eid || "").trim(),
+    billet:   billetRaw,
+    mustChangePassword: false,
+  };
+}
 
 // ─── FITREP DATA ─────────────────────────────────────────────
 // Pipeline: Submitted → PC Review → Co CDR Review → BNXO Review → BNCO Approval → Complete
@@ -638,9 +717,10 @@ function LoginPage({ onLogin, userList }) {
     const user = userList.find(u =>
       u.name.toLowerCase() === q ||
       u.name.split(",")[0].trim().toLowerCase() === q ||
-      u.email.toLowerCase() === q
+      u.email.toLowerCase() === q ||
+      (u.eid && u.eid.toLowerCase() === q)
     );
-    if (!user) { setErr("Name not found. Try your last name or full email."); return; }
+    if (!user) { setErr("Name not found. Try your last name, email, or EID."); return; }
     if (user.password !== pass.trim()) { setErr("Incorrect password. Contact your S1 if you need a reset."); return; }
     setErr("");
     onLogin(user);
@@ -656,8 +736,8 @@ function LoginPage({ onLogin, userList }) {
         <div className="login-sub">Sign in with your battalion credentials</div>
         {err && <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>⚠ {err}</div>}
         <div className="input-group">
-          <label className="input-label">Last Name or Email</label>
-          <input className="input" placeholder="Last name or email address" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && go()} />
+          <label className="input-label">Last Name, Email, or EID</label>
+          <input className="input" placeholder="Last name, email, or EID" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && go()} />
         </div>
         <div className="input-group">
           <label className="input-label">Password</label>
@@ -667,7 +747,7 @@ function LoginPage({ onLogin, userList }) {
           Sign In →
         </button>
         <div className="hint-box">
-          <strong>Username:</strong> your last name or full email address<br />
+          <strong>Username:</strong> your last name, full email, or EID<br />
           Contact your S1 (ADJ) if you need a password reset.
         </div>
       </div>
@@ -1428,24 +1508,17 @@ export default function App() {
   // userList: starts as hardcoded USERS, overridden by Google Sheet if SHEETS_CSV_URL is set
   const [userList, setUserList]   = useState(USERS);
 
-  // Fetch roster from Google Sheets CSV on mount (if URL configured)
+  // Fetch roster from private Google Sheet via Apps Script on mount
   useEffect(() => {
-    if (!SHEETS_CSV_URL) return;
-    fetch(SHEETS_CSV_URL)
-      .then(r => r.text())
-      .then(csv => {
-        const lines = csv.trim().split("\n");
-        const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
-        const parsed = lines.slice(1)
-          .filter(l => l.trim())
-          .map(line => {
-            const vals = line.split(",").map(v => v.trim().replace(/^"|"$/g, ""));
-            const obj  = {};
-            headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
-            obj.mustChangePassword = obj.mustChangePassword === "TRUE";
-            return obj;
-          });
-        if (parsed.length > 0) setUserList(parsed);
+    if (!SHEETS_API_URL) return;
+    const url = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}`;
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (data.users && data.users.length > 0) {
+          const mapped = data.users.map((row, i) => sheetRowToUser(row, i));
+          setUserList(mapped);
+        }
       })
       .catch(() => {}); // silently fall back to hardcoded USERS
   }, []);
