@@ -1005,21 +1005,21 @@ function Dashboard({ onNav, userList }) {
         <div>
           <div className="potw-card">
             <div className="potw-week">📖 {POTW.week}</div>
-            <div className="potw-title">POTW: {POTW.title}</div>
-            <div className="potw-body">{POTW.body}</div>
-            {POTW.points.map((p,i) => <div key={i} style={{ fontSize:"0.82rem", color:"#aaa", marginBottom:"2px" }}>✓ {p}</div>)}
+            <div className="potw-title">POTW: {POTW.range}</div>
+            <div className="potw-body">{POTW.operations.length} scheduled operations this week</div>
+            {POTW.operations.slice(0,3).map((op,i) => <div key={i} style={{ fontSize:"0.82rem", color:"#aaa", marginBottom:"2px" }}>✓ {op.date} — {op.title}</div>)}
           </div>
           <div className="card">
             <div className="card-header">
               <span className="card-title">📅 Upcoming Events</span>
               <button className="btn btn-outline btn-sm" onClick={() => onNav("calendar")}>View All</button>
             </div>
-            {EVENTS.slice(0,4).map((e,i) => (
+            {POTW.operations.slice(0,4).map((e,i) => (
               <div className="event-row" key={i}>
-                <div className="event-date"><div className="event-day">{e.date}</div><div className="event-mo">{e.month}</div></div>
+                <div className="event-date"><div className="event-day">{e.date.split(" ")[0]}</div><div className="event-mo">{e.date.split(" ")[1] || ""}</div></div>
                 <div style={{ flex:1 }}>
                   <div className="event-title">{e.title}</div>
-                  <div className="event-sub">{e.time} · {e.location}</div>
+                  <div className="event-sub">{e.time}{e.location ? ` · ${e.location}` : ""}</div>
                 </div>
                 <span className="badge badge-navy">{e.type}</span>
               </div>
@@ -1053,23 +1053,23 @@ function CalendarPage() {
       <div className="page-sub">Battalion schedule — connect Google Calendar ID in config to go live</div>
       <div className="potw-card">
         <div className="potw-week">📖 {POTW.week}</div>
-        <div className="potw-title">{POTW.title}</div>
-        <div className="potw-body">{POTW.body}</div>
+        <div className="potw-title">{POTW.range}</div>
+        <div className="potw-body">{POTW.operations.length} scheduled operations this week</div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:"0.5rem", marginTop:"0.5rem" }}>
-          {POTW.points.map((p,i) => <span key={i} style={{ background:"rgba(255,255,255,0.1)", borderRadius:"20px", padding:"2px 10px", fontSize:"0.78rem" }}>✓ {p}</span>)}
+          {POTW.operations.slice(0,5).map((op,i) => <span key={i} style={{ background:"rgba(255,255,255,0.1)", borderRadius:"20px", padding:"2px 10px", fontSize:"0.78rem" }}>✓ {op.date} — {op.title}</span>)}
         </div>
       </div>
       <div className="card">
         <div className="card-header">
           <span className="card-title">📅 March 2026</span>
-          {canEdit(user,"potw") && <span style={{fontFamily:"Oswald",fontSize:"0.72rem",letterSpacing:"1.5px",textTransform:"uppercase",color:"#BF5700"}}>✏ Senior Staff — edit EVENTS array to update</span>}
+          {canEdit(user,"potw") && <span style={{fontFamily:"Oswald",fontSize:"0.72rem",letterSpacing:"1.5px",textTransform:"uppercase",color:"#BF5700"}}>✏ Senior Staff — edit POTW operations to update</span>}
         </div>
-        {EVENTS.map((e,i) => (
+        {POTW.operations.map((e,i) => (
           <div className="event-row" key={i}>
-            <div className="event-date"><div className="event-day">{e.date}</div><div className="event-mo">{e.month}</div></div>
+            <div className="event-date"><div className="event-day">{e.date.split(" ")[0]}</div><div className="event-mo">{e.date.split(" ")[1] || ""}</div></div>
             <div style={{ flex:1 }}>
               <div className="event-title">{e.title}</div>
-              <div className="event-sub">🕐 {e.time} · 📍 {e.location}</div>
+              <div className="event-sub">🕐 {e.time}{e.location ? ` · 📍 ${e.location}` : ""}</div>
             </div>
             <span className="badge badge-navy">{e.type}</span>
           </div>
