@@ -19,11 +19,14 @@
 // can read it. The token prevents unauthorized access to the endpoint.
 // ═══════════════════════════════════════════════════════════════════
 
-const SECRET_TOKEN = "CHANGE_ME_TO_A_RANDOM_STRING"; // ← change this!
-const SHEET_NAME   = "Sglt";                          // ← your tab name
+const SECRET_TOKEN = "UT_NROTC";
+const SHEET_NAME   = "MASTER WEBSITE";
+
+// Hardcoded column order: A→J
+// No header row in the sheet — first row is data
+var COLUMNS = ["company", "name", "class", "email", "phone_number", "major", "campus", "eid", "password", "billet"];
 
 function doGet(e) {
-  // CORS headers for browser fetch
   var output;
 
   // Validate token
@@ -41,26 +44,21 @@ function doGet(e) {
   }
 
   var data = sheet.getDataRange().getValues();
-  if (data.length < 2) {
+  if (data.length < 1) {
     output = ContentService.createTextOutput(JSON.stringify({ users: [] }));
     output.setMimeType(ContentService.MimeType.JSON);
     return output;
   }
 
-  // Normalize headers from row 1
-  var headers = data[0].map(function(h) {
-    return h.toString().trim().toLowerCase().replace(/\s+/g, "_");
-  });
-  // Expected after normalization: company, name, class, email, phone_number, major, campus, eid, password, billet
-
   var users = [];
-  for (var i = 1; i < data.length; i++) {
+  // Start from row 0 — no header row
+  for (var i = 0; i < data.length; i++) {
     var name = (data[i][1] || "").toString().trim();
     if (!name) continue; // skip empty rows
 
     var row = {};
-    for (var j = 0; j < headers.length; j++) {
-      row[headers[j]] = (data[i][j] || "").toString().trim();
+    for (var j = 0; j < COLUMNS.length && j < data[i].length; j++) {
+      row[COLUMNS[j]] = (data[i][j] || "").toString().trim();
     }
     users.push(row);
   }

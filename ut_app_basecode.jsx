@@ -32,6 +32,51 @@ function canEdit(user, section) {
   }
 }
 
+const LEGACY_COMPANY_MAP = {
+  Marines: "Alpha",
+  "Navy Alpha": "Bravo",
+  "Navy Bravo": "Charlie",
+};
+
+const COMPANY_META = {
+  BN:      { short: "BN",      full: "BN" },
+  Alpha:   { short: "Alpha",   full: "Alpha Company" },
+  Bravo:   { short: "Bravo",   full: "Bravo Company" },
+  Charlie: { short: "Charlie", full: "Charlie Company" },
+};
+
+const COMPANY_COLORS = {
+  Alpha:   "#8B0000",
+  Bravo:   "#003087",
+  Charlie: "#B8860B",
+};
+
+const STRUCTURE_BILLET_ORDER = ["PTO", "ADJ", "SUPPO", "PAO", "TRAINO", "AO", "BGDO", "CGC", "AOPS"];
+
+function normalizeCompany(company) {
+  return LEGACY_COMPANY_MAP[company] || company;
+}
+
+function getCompanyShortName(company) {
+  const normalized = normalizeCompany(company);
+  return COMPANY_META[normalized]?.short || normalized;
+}
+
+function getCompanyFullName(company) {
+  const normalized = normalizeCompany(company);
+  return COMPANY_META[normalized]?.full || normalized;
+}
+
+function formatCompanyCoLabel(company) {
+  const normalized = normalizeCompany(company);
+  if (!normalized) return "—";
+  return normalized === "BN" ? "BN" : `${getCompanyShortName(normalized)} Co`;
+}
+
+function getBilletLabel(user) {
+  return (user.billet || (normalizeCompany(user.company) === "BN" ? user.platoon : "") || "").trim();
+}
+
 // ─── USERS ──────────────────────────────────────────────────
 // mustChangePassword: true  → user must set a new password on first login
 const USERS = [
@@ -49,100 +94,100 @@ const USERS = [
   { id:"u011", name:"Gu",              rank:"MIDN 2/C", role:"mid",     company:"BN",         platoon:"BGDO",   password:"jg78873",  email:"recruiting.utnrotc@gmail.com", phone:"832-490-5818",  mustChangePassword:false },
   { id:"u012", name:"Planchon",        rank:"MIDN 3/C", role:"mid",     company:"BN",         platoon:"AOPS",   password:"dmp3637",  email:"bnaops.utnrotc@gmail.com",     phone:"726-213-1790",  mustChangePassword:false },
   { id:"u013", name:"Treshock, J.",    rank:"MIDN 2/C", role:"mid",     company:"BN",         platoon:"CGC",    password:"jet3778",  email:"cgc.utnrotc@gmail.com",        phone:"732-759-7001",  mustChangePassword:false },
-  // MARINES CO
-  { id:"u020", name:"McRae",           rank:"MIDN 1/C", role:"co_cdr",  company:"Marines",    platoon:"CO",     password:"ecm3252",  email:"ellemcrae03@utexas.edu",       phone:"512-731-1057",  mustChangePassword:false },
-  { id:"u021", name:"Shahbaz Butt",    rank:"SSgt",     role:"sel",     company:"Marines",    platoon:"SEL",    password:"ssb3338",  email:"shahbaz.butt130@gmail.com",    phone:"346-278-4072",  mustChangePassword:false },
-  { id:"u022", name:"Ramirez",         rank:"MIDN 3/C", role:"plt_cdr", company:"Marines",    platoon:"1st PC", password:"kcr2267",  email:"keith.ramirez@utexas.edu",     phone:"(806)544-0729", mustChangePassword:false },
-  { id:"u023", name:"Locklin",         rank:"MIDN 4/C", role:"mid",     company:"Marines",    platoon:"1st PC", password:"tjl2677",  email:"theodorejlocklin@icloud.com",  phone:"575-997-5396",  mustChangePassword:false },
-  { id:"u024", name:"Black",           rank:"MIDN 3/C", role:"mid",     company:"Marines",    platoon:"1st PC", password:"etb638",   email:"evantblack05@utexas.edu",      phone:"817-994-3366",  mustChangePassword:false },
-  { id:"u025", name:"Arevalo",         rank:"SSgt",     role:"nco",     company:"Marines",    platoon:"1st PC", password:"Cla3383",  email:"Careval2@stedwards.edu",       phone:"(903)806-3670", mustChangePassword:false },
-  { id:"u026", name:"McNutt",          rank:"MIDN 3/C", role:"mid",     company:"Marines",    platoon:"1st PC", password:"ajm9265",  email:"nutmeg5786@gmail.com",         phone:"737-206-6849",  mustChangePassword:false },
-  { id:"u027", name:"Hill",            rank:"Sgt",      role:"nco",     company:"Marines",    platoon:"1st PC", password:"mjh5654",  email:"Montyhill14@gmail.com",        phone:"(260)517-9379", mustChangePassword:false },
-  { id:"u028", name:"Cevalles",        rank:"SSgt",     role:"nco",     company:"Marines",    platoon:"1st PC", password:"1346520",  email:"acevall1@stedwards.edu",       phone:"(210)996-5967", mustChangePassword:false },
-  { id:"u029", name:"Marinescu",       rank:"MIDN 3/C", role:"mid",     company:"Marines",    platoon:"1st PC", password:"mm226955", email:"mm226955@my.utexas.edu",       phone:"832-874-8461",  mustChangePassword:false },
-  { id:"u030", name:"Edsonschuerfeld", rank:"SSgt",     role:"nco",     company:"Marines",    platoon:"1st PC", password:"NZE63",    email:"edson.nathyn@gmail.com",       phone:"541-653-1135",  mustChangePassword:false },
-  { id:"u031", name:"Hearn",           rank:"MIDN 2/C", role:"mid",     company:"Marines",    platoon:"1st PC", password:"cmh6492",  email:"cody.hearn22@gmail.com",       phone:"562-386-7172",  mustChangePassword:false },
-  { id:"u032", name:"Powell",          rank:"MIDN 2/C", role:"mid",     company:"Marines",    platoon:"1st PC", password:"flp333",   email:"flp333@my.utexas.edu",         phone:"931-215-8160",  mustChangePassword:false },
-  { id:"u033", name:"Lutz",            rank:"MIDN 1/C", role:"plt_cdr", company:"Marines",    platoon:"2nd PC", password:"tel663",   email:"tyler.lutz@utexas.edu",        phone:"401-516-8455",  mustChangePassword:false },
-  { id:"u034", name:"Felan",           rank:"SSgt",     role:"nco",     company:"Marines",    platoon:"2nd PC", password:"175862",   email:"Tristianf17@gmail.com",        phone:"(210)887-3068", mustChangePassword:false },
-  { id:"u035", name:"Padmanabhan",     rank:"MIDN 4/C", role:"mid",     company:"Marines",    platoon:"2nd PC", password:"ap68366",  email:"ap68366@my.utexas.edu",        phone:"737-900-1113",  mustChangePassword:false },
-  { id:"u036", name:"Garza",           rank:"SSgt",     role:"nco",     company:"Marines",    platoon:"2nd PC", password:"180610",   email:"renemariogarzaiii@gmail.com",  phone:"830-295-0485",  mustChangePassword:false },
-  { id:"u037", name:"Perez",           rank:"Sgt",      role:"nco",     company:"Marines",    platoon:"2nd PC", password:"178295",   email:"Ethianperez@gmail.com",        phone:"(512)618-2720", mustChangePassword:false },
-  { id:"u038", name:"McCleskey",       rank:"GySgt",    role:"nco",     company:"Marines",    platoon:"2nd PC", password:"Cwm2938",  email:"Cwm2938@my.utexas.edu",        phone:"(806)677-6784", mustChangePassword:false },
-  { id:"u039", name:"Hernandez Gomez", rank:"SSgt",     role:"nco",     company:"Marines",    platoon:"2nd PC", password:"CH56244",  email:"CH56244@eid.utexas.edu",       phone:"678-830-8728",  mustChangePassword:false },
-  // NAVY ALPHA CO
-  { id:"u040", name:"Irisari",         rank:"MIDN 2/C", role:"co_cdr",  company:"Navy Alpha", platoon:"CO",     password:"ai6959",   email:"airisari@outlook.com",         phone:"703-223-3625",  mustChangePassword:false },
-  { id:"u041", name:"Francis",         rank:"OC",       role:"sel",     company:"Navy Alpha", platoon:"SEL",    password:"cf29624",  email:"chas.francis01@gmail.com",     phone:"512-738-1074",  mustChangePassword:false },
-  { id:"u042", name:"Alcazar",         rank:"MIDN 3/C", role:"plt_cdr", company:"Navy Alpha", platoon:"1st PC", password:"laa3843",  email:"lukealcazar11@gmail.com",      phone:"210-400-3015",  mustChangePassword:false },
-  { id:"u043", name:"Treshock, T.",    rank:"MIDN 2/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"jtt3891",  email:"jimmytreshock145@utexas.edu",  phone:"732-759-7001",  mustChangePassword:false },
-  { id:"u044", name:"Madulara",        rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"cam23254", email:"cnmadulara@gmail.com",         phone:"281-658-2600",  mustChangePassword:false },
-  { id:"u045", name:"Renslow",         rank:"MIDN 3/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"hgr5147",  email:"hgrenslow@gmail.com",          phone:"515-441-4144",  mustChangePassword:false },
-  { id:"u046", name:"Brakefield",      rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"afb868",   email:"afb868@utexas.edu",            phone:"(210)237-2884", mustChangePassword:false },
-  { id:"u047", name:"Rajesh",          rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"ar84238",  email:"arajesh@utexas.edu",           phone:"703-599-2498",  mustChangePassword:false },
-  { id:"u048", name:"Rhodes",          rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"Mpr2348",  email:"Mpr2348@my.utexas.edu",        phone:"512-694-3039",  mustChangePassword:false },
-  { id:"u049", name:"Diedrich",        rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"gd22345",  email:"glincolnd4@gmail.com",         phone:"630-234-4045",  mustChangePassword:false },
-  { id:"u050", name:"Angeles",         rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"jma5962",  email:"jacobangeles@utexas.edu",      phone:"631-827-8716",  mustChangePassword:false },
-  { id:"u051", name:"Harpuder, E.",    rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"ehh589",   email:"ehharpuder@utexas.edu",        phone:"808-364-7319",  mustChangePassword:false },
-  { id:"u052", name:"Kessler",         rank:"OC",       role:"oc",      company:"Navy Alpha", platoon:"1st PC", password:"jnk788",   email:"jnk788@my.utexas.edu",         phone:"940-727-8105",  mustChangePassword:false },
-  { id:"u053", name:"Myers",           rank:"OC",       role:"oc",      company:"Navy Alpha", platoon:"1st PC", password:"cm68236",  email:"cannonm1023@gmail.com",        phone:"717-585-1996",  mustChangePassword:false },
-  { id:"u054", name:"Redington",       rank:"MIDN 3/C", role:"plt_cdr", company:"Navy Alpha", platoon:"2nd PC", password:"kjr2897",  email:"kjredington24@gmail.com",      phone:"917-561-3818",  mustChangePassword:false },
-  { id:"u055", name:"Bertrand",        rank:"MIDN 2/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"jb79929",  email:"jb79929@my.utexas.edu",        phone:"(516)305-0975", mustChangePassword:false },
-  { id:"u056", name:"Morales",         rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"jm227556", email:"jm227556@eid.utexas.edu",      phone:"3617931889",    mustChangePassword:false },
-  { id:"u057", name:"Murray",          rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"egm2753",  email:"egrace1211@gmail.com",         phone:"903-436-3601",  mustChangePassword:false },
-  { id:"u058", name:"Opiela",          rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"neo392",   email:"natalie@opiela.org",           phone:"512-915-9446",  mustChangePassword:false },
-  { id:"u059", name:"Reis",            rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"dpr853",   email:"reisdeborah90@gmail.com",      phone:"512-992-5880",  mustChangePassword:false },
-  { id:"u060", name:"Straub",          rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"ncs2239",  email:"nstraub@utexas.edu",           phone:"(281)520-5259", mustChangePassword:false },
-  { id:"u061", name:"Edwards",         rank:"MIDN 2/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"cae2726",  email:"cedwards49@icloud.com",        phone:"805-320-0311",  mustChangePassword:false },
-  { id:"u062", name:"Nicholas",        rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"han494",   email:"hannicholas@utexas.edu",       phone:"832-298-1395",  mustChangePassword:false },
-  { id:"u063", name:"Quidlat",         rank:"MIDN 2/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"mqq57",    email:"mjqquidlat@utexas.edu",        phone:"512-662-2622",  mustChangePassword:false },
-  { id:"u064", name:"Nugent",          rank:"OC",       role:"oc",      company:"Navy Alpha", platoon:"2nd PC", password:"nn9389",   email:"nugent.nicolas1@gmail.com",    phone:"717-425-4675",  mustChangePassword:false },
-  { id:"u065", name:"Lee",             rank:"MIDN 3/C", role:"plt_cdr", company:"Navy Alpha", platoon:"3rd PC", password:"dl38724",  email:"daniellee@utexas.edu",         phone:"213-800-2182",  mustChangePassword:false },
-  { id:"u066", name:"Hash, W.",        rank:"OC",       role:"oc",      company:"Navy Alpha", platoon:"3rd PC", password:"wgh543",   email:"weston.hash@utexas.edu",       phone:"512-738-6206",  mustChangePassword:false },
-  { id:"u067", name:"Jiwa",            rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"zcj232",   email:"zcj232@eid.utexas.edu",        phone:"512-496-4193",  mustChangePassword:false },
-  { id:"u068", name:"Ost",             rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"jco2524",  email:"jco2524@my.utexas.edu",        phone:"412-304-6961",  mustChangePassword:false },
-  { id:"u069", name:"Lopez",           rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"ml56697",  email:"marquezl2024@gmail.com",       phone:"830-968-7842",  mustChangePassword:false },
-  { id:"u070", name:"Handford",        rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"wbh725",   email:"wheeler.betz@utexas.edu",      phone:"904-485-3224",  mustChangePassword:false },
-  { id:"u071", name:"Courtney, L.",    rank:"MIDN 2/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"lec3474",  email:"laurencourtney@utexas.edu",    phone:"847-340-0995",  mustChangePassword:false },
-  { id:"u072", name:"Born",            rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"zpb265",   email:"Zborn73@gmail.com",            phone:"202-807-8663",  mustChangePassword:false },
-  { id:"u073", name:"Tuin",            rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"vet368",   email:"vet368@eid.utexas.edu",        phone:"682-220-5723",  mustChangePassword:false },
-  { id:"u074", name:"Evans, X.",       rank:"MIDN 2/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"xae4821",  email:"xander_evans@icloud.com",      phone:"425-505-7451",  mustChangePassword:false },
-  { id:"u075", name:"Sacco",           rank:"OC",       role:"oc",      company:"Navy Alpha", platoon:"3rd PC", password:"aps3622",  email:"alec.sacco.1@gmail.com",       phone:"469-321-1666",  mustChangePassword:false },
-  // NAVY BRAVO CO
-  { id:"u080", name:"Torres",          rank:"MIDN 2/C", role:"co_cdr",  company:"Navy Bravo", platoon:"CO",     password:"dat2999",  email:"dannytorres569@utexas.edu",    phone:"915-216-1651",  mustChangePassword:false },
-  { id:"u081", name:"Wende",           rank:"OC",       role:"sel",     company:"Navy Bravo", platoon:"SEL",    password:"drw3295",  email:"darrenrwende@gmail.com",       phone:"346-773-8825",  mustChangePassword:false },
-  { id:"u082", name:"Burrell",         rank:"MIDN 3/C", role:"plt_cdr", company:"Navy Bravo", platoon:"1st PC", password:"blb4644",  email:"byronburrell1@gmail.com",      phone:"469-500-0452",  mustChangePassword:false },
-  { id:"u083", name:"Crimmins",        rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"tjc3735",  email:"tjcrimmins@icloud.com",        phone:"301-741-1281",  mustChangePassword:false },
-  { id:"u084", name:"Lucas",           rank:"MIDN 1/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"mjl4272",  email:"lucashorns@utexas.edu",        phone:"512-590-9814",  mustChangePassword:false },
-  { id:"u085", name:"Bell",            rank:"OC",       role:"oc",      company:"Navy Bravo", platoon:"1st PC", password:"ab79952",  email:"alexkrisbell@utexas.edu",      phone:"720-839-7106",  mustChangePassword:false },
-  { id:"u086", name:"Savage",          rank:"OC",       role:"oc",      company:"Navy Bravo", platoon:"1st PC", password:"ccs3944",  email:"ccsavage04@gmail.com",         phone:"(214)966-2119", mustChangePassword:false },
-  { id:"u087", name:"Paz",             rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"seu_paz",  email:"dpaz2@stedwards.edu",          phone:"956-245-9429",  mustChangePassword:false },
-  { id:"u088", name:"Carrizales",      rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"ac95845",  email:"alexcarrizales43@gmail.com",   phone:"512-672-9814",  mustChangePassword:false },
-  { id:"u089", name:"Downey",          rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"lsd793",   email:"logan.sage@gmail.com",         phone:"321-626-4234",  mustChangePassword:false },
-  { id:"u090", name:"Spooner, M.",     rank:"MIDN 3/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"msp6341",  email:"mspooner@utexas.edu",          phone:"512-632-3258",  mustChangePassword:false },
-  { id:"u091", name:"Barto",           rank:"MIDN 3/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"ekb2234",  email:"theevelyn@utexas.edu",         phone:"214-578-4716",  mustChangePassword:false },
-  { id:"u092", name:"Thai",            rank:"OC",       role:"oc",      company:"Navy Bravo", platoon:"1st PC", password:"jbt2399",  email:"jonathanbthai@utexas.edu",     phone:"(916)257-1880", mustChangePassword:false },
-  { id:"u093", name:"Delgado",         rank:"MIDN 3/C", role:"plt_cdr", company:"Navy Bravo", platoon:"2nd PC", password:"cd38394",  email:"carolinadelgado@utexas.edu",   phone:"832-646-3786",  mustChangePassword:false },
-  { id:"u094", name:"Jennings",        rank:"MIDN 2/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"saj3222",  email:"saj3222@my.utexas.edu",        phone:"3392141051",    mustChangePassword:false },
-  { id:"u095", name:"Roque-Garcia",    rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"ncr839",   email:"natalie.groque0327@gmail.com", phone:"469-460-0237",  mustChangePassword:false },
-  { id:"u096", name:"Mireles",         rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"nvm389",   email:"nvm389@eid.utexas.edu",        phone:"956-203-7485",  mustChangePassword:false },
-  { id:"u097", name:"Cremer",          rank:"MIDN 2/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"jrc7734",  email:"joshuacremer@utexas.edu",      phone:"832-226-2604",  mustChangePassword:false },
-  { id:"u098", name:"Aquino",          rank:"OC",       role:"oc",      company:"Navy Bravo", platoon:"2nd PC", password:"ama8943",  email:"alexmaquino@yahoo.com",        phone:"714-869-5988",  mustChangePassword:false },
-  { id:"u099", name:"Harpuder, S.",    rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"sth2339",  email:"sharpuder@gmail.com",          phone:"808-375-5682",  mustChangePassword:false },
-  { id:"u100", name:"Barela, D.",      rank:"MIDN 2/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"dbd7291",  email:"dylan.barela@utexas.edu",      phone:"(832)506-6377", mustChangePassword:false },
-  { id:"u101", name:"Fernandez",       rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"df25644",  email:"df25644@my.utexas.edu",        phone:"830-344-9014",  mustChangePassword:false },
-  { id:"u102", name:"Petteway",        rank:"MIDN 3/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"eep982",   email:"epetteway15@gmail.com",        phone:"469-978-2712",  mustChangePassword:false },
-  { id:"u103", name:"Carnicle",        rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"arc6339",  email:"abigail.carnicle07@gmail.com", phone:"9799009635",    mustChangePassword:false },
-  { id:"u104", name:"Simpson",         rank:"MIDN 3/C", role:"plt_cdr", company:"Navy Bravo", platoon:"3rd PC", password:"tws2236",  email:"Thomas.simpson@utexas.edu",    phone:"210-330-1509",  mustChangePassword:false },
-  { id:"u105", name:"Gu, A.",          rank:"MIDN 2/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"jga9124",  email:"alexgujiaming@gmail.com",      phone:"832-490-5818",  mustChangePassword:false },
-  { id:"u106", name:"Visintine",       rank:"MIDN 3/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"slv843",   email:"luke.visintine@gmail.com",     phone:"832-507-5542",  mustChangePassword:false },
-  { id:"u107", name:"Escamilla",       rank:"OC",       role:"oc",      company:"Navy Bravo", platoon:"3rd PC", password:"ame3747",  email:"andrewescamilla411@gmail.com", phone:"951-751-6259",  mustChangePassword:false },
-  { id:"u108", name:"Bailey",          rank:"MIDN 1/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"msb4354",  email:"msbailey9@utexas.edu",         phone:"(206)351-8072", mustChangePassword:false },
-  { id:"u109", name:"Planchon, D.",    rank:"MIDN 3/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"dpd8823",  email:"dmedved@utexas.edu",           phone:"726-213-1790",  mustChangePassword:false },
-  { id:"u110", name:"Braun",           rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"dcb3454",  email:"doritlm.gamer@gmail.com",      phone:"737-412-2696",  mustChangePassword:false },
-  { id:"u111", name:"Farrell",         rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"jpf2493",  email:"j.patrick.farrell@gmail.com",  phone:"228-233-0620",  mustChangePassword:false },
-  { id:"u112", name:"Alonzo",          rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"mma4546",  email:"madelynn.alonzo@gmail.com",    phone:"903-271-1289",  mustChangePassword:false },
-  { id:"u113", name:"Nolan",           rank:"MIDN 2/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"rgn334",   email:"rubynolan@utexas.edu",         phone:"631-662-8783",  mustChangePassword:false },
-  { id:"u114", name:"Eng",             rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"be6627",   email:"brandoneng256@gmail.com",      phone:"936-330-5814",  mustChangePassword:false },
+  // ALPHA CO
+  { id:"u020", name:"McRae",           rank:"MIDN 1/C", role:"co_cdr",  company:"Alpha",      platoon:"CO",     password:"ecm3252",  email:"ellemcrae03@utexas.edu",       phone:"512-731-1057",  mustChangePassword:false },
+  { id:"u021", name:"Shahbaz Butt",    rank:"SSgt",     role:"sel",     company:"Alpha",      platoon:"SEL",    password:"ssb3338",  email:"shahbaz.butt130@gmail.com",    phone:"346-278-4072",  mustChangePassword:false },
+  { id:"u022", name:"Ramirez",         rank:"MIDN 3/C", role:"plt_cdr", company:"Alpha",      platoon:"1st PC", password:"kcr2267",  email:"keith.ramirez@utexas.edu",     phone:"(806)544-0729", mustChangePassword:false },
+  { id:"u023", name:"Locklin",         rank:"MIDN 4/C", role:"mid",     company:"Alpha",      platoon:"1st PC", password:"tjl2677",  email:"theodorejlocklin@icloud.com",  phone:"575-997-5396",  mustChangePassword:false },
+  { id:"u024", name:"Black",           rank:"MIDN 3/C", role:"mid",     company:"Alpha",      platoon:"1st PC", password:"etb638",   email:"evantblack05@utexas.edu",      phone:"817-994-3366",  mustChangePassword:false },
+  { id:"u025", name:"Arevalo",         rank:"SSgt",     role:"nco",     company:"Alpha",      platoon:"1st PC", password:"Cla3383",  email:"Careval2@stedwards.edu",       phone:"(903)806-3670", mustChangePassword:false },
+  { id:"u026", name:"McNutt",          rank:"MIDN 3/C", role:"mid",     company:"Alpha",      platoon:"1st PC", password:"ajm9265",  email:"nutmeg5786@gmail.com",         phone:"737-206-6849",  mustChangePassword:false },
+  { id:"u027", name:"Hill",            rank:"Sgt",      role:"nco",     company:"Alpha",      platoon:"1st PC", password:"mjh5654",  email:"Montyhill14@gmail.com",        phone:"(260)517-9379", mustChangePassword:false },
+  { id:"u028", name:"Cevalles",        rank:"SSgt",     role:"nco",     company:"Alpha",      platoon:"1st PC", password:"1346520",  email:"acevall1@stedwards.edu",       phone:"(210)996-5967", mustChangePassword:false },
+  { id:"u029", name:"Marinescu",       rank:"MIDN 3/C", role:"mid",     company:"Alpha",      platoon:"1st PC", password:"mm226955", email:"mm226955@my.utexas.edu",       phone:"832-874-8461",  mustChangePassword:false },
+  { id:"u030", name:"Edsonschuerfeld", rank:"SSgt",     role:"nco",     company:"Alpha",      platoon:"1st PC", password:"NZE63",    email:"edson.nathyn@gmail.com",       phone:"541-653-1135",  mustChangePassword:false },
+  { id:"u031", name:"Hearn",           rank:"MIDN 2/C", role:"mid",     company:"Alpha",      platoon:"1st PC", password:"cmh6492",  email:"cody.hearn22@gmail.com",       phone:"562-386-7172",  mustChangePassword:false },
+  { id:"u032", name:"Powell",          rank:"MIDN 2/C", role:"mid",     company:"Alpha",      platoon:"1st PC", password:"flp333",   email:"flp333@my.utexas.edu",         phone:"931-215-8160",  mustChangePassword:false },
+  { id:"u033", name:"Lutz",            rank:"MIDN 1/C", role:"plt_cdr", company:"Alpha",      platoon:"2nd PC", password:"tel663",   email:"tyler.lutz@utexas.edu",        phone:"401-516-8455",  mustChangePassword:false },
+  { id:"u034", name:"Felan",           rank:"SSgt",     role:"nco",     company:"Alpha",      platoon:"2nd PC", password:"175862",   email:"Tristianf17@gmail.com",        phone:"(210)887-3068", mustChangePassword:false },
+  { id:"u035", name:"Padmanabhan",     rank:"MIDN 4/C", role:"mid",     company:"Alpha",      platoon:"2nd PC", password:"ap68366",  email:"ap68366@my.utexas.edu",        phone:"737-900-1113",  mustChangePassword:false },
+  { id:"u036", name:"Garza",           rank:"SSgt",     role:"nco",     company:"Alpha",      platoon:"2nd PC", password:"180610",   email:"renemariogarzaiii@gmail.com",  phone:"830-295-0485",  mustChangePassword:false },
+  { id:"u037", name:"Perez",           rank:"Sgt",      role:"nco",     company:"Alpha",      platoon:"2nd PC", password:"178295",   email:"Ethianperez@gmail.com",        phone:"(512)618-2720", mustChangePassword:false },
+  { id:"u038", name:"McCleskey",       rank:"GySgt",    role:"nco",     company:"Alpha",      platoon:"2nd PC", password:"Cwm2938",  email:"Cwm2938@my.utexas.edu",        phone:"(806)677-6784", mustChangePassword:false },
+  { id:"u039", name:"Hernandez Gomez", rank:"SSgt",     role:"nco",     company:"Alpha",      platoon:"2nd PC", password:"CH56244",  email:"CH56244@eid.utexas.edu",       phone:"678-830-8728",  mustChangePassword:false },
+  // BRAVO CO
+  { id:"u040", name:"Irisari",         rank:"MIDN 2/C", role:"co_cdr",  company:"Bravo", platoon:"CO",     password:"ai6959",   email:"airisari@outlook.com",         phone:"703-223-3625",  mustChangePassword:false },
+  { id:"u041", name:"Francis",         rank:"OC",       role:"sel",     company:"Bravo", platoon:"SEL",    password:"cf29624",  email:"chas.francis01@gmail.com",     phone:"512-738-1074",  mustChangePassword:false },
+  { id:"u042", name:"Alcazar",         rank:"MIDN 3/C", role:"plt_cdr", company:"Bravo", platoon:"1st PC", password:"laa3843",  email:"lukealcazar11@gmail.com",      phone:"210-400-3015",  mustChangePassword:false },
+  { id:"u043", name:"Treshock, T.",    rank:"MIDN 2/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"jtt3891",  email:"jimmytreshock145@utexas.edu",  phone:"732-759-7001",  mustChangePassword:false },
+  { id:"u044", name:"Madulara",        rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"cam23254", email:"cnmadulara@gmail.com",         phone:"281-658-2600",  mustChangePassword:false },
+  { id:"u045", name:"Renslow",         rank:"MIDN 3/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"hgr5147",  email:"hgrenslow@gmail.com",          phone:"515-441-4144",  mustChangePassword:false },
+  { id:"u046", name:"Brakefield",      rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"afb868",   email:"afb868@utexas.edu",            phone:"(210)237-2884", mustChangePassword:false },
+  { id:"u047", name:"Rajesh",          rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"ar84238",  email:"arajesh@utexas.edu",           phone:"703-599-2498",  mustChangePassword:false },
+  { id:"u048", name:"Rhodes",          rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"Mpr2348",  email:"Mpr2348@my.utexas.edu",        phone:"512-694-3039",  mustChangePassword:false },
+  { id:"u049", name:"Diedrich",        rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"gd22345",  email:"glincolnd4@gmail.com",         phone:"630-234-4045",  mustChangePassword:false },
+  { id:"u050", name:"Angeles",         rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"jma5962",  email:"jacobangeles@utexas.edu",      phone:"631-827-8716",  mustChangePassword:false },
+  { id:"u051", name:"Harpuder, E.",    rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"ehh589",   email:"ehharpuder@utexas.edu",        phone:"808-364-7319",  mustChangePassword:false },
+  { id:"u052", name:"Kessler",         rank:"OC",       role:"oc",      company:"Bravo", platoon:"1st PC", password:"jnk788",   email:"jnk788@my.utexas.edu",         phone:"940-727-8105",  mustChangePassword:false },
+  { id:"u053", name:"Myers",           rank:"OC",       role:"oc",      company:"Bravo", platoon:"1st PC", password:"cm68236",  email:"cannonm1023@gmail.com",        phone:"717-585-1996",  mustChangePassword:false },
+  { id:"u054", name:"Redington",       rank:"MIDN 3/C", role:"plt_cdr", company:"Bravo", platoon:"2nd PC", password:"kjr2897",  email:"kjredington24@gmail.com",      phone:"917-561-3818",  mustChangePassword:false },
+  { id:"u055", name:"Bertrand",        rank:"MIDN 2/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"jb79929",  email:"jb79929@my.utexas.edu",        phone:"(516)305-0975", mustChangePassword:false },
+  { id:"u056", name:"Morales",         rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"jm227556", email:"jm227556@eid.utexas.edu",      phone:"3617931889",    mustChangePassword:false },
+  { id:"u057", name:"Murray",          rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"egm2753",  email:"egrace1211@gmail.com",         phone:"903-436-3601",  mustChangePassword:false },
+  { id:"u058", name:"Opiela",          rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"neo392",   email:"natalie@opiela.org",           phone:"512-915-9446",  mustChangePassword:false },
+  { id:"u059", name:"Reis",            rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"dpr853",   email:"reisdeborah90@gmail.com",      phone:"512-992-5880",  mustChangePassword:false },
+  { id:"u060", name:"Straub",          rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"ncs2239",  email:"nstraub@utexas.edu",           phone:"(281)520-5259", mustChangePassword:false },
+  { id:"u061", name:"Edwards",         rank:"MIDN 2/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"cae2726",  email:"cedwards49@icloud.com",        phone:"805-320-0311",  mustChangePassword:false },
+  { id:"u062", name:"Nicholas",        rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"han494",   email:"hannicholas@utexas.edu",       phone:"832-298-1395",  mustChangePassword:false },
+  { id:"u063", name:"Quidlat",         rank:"MIDN 2/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"mqq57",    email:"mjqquidlat@utexas.edu",        phone:"512-662-2622",  mustChangePassword:false },
+  { id:"u064", name:"Nugent",          rank:"OC",       role:"oc",      company:"Bravo", platoon:"2nd PC", password:"nn9389",   email:"nugent.nicolas1@gmail.com",    phone:"717-425-4675",  mustChangePassword:false },
+  { id:"u065", name:"Lee",             rank:"MIDN 3/C", role:"plt_cdr", company:"Bravo", platoon:"3rd PC", password:"dl38724",  email:"daniellee@utexas.edu",         phone:"213-800-2182",  mustChangePassword:false },
+  { id:"u066", name:"Hash, W.",        rank:"OC",       role:"oc",      company:"Bravo", platoon:"3rd PC", password:"wgh543",   email:"weston.hash@utexas.edu",       phone:"512-738-6206",  mustChangePassword:false },
+  { id:"u067", name:"Jiwa",            rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"zcj232",   email:"zcj232@eid.utexas.edu",        phone:"512-496-4193",  mustChangePassword:false },
+  { id:"u068", name:"Ost",             rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"jco2524",  email:"jco2524@my.utexas.edu",        phone:"412-304-6961",  mustChangePassword:false },
+  { id:"u069", name:"Lopez",           rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"ml56697",  email:"marquezl2024@gmail.com",       phone:"830-968-7842",  mustChangePassword:false },
+  { id:"u070", name:"Handford",        rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"wbh725",   email:"wheeler.betz@utexas.edu",      phone:"904-485-3224",  mustChangePassword:false },
+  { id:"u071", name:"Courtney, L.",    rank:"MIDN 2/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"lec3474",  email:"laurencourtney@utexas.edu",    phone:"847-340-0995",  mustChangePassword:false },
+  { id:"u072", name:"Born",            rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"zpb265",   email:"Zborn73@gmail.com",            phone:"202-807-8663",  mustChangePassword:false },
+  { id:"u073", name:"Tuin",            rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"vet368",   email:"vet368@eid.utexas.edu",        phone:"682-220-5723",  mustChangePassword:false },
+  { id:"u074", name:"Evans, X.",       rank:"MIDN 2/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"xae4821",  email:"xander_evans@icloud.com",      phone:"425-505-7451",  mustChangePassword:false },
+  { id:"u075", name:"Sacco",           rank:"OC",       role:"oc",      company:"Bravo", platoon:"3rd PC", password:"aps3622",  email:"alec.sacco.1@gmail.com",       phone:"469-321-1666",  mustChangePassword:false },
+  // CHARLIE CO
+  { id:"u080", name:"Torres",          rank:"MIDN 2/C", role:"co_cdr",  company:"Charlie", platoon:"CO",     password:"dat2999",  email:"dannytorres569@utexas.edu",    phone:"915-216-1651",  mustChangePassword:false },
+  { id:"u081", name:"Wende",           rank:"OC",       role:"sel",     company:"Charlie", platoon:"SEL",    password:"drw3295",  email:"darrenrwende@gmail.com",       phone:"346-773-8825",  mustChangePassword:false },
+  { id:"u082", name:"Burrell",         rank:"MIDN 3/C", role:"plt_cdr", company:"Charlie", platoon:"1st PC", password:"blb4644",  email:"byronburrell1@gmail.com",      phone:"469-500-0452",  mustChangePassword:false },
+  { id:"u083", name:"Crimmins",        rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"tjc3735",  email:"tjcrimmins@icloud.com",        phone:"301-741-1281",  mustChangePassword:false },
+  { id:"u084", name:"Lucas",           rank:"MIDN 1/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"mjl4272",  email:"lucashorns@utexas.edu",        phone:"512-590-9814",  mustChangePassword:false },
+  { id:"u085", name:"Bell",            rank:"OC",       role:"oc",      company:"Charlie", platoon:"1st PC", password:"ab79952",  email:"alexkrisbell@utexas.edu",      phone:"720-839-7106",  mustChangePassword:false },
+  { id:"u086", name:"Savage",          rank:"OC",       role:"oc",      company:"Charlie", platoon:"1st PC", password:"ccs3944",  email:"ccsavage04@gmail.com",         phone:"(214)966-2119", mustChangePassword:false },
+  { id:"u087", name:"Paz",             rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"seu_paz",  email:"dpaz2@stedwards.edu",          phone:"956-245-9429",  mustChangePassword:false },
+  { id:"u088", name:"Carrizales",      rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"ac95845",  email:"alexcarrizales43@gmail.com",   phone:"512-672-9814",  mustChangePassword:false },
+  { id:"u089", name:"Downey",          rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"lsd793",   email:"logan.sage@gmail.com",         phone:"321-626-4234",  mustChangePassword:false },
+  { id:"u090", name:"Spooner, M.",     rank:"MIDN 3/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"msp6341",  email:"mspooner@utexas.edu",          phone:"512-632-3258",  mustChangePassword:false },
+  { id:"u091", name:"Barto",           rank:"MIDN 3/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"ekb2234",  email:"theevelyn@utexas.edu",         phone:"214-578-4716",  mustChangePassword:false },
+  { id:"u092", name:"Thai",            rank:"OC",       role:"oc",      company:"Charlie", platoon:"1st PC", password:"jbt2399",  email:"jonathanbthai@utexas.edu",     phone:"(916)257-1880", mustChangePassword:false },
+  { id:"u093", name:"Delgado",         rank:"MIDN 3/C", role:"plt_cdr", company:"Charlie", platoon:"2nd PC", password:"cd38394",  email:"carolinadelgado@utexas.edu",   phone:"832-646-3786",  mustChangePassword:false },
+  { id:"u094", name:"Jennings",        rank:"MIDN 2/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"saj3222",  email:"saj3222@my.utexas.edu",        phone:"3392141051",    mustChangePassword:false },
+  { id:"u095", name:"Roque-Garcia",    rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"ncr839",   email:"natalie.groque0327@gmail.com", phone:"469-460-0237",  mustChangePassword:false },
+  { id:"u096", name:"Mireles",         rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"nvm389",   email:"nvm389@eid.utexas.edu",        phone:"956-203-7485",  mustChangePassword:false },
+  { id:"u097", name:"Cremer",          rank:"MIDN 2/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"jrc7734",  email:"joshuacremer@utexas.edu",      phone:"832-226-2604",  mustChangePassword:false },
+  { id:"u098", name:"Aquino",          rank:"OC",       role:"oc",      company:"Charlie", platoon:"2nd PC", password:"ama8943",  email:"alexmaquino@yahoo.com",        phone:"714-869-5988",  mustChangePassword:false },
+  { id:"u099", name:"Harpuder, S.",    rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"sth2339",  email:"sharpuder@gmail.com",          phone:"808-375-5682",  mustChangePassword:false },
+  { id:"u100", name:"Barela, D.",      rank:"MIDN 2/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"dbd7291",  email:"dylan.barela@utexas.edu",      phone:"(832)506-6377", mustChangePassword:false },
+  { id:"u101", name:"Fernandez",       rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"df25644",  email:"df25644@my.utexas.edu",        phone:"830-344-9014",  mustChangePassword:false },
+  { id:"u102", name:"Petteway",        rank:"MIDN 3/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"eep982",   email:"epetteway15@gmail.com",        phone:"469-978-2712",  mustChangePassword:false },
+  { id:"u103", name:"Carnicle",        rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"arc6339",  email:"abigail.carnicle07@gmail.com", phone:"9799009635",    mustChangePassword:false },
+  { id:"u104", name:"Simpson",         rank:"MIDN 3/C", role:"plt_cdr", company:"Charlie", platoon:"3rd PC", password:"tws2236",  email:"Thomas.simpson@utexas.edu",    phone:"210-330-1509",  mustChangePassword:false },
+  { id:"u105", name:"Gu, A.",          rank:"MIDN 2/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"jga9124",  email:"alexgujiaming@gmail.com",      phone:"832-490-5818",  mustChangePassword:false },
+  { id:"u106", name:"Visintine",       rank:"MIDN 3/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"slv843",   email:"luke.visintine@gmail.com",     phone:"832-507-5542",  mustChangePassword:false },
+  { id:"u107", name:"Escamilla",       rank:"OC",       role:"oc",      company:"Charlie", platoon:"3rd PC", password:"ame3747",  email:"andrewescamilla411@gmail.com", phone:"951-751-6259",  mustChangePassword:false },
+  { id:"u108", name:"Bailey",          rank:"MIDN 1/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"msb4354",  email:"msbailey9@utexas.edu",         phone:"(206)351-8072", mustChangePassword:false },
+  { id:"u109", name:"Planchon, D.",    rank:"MIDN 3/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"dpd8823",  email:"dmedved@utexas.edu",           phone:"726-213-1790",  mustChangePassword:false },
+  { id:"u110", name:"Braun",           rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"dcb3454",  email:"doritlm.gamer@gmail.com",      phone:"737-412-2696",  mustChangePassword:false },
+  { id:"u111", name:"Farrell",         rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"jpf2493",  email:"j.patrick.farrell@gmail.com",  phone:"228-233-0620",  mustChangePassword:false },
+  { id:"u112", name:"Alonzo",          rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"mma4546",  email:"madelynn.alonzo@gmail.com",    phone:"903-271-1289",  mustChangePassword:false },
+  { id:"u113", name:"Nolan",           rank:"MIDN 2/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"rgn334",   email:"rubynolan@utexas.edu",         phone:"631-662-8783",  mustChangePassword:false },
+  { id:"u114", name:"Eng",             rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"be6627",   email:"brandoneng256@gmail.com",      phone:"936-330-5814",  mustChangePassword:false },
 ];
 
 // Roster mirrors USERS for the recall roster page
@@ -150,7 +195,7 @@ const ROSTER = USERS.map(u => ({
   initials: u.name.split(" ").map(p => p[0]).join("").toUpperCase().slice(0,2),
   rank:     u.rank,
   name:     u.name,
-  company:  u.company,
+  company:  normalizeCompany(u.company),
   platoon:  u.platoon,
   phone:    u.phone,
   email:    u.email,
@@ -175,22 +220,22 @@ const EVENTS = [
 ];
 
 const BN = [
-  { name:"Marines Company", co:"MIDN 1/C McRae", xo:"SSgt Shahbaz Butt (SEL)", color:"#8B0000",
+  { name:"Alpha Company", co:"MIDN 1/C McRae", xo:"SSgt Shahbaz Butt (SEL)", color:COMPANY_COLORS.Alpha,
     platoons:[
-      { name:"1st PC", plt:"MIDN 3/C Ramirez", psg:"SSgt Arevalo", mids: USERS.filter(u=>u.company==="Marines"&&u.platoon==="1st PC").length },
-      { name:"2nd PC", plt:"MIDN 1/C Lutz",    psg:"SSgt Felan",   mids: USERS.filter(u=>u.company==="Marines"&&u.platoon==="2nd PC").length },
+      { name:"1st PLT", plt:"MIDN 3/C Ramirez", mids: USERS.filter(u=>normalizeCompany(u.company)==="Alpha"&&u.platoon==="1st PC").length },
+      { name:"2nd PLT", plt:"MIDN 1/C Lutz",    mids: USERS.filter(u=>normalizeCompany(u.company)==="Alpha"&&u.platoon==="2nd PC").length },
     ]},
-  { name:"Navy Alpha Company", co:"MIDN 2/C Irisari", xo:"OC Francis (SEL)", color:"#003087",
+  { name:"Bravo Company", co:"MIDN 2/C Irisari", xo:"OC Francis (SEL)", color:COMPANY_COLORS.Bravo,
     platoons:[
-      { name:"1st PC", plt:"MIDN 3/C Alcazar",   psg:"OC Kessler",  mids: USERS.filter(u=>u.company==="Navy Alpha"&&u.platoon==="1st PC").length },
-      { name:"2nd PC", plt:"MIDN 3/C Redington",  psg:"OC Nugent",   mids: USERS.filter(u=>u.company==="Navy Alpha"&&u.platoon==="2nd PC").length },
-      { name:"3rd PC", plt:"MIDN 3/C Lee",        psg:"OC Hash, W.", mids: USERS.filter(u=>u.company==="Navy Alpha"&&u.platoon==="3rd PC").length },
+      { name:"1st PLT", plt:"MIDN 3/C Alcazar",   psg:"OC Kessler",  mids: USERS.filter(u=>u.company==="Bravo"&&u.platoon==="1st PC").length },
+      { name:"2nd PLT", plt:"MIDN 3/C Redington",  psg:"OC Nugent",   mids: USERS.filter(u=>u.company==="Bravo"&&u.platoon==="2nd PC").length },
+      { name:"3rd PLT", plt:"MIDN 3/C Lee",        psg:"OC Hash, W.", mids: USERS.filter(u=>u.company==="Bravo"&&u.platoon==="3rd PC").length },
     ]},
-  { name:"Navy Bravo Company", co:"MIDN 2/C Torres", xo:"OC Wende (SEL)", color:"#0D1B2A",
+  { name:"Charlie Company", co:"MIDN 2/C Torres", xo:"OC Wende (SEL)", color:COMPANY_COLORS.Charlie,
     platoons:[
-      { name:"1st PC", plt:"MIDN 3/C Burrell",  psg:"OC Bell",      mids: USERS.filter(u=>u.company==="Navy Bravo"&&u.platoon==="1st PC").length },
-      { name:"2nd PC", plt:"MIDN 3/C Delgado",  psg:"OC Aquino",    mids: USERS.filter(u=>u.company==="Navy Bravo"&&u.platoon==="2nd PC").length },
-      { name:"3rd PC", plt:"MIDN 3/C Simpson",  psg:"OC Escamilla", mids: USERS.filter(u=>u.company==="Navy Bravo"&&u.platoon==="3rd PC").length },
+      { name:"1st PLT", plt:"MIDN 3/C Burrell",  psg:"OC Bell",      mids: USERS.filter(u=>u.company==="Charlie"&&u.platoon==="1st PC").length },
+      { name:"2nd PLT", plt:"MIDN 3/C Delgado",  psg:"OC Aquino",    mids: USERS.filter(u=>u.company==="Charlie"&&u.platoon==="2nd PC").length },
+      { name:"3rd PLT", plt:"MIDN 3/C Simpson",  psg:"OC Escamilla", mids: USERS.filter(u=>u.company==="Charlie"&&u.platoon==="3rd PC").length },
     ]},
 ];
 
@@ -227,9 +272,9 @@ const LEADLAB = [
 ];
 
 const INIT_CHITS = [
-  { id:"CHT-001", userId:"u009", name:"Wilson, Ryan",    company:"Alpha",   platoon:"1st", date:"2026-03-14", reason:"Medical Appointment",    notes:"", status:"Pending",  route:["1st PC","Marines Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
-  { id:"CHT-002", userId:"u010", name:"Moore, Emma",     company:"Bravo",   platoon:"2nd", date:"2026-03-15", reason:"Family Emergency",         notes:"", status:"Approved", route:["2nd PC","Navy Alpha Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
-  { id:"CHT-003", userId:"u011", name:"Jackson, Tyler",  company:"Charlie", platoon:"1st", date:"2026-03-19", reason:"Academic Conflict — Exam", notes:"", status:"Pending",  route:["3rd PC","Navy Bravo Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
+  { id:"CHT-001", userId:"u009", name:"Wilson, Ryan",    company:"Alpha",   platoon:"1st", date:"2026-03-14", reason:"Medical Appointment",    notes:"", status:"Pending",  route:["1st PC","Alpha Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
+  { id:"CHT-002", userId:"u010", name:"Moore, Emma",     company:"Bravo",   platoon:"2nd", date:"2026-03-15", reason:"Family Emergency",         notes:"", status:"Approved", route:["2nd PC","Bravo Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
+  { id:"CHT-003", userId:"u011", name:"Jackson, Tyler",  company:"Charlie", platoon:"1st", date:"2026-03-19", reason:"Academic Conflict — Exam", notes:"", status:"Pending",  route:["3rd PC","Charlie Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
 ];
 
 const INIT_QS = [
@@ -261,16 +306,16 @@ const FORMS = [
 //   6. Set the same token below
 //   7. Save — the app will pull live data on each page load.
 //      If the URL is empty, the hardcoded USERS array above is used as a fallback.
-const SHEETS_API_URL   = ""; // ← Apps Script web app URL
-const SHEETS_API_TOKEN = ""; // ← must match SECRET_TOKEN in Apps Script
+const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbxRgepNbdZ1PKYO43MCehQ-2tRiIJ5p_imisTwjSFd7p-yfl6SWfIReFx5BEghObD6Maw/exec";
+const SHEETS_API_TOKEN = "UT_NROTC";
 
 // Sheet columns A→J: company, name, class, email, phone number, major, campus, eid, password, billet
 // Maps sheet company prefix → app company name
 const COMPANY_MAP = {
   "BN Staff": "BN",
-  "A":        "Marines",
-  "B":        "Navy Alpha",
-  "C":        "Navy Bravo",
+  "A":        "Alpha",
+  "B":        "Bravo",
+  "C":        "Charlie",
 };
 
 // Maps sheet billet → app role
@@ -289,9 +334,11 @@ const BILLET_TO_ROLE = {
   "A SEL":  "sel",
   "B SEL":  "sel",
   "C SEL":  "sel",
-  "1st PC": "plt_cdr",
-  "2nd PC": "plt_cdr",
-  "3rd PC": "plt_cdr",
+  "1st PC":   "plt_cdr",
+  "2nd PC":   "plt_cdr",
+  "3rd PC":   "plt_cdr",
+  "CC":       "co_cdr",
+  "SEL":      "sel",
   "AOPS":   "mid",
   "PAO":    "mid",
   "SUPPO":  "mid",
@@ -308,12 +355,17 @@ function sheetRowToUser(row, index) {
   const nameRaw    = (row.name || "").trim();
   const classVal   = (row.class || "").trim();
 
-  // Company: "BN Staff" → "BN", "A 1st" → "Marines", "B" → "Navy Alpha", etc.
-  const companyKey = companyRaw === "BN Staff" ? "BN Staff" : companyRaw.charAt(0);
-  const company    = COMPANY_MAP[companyKey] || companyRaw;
+  // Company: "BN Staff" → "BN", "A 1st" → "Alpha", "B" → "Bravo", etc.
+  // If company column doesn't start with A/B/C (e.g. "2nd PC"), fall back to billet prefix
+  let companyKey;
+  if (companyRaw === "BN Staff") companyKey = "BN Staff";
+  else if (/^[ABC]\b/.test(companyRaw)) companyKey = companyRaw.charAt(0);
+  else if (/^[ABC]\s/.test(billetRaw)) companyKey = billetRaw.charAt(0);
+  else companyKey = companyRaw;
+  const company = normalizeCompany(COMPANY_MAP[companyKey] || companyRaw);
 
-  // Platoon: extract from company column if it has a number (e.g. "A 1st" → "1st PC")
-  const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i);
+  // Platoon: extract from company or billet if it has a number (e.g. "A 1st" → "1st PC")
+  const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i) || billetRaw.match(/(\d+(?:st|nd|rd|th))/i);
   const platoon = platoonMatch ? `${platoonMatch[1]} PC` : billetRaw;
 
   // Name: strip rank prefix (MIDN, GySgt, SSgt, OC, Sgt, etc.)
@@ -322,8 +374,9 @@ function sheetRowToUser(row, index) {
   // Rank: "1/C"→"MIDN 1/C", "GySgt"→"GySgt", etc.
   const rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
 
-  // Role from billet
-  const role = BILLET_TO_ROLE[billetRaw] || "mid";
+  // Role from billet — strip company letter prefix for matching (e.g. "A 1st PC" → "1st PC")
+  const billetNorm = billetRaw.replace(/^[ABC]\s+/, "");
+  const role = BILLET_TO_ROLE[billetRaw] || BILLET_TO_ROLE[billetNorm] || "mid";
 
   return {
     id:       (row.eid || `sheet-${index}`).trim(),
@@ -361,16 +414,16 @@ function canActOnFitrep(user, fitrep) {
   const stage = FITREP_STAGES[fitrep.currentStage];
   if (!stage.approverRole) return false;
   if (stage.approverRole === "plt_cdr")
-    return user.role === "plt_cdr" && user.company === fitrep.company && user.platoon === fitrep.platoon;
+    return user.role === "plt_cdr" && normalizeCompany(user.company) === normalizeCompany(fitrep.company) && user.platoon === fitrep.platoon;
   if (stage.approverRole === "co_cdr")
-    return user.role === "co_cdr" && user.company === fitrep.company;
+    return user.role === "co_cdr" && normalizeCompany(user.company) === normalizeCompany(fitrep.company);
   return user.role === stage.approverRole;
 }
 
 const INIT_FITREBS = [
   {
     id:"FIT-001", subjectId:"u023", subjectName:"Locklin", subjectRank:"MIDN 4/C",
-    company:"Marines", platoon:"1st PC", period:"Spring 2026", currentStage:1,
+    company:"Alpha", platoon:"1st PC", period:"Spring 2026", currentStage:1,
     stages:[
       { name:"Submitted",     completedBy:"Locklin",  completedAt:"2026-03-01", comment:"" },
       { name:"PC Review",     completedBy:null,       completedAt:null,         comment:"" },
@@ -381,7 +434,7 @@ const INIT_FITREBS = [
   },
   {
     id:"FIT-002", subjectId:"u044", subjectName:"Madulara", subjectRank:"MIDN 4/C",
-    company:"Navy Alpha", platoon:"1st PC", period:"Spring 2026", currentStage:2,
+    company:"Bravo", platoon:"1st PC", period:"Spring 2026", currentStage:2,
     stages:[
       { name:"Submitted",     completedBy:"Madulara",  completedAt:"2026-03-02", comment:"" },
       { name:"PC Review",     completedBy:"Alcazar",   completedAt:"2026-03-05", comment:"Strong performer. Shows initiative in platoon activities." },
@@ -392,7 +445,7 @@ const INIT_FITREBS = [
   },
   {
     id:"FIT-003", subjectId:"u083", subjectName:"Crimmins", subjectRank:"MIDN 4/C",
-    company:"Navy Bravo", platoon:"1st PC", period:"Spring 2026", currentStage:3,
+    company:"Charlie", platoon:"1st PC", period:"Spring 2026", currentStage:3,
     stages:[
       { name:"Submitted",     completedBy:"Crimmins",  completedAt:"2026-03-01", comment:"" },
       { name:"PC Review",     completedBy:"Burrell",   completedAt:"2026-03-04", comment:"Excellent leadership potential. Consistently performs above expectations." },
@@ -850,34 +903,118 @@ function CalendarPage() {
   );
 }
 
-function StructurePage() {
-  const [open, setOpen] = useState({ 0:true, 1:false, 2:false });
-  const total = BN.reduce((a, co) => a + co.platoons.reduce((b, p) => b + p.mids, 0), 0);
+function StructurePage({ userList }) {
+  const [open, setOpen] = useState({});
+  const [billetsOpen, setBilletsOpen] = useState(true);
+
+  // Helper: find user(s) by role/billet
+  const byRole = (role) => userList.filter(u => u.role === role);
+  const fmt = (u) => u ? `${u.rank} ${u.name}` : "—";
+
+  // Big Four: BNCO → BNXO → OPS → SEL
+  const bnco = byRole("bn_cdr")[0];
+  const bnxo = byRole("xo")[0];
+  const ops  = byRole("ops")[0];
+  const sel  = userList.find(u => u.role === "sel" && u.company === "BN");
+
+  const billetHolders = STRUCTURE_BILLET_ORDER.flatMap(billet =>
+    userList.filter(u => getBilletLabel(u) === billet)
+  );
+
+  // Company definitions derived from live data
+  const COMPANY_DEFS = [
+    { key: "Alpha",   name: getCompanyFullName("Alpha"),   color: COMPANY_COLORS.Alpha },
+    { key: "Bravo",   name: getCompanyFullName("Bravo"),   color: COMPANY_COLORS.Bravo },
+    { key: "Charlie", name: getCompanyFullName("Charlie"), color: COMPANY_COLORS.Charlie },
+  ];
+
+  // Build companies dynamically from userList
+  const companies = COMPANY_DEFS.map(def => {
+    const members = userList.filter(u => normalizeCompany(u.company) === def.key);
+    const co  = members.find(u => u.role === "co_cdr");
+    const sel = members.find(u => u.role === "sel");
+
+    // Group platoons by platoon field matching "Xst/nd/rd/th PC"
+    const platoonNames = [...new Set(members.map(u => u.platoon).filter(p => /\d+(st|nd|rd|th) PC/i.test(p)))].sort();
+    const platoons = platoonNames.map(pName => {
+      const pMembers = members.filter(u => u.platoon === pName);
+      const pc = pMembers.find(u => u.role === "plt_cdr");
+      // Display name: "1st PC" → "1st PLT"
+      const displayName = pName.replace(/ PC$/i, " PLT");
+      return { name: displayName, pc, total: pMembers.length };
+    });
+
+    return { ...def, co, sel, platoons, total: members.length };
+  });
+
+  const grandTotal = userList.length;
+
   return (
     <div>
       <div className="page-title">BN <span>Structure</span></div>
-      <div className="page-sub">UT NROTC Battalion — {total} Midshipmen</div>
+      <div className="page-sub">UT NROTC Battalion — {grandTotal} Personnel</div>
+
+      {/* Big Four */}
+      <div className="card" style={{ padding:"1rem 1.2rem", marginBottom:"1rem" }}>
+        <div style={{ fontSize:"0.72rem", textTransform:"uppercase", letterSpacing:"1.5px", color:"#888", marginBottom:"0.6rem", fontWeight:600 }}>Battalion Leadership</div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:"0.75rem" }}>
+          {[
+            { label:"BNCO", user:bnco },
+            { label:"BNXO", user:bnxo },
+            { label:"OPS",  user:ops },
+            { label:"SEL",  user:sel },
+          ].map(({ label, user:u }) => (
+            <div key={label} style={{ background:"#f8f8f8", borderRadius:"8px", padding:"0.6rem 0.8rem", borderLeft:"3px solid #BF5700" }}>
+              <div style={{ fontSize:"0.68rem", textTransform:"uppercase", letterSpacing:"1px", color:"#BF5700", fontWeight:700 }}>{label}</div>
+              <div style={{ fontSize:"0.88rem", fontWeight:600, marginTop:"0.15rem" }}>{u ? fmt(u) : "—"}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Company Stats */}
       <div className="grid3" style={{ marginBottom:"1rem" }}>
-        {BN.map((co,i) => (
-          <div className="stat" key={i} style={{ borderLeftColor:co.color }}>
-            <div className="stat-n" style={{ color:co.color }}>{co.platoons.reduce((a,p) => a+p.mids, 0)}</div>
+        {companies.map((co, i) => (
+          <div className="stat" key={i} style={{ borderLeftColor: co.color }}>
+            <div className="stat-n" style={{ color: co.color }}>{co.total}</div>
             <div className="stat-l">{co.name}</div>
           </div>
         ))}
       </div>
-      <div className="card" style={{ padding:"0.75rem 1.2rem", marginBottom:"1rem" }}>
-        <div style={{ display:"flex", gap:"1rem", flexWrap:"wrap", fontSize:"0.86rem", alignItems:"center" }}>
-          <span style={{ color:"#888", fontSize:"0.75rem", textTransform:"uppercase", letterSpacing:"1px" }}>BN CDR:</span> <strong>MIDN 1/C Hinz (BNCO)</strong>
-          <span style={{ color:"#888", fontSize:"0.75rem", textTransform:"uppercase", letterSpacing:"1px" }}>XO:</span> <strong>MIDN 1/C Townsend (BNXO)</strong>
-          <span style={{ color:"#888", fontSize:"0.75rem", textTransform:"uppercase", letterSpacing:"1px" }}>OPS:</span> <strong>MIDN 1/C Galan (OPS)</strong>
+
+      {/* Billets Section */}
+      <div className="company-block">
+        <div className="company-header" style={{ background:"#333" }} onClick={() => setBilletsOpen(s => !s)}>
+          <div>
+            <div className="company-name">Billet Holders</div>
+            <div className="company-co">{billetHolders.length} billets assigned</div>
+          </div>
+          <span>{billetsOpen ? "▲" : "▼"}</span>
         </div>
+        {billetsOpen && (
+          <div style={{ padding:"0.75rem 1rem" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))", gap:"0.5rem" }}>
+              {billetHolders.map((u, i) => (
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"0.45rem 0.7rem", background:"#f8f8f8", borderRadius:"6px", fontSize:"0.82rem" }}>
+                  <span style={{ fontWeight:600 }}>{fmt(u)}</span>
+                  <span className="badge badge-orange" style={{ fontSize:"0.68rem" }}>{getBilletLabel(u)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-      {BN.map((co, ci) => (
+
+      {/* Companies - Collapsible */}
+      {companies.map((co, ci) => (
         <div className="company-block" key={ci}>
-          <div className="company-header" style={{ background:co.color }} onClick={() => setOpen(s => ({ ...s, [ci]:!s[ci] }))}>
+          <div className="company-header" style={{ background: co.color }} onClick={() => setOpen(s => ({ ...s, [ci]: !s[ci] }))}>
             <div>
               <div className="company-name">{co.name}</div>
-              <div className="company-co">CO: {co.co} · XO: {co.xo}</div>
+              <div className="company-co">
+                CO: {co.co ? fmt(co.co) : "—"}
+                {co.sel ? ` · SEL: ${fmt(co.sel)}` : ""}
+              </div>
             </div>
             <span>{open[ci] ? "▲" : "▼"}</span>
           </div>
@@ -886,9 +1023,10 @@ function StructurePage() {
               {co.platoons.map((p, pi) => (
                 <div className="platoon-card" key={pi}>
                   <div className="platoon-name">{p.name}</div>
-                  <div className="platoon-detail">PLT: {p.plt}</div>
-                  <div className="platoon-detail">PSG: {p.psg}</div>
-                  <div style={{ marginTop:"0.4rem" }}><span className="badge badge-orange">{p.mids} Mids</span></div>
+                  <div className="platoon-detail">PC: {p.pc ? fmt(p.pc) : "—"}</div>
+                  <div style={{ marginTop:"0.4rem" }}>
+                    <span className="badge badge-orange">{p.total} Member{p.total !== 1 ? "s" : ""}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -976,13 +1114,13 @@ function ChitsPage({ chits, setChits }) {
       id: "CHT-" + String(chits.length + 1).padStart(3, "0"),
       userId: user.id,
       name: user.name,
-      company: user.company,
+      company: normalizeCompany(user.company),
       platoon: user.platoon,
       date: form.date,
       reason: form.reason,
       notes: form.notes,
       status: "Pending",
-      route: [user.platoon + " PC", user.company + " Co CDR", "ADJ (Courtney)", "BNXO (Townsend)", "BNCO (Hinz)"],
+      route: [user.platoon + " PC", getCompanyShortName(user.company) + " Co CDR", "ADJ (Courtney)", "BNXO (Townsend)", "BNCO (Hinz)"],
     };
     setChits(prev => [...prev, c]);
     setShowModal(false);
@@ -1019,7 +1157,7 @@ function ChitsPage({ chits, setChits }) {
           <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.3rem" }}>
             <div>
               <strong>{c.id}</strong>
-              {coc && <span style={{ color:"#888", fontSize:"0.82rem", marginLeft:"0.75rem" }}>{c.name} · {c.company} Co, {c.platoon} Plt</span>}
+              {coc && <span style={{ color:"#888", fontSize:"0.82rem", marginLeft:"0.75rem" }}>{c.name} · {formatCompanyCoLabel(c.company)}, {c.platoon} Plt</span>}
             </div>
             <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
           </div>
@@ -1084,7 +1222,7 @@ function RosterPage() {
   const [co, setCo] = useState("");
   const fil = ROSTER.filter(p =>
     (!q || p.name.toLowerCase().includes(q.toLowerCase()) || p.rank.toLowerCase().includes(q.toLowerCase())) &&
-    (!co || p.company === co)
+    (!co || normalizeCompany(p.company) === co)
   );
   return (
     <div>
@@ -1097,7 +1235,7 @@ function RosterPage() {
         </div>
         <select className="input" style={{ maxWidth:"170px" }} value={co} onChange={e => setCo(e.target.value)}>
           <option value="">All Companies</option>
-          <option>BN</option><option>Marines</option><option>Navy Alpha</option><option>Navy Bravo</option>
+          <option value="BN">BN</option><option value="Alpha">Alpha</option><option value="Bravo">Bravo</option><option value="Charlie">Charlie</option>
         </select>
       </div>
       <div className="card">
@@ -1109,7 +1247,7 @@ function RosterPage() {
             <div style={{ flex:1 }}>
               <div style={{ fontWeight:600, fontSize:"0.9rem" }}>{p.name}</div>
               <div style={{ fontSize:"0.78rem", color:"#BF5700", fontWeight:600 }}>{p.rank}</div>
-              <div style={{ fontSize:"0.78rem", color:"#888" }}>{p.company} Co · {p.platoon} Plt</div>
+              <div style={{ fontSize:"0.78rem", color:"#888" }}>{formatCompanyCoLabel(p.company)} · {p.platoon} Plt</div>
             </div>
             <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginLeft:"auto" }}>
               {p.phone && <a href={"tel:" + p.phone}><button className="btn btn-outline btn-sm">📞 {p.phone}</button></a>}
@@ -1308,12 +1446,12 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
   // Scope: seniors/adj see all; co_cdr sees their company; plt_cdr sees their platoon; mids see only their own
   const visible = (() => {
     if (isSenior(user) || user.role === "adj") return fitrebs;
-    if (user.role === "co_cdr")  return fitrebs.filter(f => f.company === user.company);
-    if (user.role === "plt_cdr") return fitrebs.filter(f => f.company === user.company && f.platoon === user.platoon);
+    if (user.role === "co_cdr")  return fitrebs.filter(f => normalizeCompany(f.company) === normalizeCompany(user.company));
+    if (user.role === "plt_cdr") return fitrebs.filter(f => normalizeCompany(f.company) === normalizeCompany(user.company) && f.platoon === user.platoon);
     return fitrebs.filter(f => f.subjectId === user.id);
   })();
 
-  const filtered = filter ? visible.filter(f => f.company === filter) : visible;
+  const filtered = filter ? visible.filter(f => normalizeCompany(f.company) === filter) : visible;
 
   const advanceStage = (id) => {
     const comment = commentText.trim();
@@ -1341,7 +1479,7 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
     return s.name;
   };
 
-  const companies = [...new Set(fitrebs.map(f => f.company))];
+  const companies = [...new Set(fitrebs.map(f => normalizeCompany(f.company)))];
 
   return (
     <div>
@@ -1371,7 +1509,7 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
         <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap" }}>
           <select className="input" style={{ maxWidth:"200px" }} value={filter} onChange={e => setFilter(e.target.value)}>
             <option value="">All Companies</option>
-            {companies.map(c => <option key={c}>{c}</option>)}
+            {companies.map(c => <option key={c} value={c}>{getCompanyShortName(c)}</option>)}
           </select>
           <span style={{ fontSize:"0.82rem", color:"#888", alignSelf:"center" }}>{filtered.length} report{filtered.length !== 1 ? "s" : ""} shown</span>
         </div>
@@ -1395,7 +1533,7 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
             <div className="fitrep-header">
               <div>
                 <strong style={{ fontSize:"0.95rem" }}>{f.subjectRank} {f.subjectName}</strong>
-                <div style={{ fontSize:"0.78rem", color:"#888", marginTop:"1px" }}>{f.company} Co · {f.platoon} · {f.period}</div>
+                <div style={{ fontSize:"0.78rem", color:"#888", marginTop:"1px" }}>{formatCompanyCoLabel(f.company)} · {f.platoon} · {f.period}</div>
               </div>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
                 <span className="badge badge-navy">{f.id}</span>
@@ -1556,7 +1694,7 @@ export default function App() {
   const renderPage = () => {
     if (page === "dashboard")  return <Dashboard onNav={setPage} />;
     if (page === "calendar")   return <CalendarPage />;
-    if (page === "structure")  return <StructurePage />;
+    if (page === "structure")  return <StructurePage userList={userList} />;
     if (page === "training")   return <TrainingPage />;
     if (page === "chits")      return <ChitsPage chits={chits} setChits={setChits} />;
     if (page === "fitreps")    return <FitrepsPage fitrebs={fitrebs} setFitrebs={setFitrebs} />;
@@ -1607,7 +1745,7 @@ export default function App() {
             </div>
             <div className="sidebar-footer">
               <strong style={{ color:"#9ab0c4", cursor:"pointer" }} onClick={() => setShowAccount(true)}>{user.name}</strong><br />
-              {user.company} Co · {user.platoon}<br />
+              {formatCompanyCoLabel(user.company)} · {user.platoon}<br />
               <span style={{ color:"#F7941D" }}>{user.role.replace("_"," ").toUpperCase()}</span>
             </div>
           </nav>
