@@ -1389,7 +1389,7 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
 
       {/* Tab bar */}
       <div style={{ display:"flex", borderBottom:"2px solid #eee", marginBottom:"1.25rem" }}>
-        {[["pt","PT Plan"],["leadlab","LeadLab"]].map(([t, label]) => (
+        {[["pt","PT Plan"],["leadlab","LL"]].map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)} style={{
             padding:"0.5rem 1.2rem", fontFamily:"Oswald", fontSize:"0.8rem", letterSpacing:"1.5px",
             textTransform:"uppercase", cursor:"pointer", background:"none", border:"none",
@@ -2548,7 +2548,7 @@ const NAV = [
   { id:"dashboard", label:"Dashboard",     icon:"🏠" },
   { id:"calendar",  label:"POTW",          icon:"📅" },
   { id:"structure", label:"BN Structure",  icon:"🏛" },
-  { id:"training",  label:"PT & LeadLab",  icon:"💪" },
+  { id:"training",  label:"PT & LL",       icon:"💪" },
   { id:"chits",     label:"CHIT Routing",  icon:"📋" },
   { id:"fitreps",   label:"FITREPs",       icon:"📊" },
   { id:"roster",    label:"Recall Roster", icon:"📒" },
