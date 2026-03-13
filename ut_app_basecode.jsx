@@ -16,6 +16,7 @@ const useAuth = () => useContext(AuthContext);
 const SENIOR_ROLES = ["bn_cdr", "xo", "ops", "sel"];
 const isSenior  = (u) => u && SENIOR_ROLES.includes(u.role);
 const isCoC     = (u) => u && [...SENIOR_ROLES, "co_cdr", "plt_cdr", "adj"].includes(u.role);
+const isBigFour = (u) => normalizeCompany(u?.company) === "BN" && ["bn_cdr", "xo", "ops", "sel"].includes(u?.role);
 
 function canEdit(user, section) {
   if (!user) return false;
@@ -75,6 +76,299 @@ function formatCompanyCoLabel(company) {
 
 function getBilletLabel(user) {
   return (user.billet || (normalizeCompany(user.company) === "BN" ? user.platoon : "") || "").trim();
+}
+
+function normalizePlatoon(platoon) {
+  const value = (platoon || "").trim().replace(/\s+/g, " ");
+  if (!value) return "";
+  const companyPrefixedPlatoon = value.match(/^[ABC]\s+(\d+(?:st|nd|rd|th))(?:\s*(?:PC|PLT))?$/i);
+  if (companyPrefixedPlatoon) return `${companyPrefixedPlatoon[1]} PC`;
+  if (/^(?:[ABC]\s+)?CC$/i.test(value) || /^CO$/i.test(value)) return "CO";
+  if (/^(?:[ABC]\s+)?SEL$/i.test(value)) return "SEL";
+  if (/^\d+(?:st|nd|rd|th)\s*PLT$/i.test(value)) return value.replace(/\s*PLT$/i, " PC");
+  if (/^\d+(?:st|nd|rd|th)$/i.test(value)) return `${value} PC`;
+  return value;
+}
+
+function formatPlatoonLabel(platoon) {
+  const normalized = normalizePlatoon(platoon);
+  if (!normalized) return "—";
+  return /^\d+(?:st|nd|rd|th)\s*PC$/i.test(normalized) ? normalized.replace(/\s*PC$/i, " PLT") : normalized;
+}
+
+function getPlatoonSortValue(platoon) {
+  const match = normalizePlatoon(platoon).match(/^(\d+)/);
+  return match ? Number(match[1]) : 99;
+}
+
+const ROSTER_COMPANY_ORDER = ["BN", "Alpha", "Bravo", "Charlie"];
+const BN_ROSTER_ASSIGNMENT_ORDER = ["BNCO", "BNXO", "OPS", "SEL", "PTO", "ADJ", "SUPPO", "PAO", "TRAINO", "AO", "BGDO", "CGC", "AOPS", "MIR"];
+const COMPANY_ROSTER_ASSIGNMENT_ORDER = ["CO", "SEL", "1st PC", "2nd PC", "3rd PC", "4th PC", "MIR"];
+
+function normalizePhone(phone) {
+  return (phone || "").replace(/\D/g, "");
+}
+
+function getRosterAssignment(user) {
+  const billet = getBilletLabel(user);
+  if (billet) return billet;
+  const platoon = normalizePlatoon(user.platoon);
+  if (platoon === "CO" || user.role === "co_cdr") return "CO";
+  if (platoon === "SEL" || user.role === "sel") return "SEL";
+  if (platoon) return platoon;
+  return "—";
+}
+
+function getRosterProfilePriority(user) {
+  const platoon = normalizePlatoon(user.platoon);
+  if (getBilletLabel(user)) return 100;
+  if (user.role === "co_cdr" || platoon === "CO") return 80;
+  if (user.role === "sel" || platoon === "SEL") return 70;
+  if (user.role === "plt_cdr") return 60;
+  return 0;
+}
+
+function getRosterAssignmentSort(user) {
+  const assignment = getRosterAssignment(user);
+  const order = normalizeCompany(user.company) === "BN" ? BN_ROSTER_ASSIGNMENT_ORDER : COMPANY_ROSTER_ASSIGNMENT_ORDER;
+  const idx = order.indexOf(assignment);
+  return idx === -1 ? order.length : idx;
+}
+
+function getRosterSectionLabel(company) {
+  return company === "BN" ? "Big Four" : getCompanyFullName(company);
+}
+
+function getRosterAvatarStyle(company) {
+  return {
+    background: COMPANY_COLORS[company] || "#BF5700",
+  };
+}
+
+function buildRosterEntries(userList) {
+  const deduped = new Map();
+
+  userList.forEach((user, index) => {
+    const normalizedCompany = normalizeCompany(user.company);
+    const dedupeKey = normalizePhone(user.phone) || `${user.name}|${(user.email || "").toLowerCase()}|${normalizedCompany}|${user.platoon}`;
+    const current = deduped.get(dedupeKey);
+
+    if (!current) {
+      deduped.set(dedupeKey, { user, index });
+      return;
+    }
+
+    const currentPriority = getRosterProfilePriority(current.user);
+    const nextPriority = getRosterProfilePriority(user);
+
+    if (nextPriority > currentPriority || (nextPriority === currentPriority && index < current.index)) {
+      deduped.set(dedupeKey, { user, index });
+    }
+  });
+
+  return Array.from(deduped.values())
+    .map(({ user }) => ({
+      id: user.id || `${normalizeCompany(user.company)}-${user.name}`,
+      initials: user.name.split(" ").map(part => part[0]).join("").toUpperCase().slice(0, 2),
+      rank: user.rank,
+      name: user.name,
+      company: normalizeCompany(user.company),
+      assignment: getRosterAssignment(user),
+      phone: user.phone,
+      email: user.email,
+      sortAssignment: getRosterAssignmentSort(user),
+    }))
+    .sort((a, b) => {
+      const companyDiff = ROSTER_COMPANY_ORDER.indexOf(a.company) - ROSTER_COMPANY_ORDER.indexOf(b.company);
+      if (companyDiff !== 0) return companyDiff;
+      const assignmentDiff = a.sortAssignment - b.sortAssignment;
+      if (assignmentDiff !== 0) return assignmentDiff;
+      return a.name.localeCompare(b.name);
+    });
+}
+
+function getBattalionStrength(userList) {
+  return buildRosterEntries(userList).length;
+}
+
+function getNameKey(name) {
+  return (name || "").split(",")[0].trim().toLowerCase();
+}
+
+function matchesUserIdentity(user, candidate = {}) {
+  if (!user) return false;
+  const candidateId = (candidate.id || "").trim();
+  const candidateEid = (candidate.eid || "").trim().toLowerCase();
+  const candidateEmail = (candidate.email || "").trim().toLowerCase();
+  const candidateName = (candidate.name || "").trim().toLowerCase();
+  const userEmail = (user.email || "").trim().toLowerCase();
+  const userEid = (user.eid || "").trim().toLowerCase();
+  const userName = (user.name || "").trim().toLowerCase();
+  const userNameKey = getNameKey(user.name);
+  const candidateNameKey = getNameKey(candidate.name);
+
+  return (candidateId && user.id === candidateId) ||
+    (candidateEid && userEid === candidateEid) ||
+    (candidateEmail && userEmail === candidateEmail) ||
+    (candidateName && userName === candidateName) ||
+    (candidateNameKey && userNameKey === candidateNameKey);
+}
+
+function findMatchingUser(userList, candidate) {
+  if (!candidate) return null;
+  return userList.find(user => matchesUserIdentity(user, candidate)) || null;
+}
+
+function canSubmitChit(user) {
+  return !!user && !isBigFour(user);
+}
+
+function requiresChitRouteSelection(user) {
+  if (!user || isBigFour(user) || ["adj", "co_cdr", "plt_cdr"].includes(user.role)) return false;
+  return !["Alpha", "Bravo", "Charlie"].includes(normalizeCompany(user.company)) || !/^\d+(?:st|nd|rd|th)\s*PC$/i.test(normalizePlatoon(user.platoon));
+}
+
+function getCompanyCommander(userList, company) {
+  return userList.find(u => normalizeCompany(u.company) === normalizeCompany(company) && u.role === "co_cdr");
+}
+
+function getPlatoonCommander(userList, company, platoon) {
+  const normalizedCompany = normalizeCompany(company);
+  const normalizedPlatoon = normalizePlatoon(platoon);
+  return userList.find(u =>
+    normalizeCompany(u.company) === normalizedCompany &&
+    u.role === "plt_cdr" &&
+    normalizePlatoon(u.platoon) === normalizedPlatoon
+  );
+}
+
+function formatRouteNode(label, person) {
+  if (!label) return "";
+  if (!person) return label;
+  return `${label} (${person.name.split(",")[0]})`;
+}
+
+function resolveChitRoutingContext(user, form) {
+  const needsSelection = requiresChitRouteSelection(user);
+  const company = normalizeCompany(
+    needsSelection
+      ? (form.routeCompany || user.company)
+      : user.company
+  );
+  const platoon = normalizePlatoon(
+    needsSelection
+      ? (form.routePlatoon || user.platoon)
+      : user.platoon
+  );
+
+  return { company, platoon, needsSelection };
+}
+
+function makeChitChainNode(label, stageName, person, approverRole, icon) {
+  return {
+    label: formatRouteNode(label, person),
+    stageName,
+    approverId: person?.id || null,
+    approverName: person?.name || label,
+    approverRole: approverRole || person?.role || null,
+    icon,
+  };
+}
+
+function buildChitApprovalChain(userList, user, routeContext) {
+  const { company, platoon } = routeContext;
+  const adj = userList.find(u => u.role === "adj");
+  const bnxo = userList.find(u => u.role === "xo");
+  const bnco = userList.find(u => u.role === "bn_cdr");
+  const cc = getCompanyCommander(userList, company);
+  const pc = getPlatoonCommander(userList, company, platoon);
+  const chain = [];
+
+  if (user.role === "adj") {
+    chain.push(
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
+      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
+    );
+  } else if (user.role === "co_cdr") {
+    chain.push(
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "🗂"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
+      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
+    );
+  } else if (user.role === "plt_cdr") {
+    chain.push(
+      makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "🗂"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
+      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
+    );
+  } else {
+    chain.push(
+      makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "👤"),
+      makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "🗂"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
+      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
+    );
+  }
+
+  return chain.length > 0 && chain.every(node => node.approverId) ? chain : [];
+}
+
+function buildChitRoute(userList, user, routeContext) {
+  return buildChitApprovalChain(userList, user, routeContext).map(node => node.label);
+}
+
+function buildChitStages(submitterName, submittedAt, approvalChain) {
+  return [
+    { name:"Submitted", routeLabel: submitterName, approverId:null, approverRole:null, approverName:submitterName, icon:"📝", completedBy:submitterName, completedAt:submittedAt, comment:"" },
+    ...approvalChain.map(node => ({
+      name: node.stageName,
+      routeLabel: node.label,
+      approverId: node.approverId,
+      approverRole: node.approverRole,
+      approverName: node.approverName,
+      icon: node.icon,
+      completedBy:null,
+      completedAt:null,
+      comment:"",
+    })),
+    { name:"Complete", routeLabel:"", approverId:null, approverRole:null, approverName:"", icon:"🏅", completedBy:null, completedAt:null, comment:"" },
+  ];
+}
+
+function canActOnChit(user, chit) {
+  if (!user || !chit?.stages || chit.status === "Approved" || chit.status === "Denied") return false;
+  if (chit.currentStage >= chit.stages.length - 1) return false;
+  const stage = chit.stages[chit.currentStage];
+  if (!stage?.approverRole) return false;
+  if (stage.approverId && user.id === stage.approverId) return true;
+  if (stage.approverRole === "plt_cdr") {
+    return user.role === "plt_cdr" &&
+      normalizeCompany(user.company) === normalizeCompany(chit.company) &&
+      normalizePlatoon(user.platoon) === normalizePlatoon(chit.platoon);
+  }
+  if (stage.approverRole === "co_cdr") {
+    return user.role === "co_cdr" && normalizeCompany(user.company) === normalizeCompany(chit.company);
+  }
+  return user.role === stage.approverRole;
+}
+
+function canViewChit(user, chit) {
+  if (!user || !chit) return false;
+  if (matchesUserIdentity(user, { id: chit.userId, name: chit.name })) return true;
+  return !!chit.stages?.some(stage => {
+    if (matchesUserIdentity(user, { id: stage.approverId, name: stage.approverName })) return true;
+    if (stage.approverRole === "plt_cdr") {
+      return user.role === "plt_cdr" &&
+        normalizeCompany(user.company) === normalizeCompany(chit.company) &&
+        normalizePlatoon(user.platoon) === normalizePlatoon(chit.platoon);
+    }
+    if (stage.approverRole === "co_cdr") {
+      return user.role === "co_cdr" && normalizeCompany(user.company) === normalizeCompany(chit.company);
+    }
+    return !!stage.approverRole && user.role === stage.approverRole;
+  });
 }
 
 // ─── USERS ──────────────────────────────────────────────────
@@ -190,34 +484,25 @@ const USERS = [
   { id:"u114", name:"Eng",             rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"be6627",   email:"brandoneng256@gmail.com",      phone:"936-330-5814",  mustChangePassword:false },
 ];
 
-// Roster mirrors USERS for the recall roster page
-const ROSTER = USERS.map(u => ({
-  initials: u.name.split(" ").map(p => p[0]).join("").toUpperCase().slice(0,2),
-  rank:     u.rank,
-  name:     u.name,
-  company:  normalizeCompany(u.company),
-  platoon:  u.platoon,
-  phone:    u.phone,
-  email:    u.email,
-}));
-
 // ─── STATIC DATA ────────────────────────────────────────────
 const POTW = {
   week: "Week 10 — Spring 2026",
-  title: "Chain of Command & Unity of Command",
-  body: "The principle of unity of command means each soldier receives orders from only one superior. Know your chain at all times: Squad Leader → Platoon Commander → Company Commander → Battalion Commander.",
-  points: ["Know your direct superior at all times", "All orders flow through proper channels", "Report issues up your chain promptly"],
+  range: "23MAR26 - 27MAR26",
+  operations: [
+    { date:"23 MAR", title:"Battalion PT", time:"0700–0800", type:"PT", location:"Caven Lacrosse and Sports Center at Clark Field" },
+    { date:"23 MAR", title:"Digital FITREPs due to PCs", time:"1500–1600", type:"Admin", location:"" },
+    { date:"24 MAR", title:"PNS Inspection", time:"0700–0800", type:"Inspection", location:"" },
+    { date:"24 MAR", title:"Company LL", time:"0800–0900", type:"Leadership", location:"ADM McRaven Classroom" },
+    { date:"24 MAR", title:"Calculus/Physics Tutoring", time:"1900–2000", type:"Academic", location:"ADM McRaven Classroom" },
+    { date:"25 MAR", title:"Alpha Company PT", time:"0530–0630", type:"PT", location:"Lady Bird Lake Trail" },
+    { date:"25 MAR", title:"Bravo/Charlie Company PT", time:"0700–0800", type:"PT", location:"Caven Lacrosse and Sports Center at Clark Field" },
+    { date:"26 MAR", title:"FEP", time:"0700–0800", type:"PT", location:"Caven Lacrosse and Sports Center at Clark Field" },
+    { date:"26 MAR", title:"BN Staff Meeting", time:"1530–1630", type:"Staff", location:"BN Staff Office" },
+    { date:"26-29 MAR", title:"Yale Leadership Conference", time:"All Day", type:"Conference", location:"" },
+    { date:"27 MAR", title:"Drill", time:"0700–0800", type:"Drill", location:"Caven Lacrosse and Sports Center at Clark Field" },
+    { date:"27 MAR", title:"Unit Sync Meeting", time:"1000–1100", type:"Staff", location:"Conference Room" },
+  ],
 };
-
-const EVENTS = [
-  { date:"11", month:"MAR", title:"Morning PT — Formation Run", time:"0530–0700", type:"PT", location:"Gregory Gym" },
-  { date:"12", month:"MAR", title:"Leadership Lab", time:"1400–1700", type:"Leadlab", location:"UT Drill Field" },
-  { date:"13", month:"MAR", title:"CHIT Submission Deadline", time:"1700", type:"Admin", location:"Online" },
-  { date:"14", month:"MAR", title:"Morning PT — Weight Room", time:"0530–0700", type:"PT", location:"Gregory Gym" },
-  { date:"15", month:"MAR", title:"Battalion Review Board", time:"1000–1200", type:"Admin", location:"Jester Hall 312" },
-  { date:"17", month:"MAR", title:"Spring Ball Planning Mtg.", time:"1800", type:"Social", location:"UT Campus" },
-  { date:"19", month:"MAR", title:"Drill Competition Prep", time:"0600–0900", type:"Drill", location:"UT Drill Field" },
-];
 
 const BN = [
   { name:"Alpha Company", co:"MIDN 1/C McRae", xo:"SSgt Shahbaz Butt (SEL)", color:COMPANY_COLORS.Alpha,
@@ -272,9 +557,78 @@ const LEADLAB = [
 ];
 
 const INIT_CHITS = [
-  { id:"CHT-001", userId:"u009", name:"Wilson, Ryan",    company:"Alpha",   platoon:"1st", date:"2026-03-14", reason:"Medical Appointment",    notes:"", status:"Pending",  route:["1st PC","Alpha Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
-  { id:"CHT-002", userId:"u010", name:"Moore, Emma",     company:"Bravo",   platoon:"2nd", date:"2026-03-15", reason:"Family Emergency",         notes:"", status:"Approved", route:["2nd PC","Bravo Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
-  { id:"CHT-003", userId:"u011", name:"Jackson, Tyler",  company:"Charlie", platoon:"1st", date:"2026-03-19", reason:"Academic Conflict — Exam", notes:"", status:"Pending",  route:["3rd PC","Charlie Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
+  (() => {
+    const submitter = USERS.find(u => u.id === "u023");
+    const chain = buildChitApprovalChain(USERS, submitter, { company:"Alpha", platoon:"1st PC" });
+    const stages = buildChitStages(submitter.name, "2026-03-10", chain);
+    return {
+      id:"CHT-001",
+      userId:submitter.id,
+      name:submitter.name,
+      company:"Alpha",
+      platoon:"1st PC",
+      date:"2026-03-14",
+      reason:"Medical Appointment",
+      notes:"",
+      status:"Pending",
+      route: chain.map(node => node.label),
+      currentStage:1,
+      deniedAtStage:null,
+      stages,
+      attachmentName:"",
+      attachmentUrl:"",
+    };
+  })(),
+  (() => {
+    const submitter = USERS.find(u => u.id === "u055");
+    const chain = buildChitApprovalChain(USERS, submitter, { company:"Bravo", platoon:"2nd PC" });
+    const stages = buildChitStages(submitter.name, "2026-03-11", chain);
+    stages[1] = { ...stages[1], completedBy:"Redington", completedAt:"2026-03-11", comment:"Approved at platoon level. No conflicts with required training." };
+    stages[2] = { ...stages[2], completedBy:"Irisari", completedAt:"2026-03-12", comment:"Concur. Family emergency verified with company leadership." };
+    stages[3] = { ...stages[3], completedBy:"Courtney, L.", completedAt:"2026-03-12", comment:"Administrative review complete. Forwarding to battalion." };
+    stages[4] = { ...stages[4], completedBy:"Townsend", completedAt:"2026-03-13", comment:"Recommend approval." };
+    stages[5] = { ...stages[5], completedBy:"Hinz", completedAt:"2026-03-13", comment:"Approved. Ensure makeup requirements are coordinated on return." };
+    return {
+      id:"CHT-002",
+      userId:submitter.id,
+      name:submitter.name,
+      company:"Bravo",
+      platoon:"2nd PC",
+      date:"2026-03-15",
+      reason:"Family Emergency",
+      notes:"",
+      status:"Approved",
+      route: chain.map(node => node.label),
+      currentStage: stages.length - 1,
+      deniedAtStage:null,
+      stages,
+      attachmentName:"",
+      attachmentUrl:"",
+    };
+  })(),
+  (() => {
+    const submitter = USERS.find(u => u.id === "u083");
+    const chain = buildChitApprovalChain(USERS, submitter, { company:"Charlie", platoon:"1st PC" });
+    const stages = buildChitStages(submitter.name, "2026-03-12", chain);
+    stages[1] = { ...stages[1], completedBy:"Burrell", completedAt:"2026-03-12", comment:"Exam conflict confirmed. Recommend company review." };
+    return {
+      id:"CHT-003",
+      userId:submitter.id,
+      name:submitter.name,
+      company:"Charlie",
+      platoon:"1st PC",
+      date:"2026-03-19",
+      reason:"Academic Conflict — Exam",
+      notes:"",
+      status:"Pending",
+      route: chain.map(node => node.label),
+      currentStage:2,
+      deniedAtStage:null,
+      stages,
+      attachmentName:"",
+      attachmentUrl:"",
+    };
+  })(),
 ];
 
 const INIT_QS = [
@@ -305,9 +659,10 @@ const FORMS = [
 //   5. Copy the deployment URL and paste below
 //   6. Set the same token below
 //   7. Save — the app will pull live data on each page load.
-//      If the URL is empty, the hardcoded USERS array above is used as a fallback.
+//      In sheet-only mode, the app stays locked until this feed loads successfully.
 const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbxRgepNbdZ1PKYO43MCehQ-2tRiIJ5p_imisTwjSFd7p-yfl6SWfIReFx5BEghObD6Maw/exec";
 const SHEETS_API_TOKEN = "UT_NROTC";
+const SHEET_ONLY_MODE  = true;
 
 // Sheet columns A→J: company, name, class, email, phone number, major, campus, eid, password, billet
 // Maps sheet company prefix → app company name
@@ -366,7 +721,13 @@ function sheetRowToUser(row, index) {
 
   // Platoon: extract from company or billet if it has a number (e.g. "A 1st" → "1st PC")
   const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i) || billetRaw.match(/(\d+(?:st|nd|rd|th))/i);
-  const platoon = platoonMatch ? `${platoonMatch[1]} PC` : billetRaw;
+  const platoon = platoonMatch
+    ? `${platoonMatch[1]} PC`
+    : /CC$/i.test(billetRaw)
+      ? "CO"
+      : /SEL$/i.test(billetRaw)
+        ? "SEL"
+        : billetRaw;
 
   // Name: strip rank prefix (MIDN, GySgt, SSgt, OC, Sgt, etc.)
   const name = nameRaw.replace(/^(MIDN|GySgt|GySGT|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
@@ -410,14 +771,29 @@ const FITREP_STAGES = [
 // Returns true if `user` is the designated approver for the fitrep's current stage
 function canActOnFitrep(user, fitrep) {
   if (!user || fitrep.currentStage >= FITREP_STAGES.length - 1) return false;
-  if (isSenior(user)) return true;
   const stage = FITREP_STAGES[fitrep.currentStage];
   if (!stage.approverRole) return false;
   if (stage.approverRole === "plt_cdr")
-    return user.role === "plt_cdr" && normalizeCompany(user.company) === normalizeCompany(fitrep.company) && user.platoon === fitrep.platoon;
+    return user.role === "plt_cdr" &&
+      normalizeCompany(user.company) === normalizeCompany(fitrep.company) &&
+      normalizePlatoon(user.platoon) === normalizePlatoon(fitrep.platoon);
   if (stage.approverRole === "co_cdr")
     return user.role === "co_cdr" && normalizeCompany(user.company) === normalizeCompany(fitrep.company);
   return user.role === stage.approverRole;
+}
+
+function canViewFitrep(user, fitrep) {
+  if (!user || !fitrep) return false;
+  if (matchesUserIdentity(user, { id: fitrep.subjectId, name: fitrep.subjectName })) return true;
+  if (user.role === "bn_cdr" || user.role === "xo") return true;
+  if (user.role === "co_cdr") {
+    return normalizeCompany(user.company) === normalizeCompany(fitrep.company);
+  }
+  if (user.role === "plt_cdr") {
+    return normalizeCompany(user.company) === normalizeCompany(fitrep.company) &&
+      normalizePlatoon(user.platoon) === normalizePlatoon(fitrep.platoon);
+  }
+  return false;
 }
 
 const INIT_FITREBS = [

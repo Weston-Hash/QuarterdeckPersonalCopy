@@ -5,7 +5,7 @@
 
   let src;
   try {
-    const res = await fetch("ut_app_basecode.jsx");
+    const res = await fetch(`ut_app_basecode.jsx?v=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     src = await res.text();
   } catch (err) {
