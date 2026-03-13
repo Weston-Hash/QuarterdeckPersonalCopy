@@ -1,0 +1,1105 @@
+import { useState, createContext, useContext } from "react";
+
+// ─── AUTH ───────────────────────────────────────────────────
+const AuthContext = createContext(null);
+const useAuth = () => useContext(AuthContext);
+// Permission helpers
+// canEdit(user, "pt")       → true if user may edit PT plan
+// canEdit(user, "leadlab")  → TRAINO + seniors
+// canEdit(user, "chits")    → ADJ + seniors
+// canEdit(user, "structure")→ ADJ + seniors
+// canEdit(user, "potw")     → seniors only
+// canEdit(user, "forms")    → seniors only
+// canEdit(user, "academic") → academics billet + seniors
+// "seniors" = BNCO, BNXO, OPS, all SELs
+
+const SENIOR_ROLES = ["bn_cdr", "xo", "ops", "sel"];
+const isSenior  = (u) => u && SENIOR_ROLES.includes(u.role);
+const isCoC     = (u) => u && [...SENIOR_ROLES, "co_cdr", "plt_cdr", "adj"].includes(u.role);
+
+function canEdit(user, section) {
+  if (!user) return false;
+  if (isSenior(user)) return true;          // BNCO/BNXO/OPS/SEL edit everything
+  switch (section) {
+    case "pt":        return user.role === "pto";
+    case "leadlab":   return user.role === "traino";
+    case "chits":     return ["adj", "co_cdr", "plt_cdr"].includes(user.role);
+    case "structure": return user.role === "adj";
+    case "academic":  return user.role === "academics";
+    case "forms":     return ["co_cdr", "adj"].includes(user.role);
+    default:          return false;
+  }
+}
+
+// ─── USERS  (password = EID) ────────────────────────────────
+const USERS = [
+  // BN STAFF
+  { id:"u001", name:"Hinz",            rank:"MIDN 1/C", role:"bn_cdr",  company:"BN",         platoon:"BNCO",   password:"jh76769",  email:"bnco.utnrotc@gmail.com",       phone:"(408)460-8418" },
+  { id:"u002", name:"Townsend",        rank:"MIDN 1/C", role:"xo",      company:"BN",         platoon:"BNXO",   password:"jst2536",  email:"bnxo.utnrotc@gmail.com",       phone:"619-315-6406" },
+  { id:"u003", name:"Galan",           rank:"MIDN 1/C", role:"ops",     company:"BN",         platoon:"OPS",    password:"GG29633",  email:"ops.utnrotc@gmail.com",        phone:"(830)734-1689" },
+  { id:"u004", name:"Zuniga",          rank:"GySgt",    role:"sel",     company:"BN",         platoon:"SEL",    password:"mz9846",   email:"mz9846@eid.utexas.edu",        phone:"817-729-6232" },
+  { id:"u005", name:"Barela",          rank:"MIDN 2/C", role:"pto",     company:"BN",         platoon:"PTO",    password:"dab5836",  email:"ptoutnrotc@gmail.com",         phone:"(832)506-6377" },
+  { id:"u006", name:"Courtney, L.",    rank:"MIDN 2/C", role:"adj",     company:"BN",         platoon:"ADJ",    password:"lec3474",  email:"adj.utnrotc@gmail.com",        phone:"847-340-0995" },
+  { id:"u007", name:"Evans",           rank:"MIDN 2/C", role:"mid",     company:"BN",         platoon:"SUPPO",  password:"ace2664",  email:"suppo.utnrotc@gmail.com",      phone:"425-505-7451" },
+  { id:"u008", name:"Spooner, M.",     rank:"MIDN 3/C", role:"mid",     company:"BN",         platoon:"PAO",    password:"mfs2535",  email:"pao.utnrotc@gmail.com",        phone:"512-632-3258" },
+  { id:"u009", name:"Doghri",          rank:"GySgt",    role:"traino",  company:"BN",         platoon:"TRAINO", password:"Sbd838",   email:"traino.utnrotc@gmail.com",     phone:"251-235-0552" },
+  { id:"u010", name:"Hash",            rank:"OC",       role:"academics",company:"BN",        platoon:"AO",     password:"wgh543",   email:"academics.utnrotc@gmail.com",  phone:"512-738-6206" },
+  { id:"u011", name:"Gu",              rank:"MIDN 2/C", role:"mid",     company:"BN",         platoon:"BGDO",   password:"jg78873",  email:"recruiting.utnrotc@gmail.com", phone:"832-490-5818" },
+  { id:"u012", name:"Planchon",        rank:"MIDN 3/C", role:"mid",     company:"BN",         platoon:"AOPS",   password:"dmp3637",  email:"bnaops.utnrotc@gmail.com",     phone:"726-213-1790" },
+  { id:"u013", name:"Treshock, J.",    rank:"MIDN 2/C", role:"mid",     company:"BN",         platoon:"CGC",    password:"jet3778",  email:"cgc.utnrotc@gmail.com",        phone:"732-759-7001" },
+  // MARINES CO
+  { id:"u020", name:"McRae",           rank:"MIDN 1/C", role:"co_cdr",  company:"Marines",    platoon:"CO",     password:"ecm3252",  email:"ellemcrae03@utexas.edu",       phone:"512-731-1057" },
+  { id:"u021", name:"Shahbaz Butt",    rank:"SSgt",     role:"sel",     company:"Marines",    platoon:"SEL",    password:"ssb3338",  email:"shahbaz.butt130@gmail.com",    phone:"346-278-4072" },
+  { id:"u022", name:"Ramirez",         rank:"MIDN 3/C", role:"plt_cdr", company:"Marines",    platoon:"1st PC", password:"kcr2267",  email:"keith.ramirez@utexas.edu",     phone:"(806)544-0729" },
+  { id:"u023", name:"Locklin",         rank:"MIDN 4/C", role:"mid",     company:"Marines",    platoon:"1st PC", password:"tjl2677",  email:"theodorejlocklin@icloud.com",  phone:"575-997-5396" },
+  { id:"u024", name:"Black",           rank:"MIDN 3/C", role:"mid",     company:"Marines",    platoon:"1st PC", password:"etb638",   email:"evantblack05@utexas.edu",      phone:"817-994-3366" },
+  { id:"u025", name:"Arevalo",         rank:"SSgt",     role:"nco",     company:"Marines",    platoon:"1st PC", password:"Cla3383",  email:"Careval2@stedwards.edu",       phone:"(903)806-3670" },
+  { id:"u026", name:"McNutt",          rank:"MIDN 3/C", role:"mid",     company:"Marines",    platoon:"1st PC", password:"ajm9265",  email:"nutmeg5786@gmail.com",         phone:"737-206-6849" },
+  { id:"u027", name:"Hill",            rank:"Sgt",      role:"nco",     company:"Marines",    platoon:"1st PC", password:"mjh5654",  email:"Montyhill14@gmail.com",        phone:"(260)517-9379" },
+  { id:"u028", name:"Cevalles",        rank:"SSgt",     role:"nco",     company:"Marines",    platoon:"1st PC", password:"1346520",  email:"acevall1@stedwards.edu",       phone:"(210)996-5967" },
+  { id:"u029", name:"Marinescu",       rank:"MIDN 3/C", role:"mid",     company:"Marines",    platoon:"1st PC", password:"mm226955", email:"mm226955@my.utexas.edu",       phone:"832-874-8461" },
+  { id:"u030", name:"Edsonschuerfeld", rank:"SSgt",     role:"nco",     company:"Marines",    platoon:"1st PC", password:"NZE63",    email:"edson.nathyn@gmail.com",       phone:"541-653-1135" },
+  { id:"u031", name:"Hearn",           rank:"MIDN 2/C", role:"mid",     company:"Marines",    platoon:"1st PC", password:"cmh6492",  email:"cody.hearn22@gmail.com",       phone:"562-386-7172" },
+  { id:"u032", name:"Powell",          rank:"MIDN 2/C", role:"mid",     company:"Marines",    platoon:"1st PC", password:"flp333",   email:"flp333@my.utexas.edu",         phone:"931-215-8160" },
+  { id:"u033", name:"Lutz",            rank:"MIDN 1/C", role:"plt_cdr", company:"Marines",    platoon:"2nd PC", password:"tel663",   email:"tyler.lutz@utexas.edu",        phone:"401-516-8455" },
+  { id:"u034", name:"Felan",           rank:"SSgt",     role:"nco",     company:"Marines",    platoon:"2nd PC", password:"175862",   email:"Tristianf17@gmail.com",        phone:"(210)887-3068" },
+  { id:"u035", name:"Padmanabhan",     rank:"MIDN 4/C", role:"mid",     company:"Marines",    platoon:"2nd PC", password:"ap68366",  email:"ap68366@my.utexas.edu",        phone:"737-900-1113" },
+  { id:"u036", name:"Garza",           rank:"SSgt",     role:"nco",     company:"Marines",    platoon:"2nd PC", password:"180610",   email:"renemariogarzaiii@gmail.com",  phone:"830-295-0485" },
+  { id:"u037", name:"Perez",           rank:"Sgt",      role:"nco",     company:"Marines",    platoon:"2nd PC", password:"178295",   email:"Ethianperez@gmail.com",        phone:"(512)618-2720" },
+  { id:"u038", name:"McCleskey",       rank:"GySgt",    role:"nco",     company:"Marines",    platoon:"2nd PC", password:"Cwm2938",  email:"Cwm2938@my.utexas.edu",        phone:"(806)677-6784" },
+  { id:"u039", name:"Hernandez Gomez", rank:"SSgt",     role:"nco",     company:"Marines",    platoon:"2nd PC", password:"CH56244",  email:"CH56244@eid.utexas.edu",       phone:"678-830-8728" },
+  // NAVY ALPHA CO
+  { id:"u040", name:"Irisari",         rank:"MIDN 2/C", role:"co_cdr",  company:"Navy Alpha", platoon:"CO",     password:"ai6959",   email:"airisari@outlook.com",         phone:"703-223-3625" },
+  { id:"u041", name:"Francis",         rank:"OC",       role:"sel",     company:"Navy Alpha", platoon:"SEL",    password:"cf29624",  email:"chas.francis01@gmail.com",     phone:"512-738-1074" },
+  { id:"u042", name:"Alcazar",         rank:"MIDN 3/C", role:"plt_cdr", company:"Navy Alpha", platoon:"1st PC", password:"laa3843",  email:"lukealcazar11@gmail.com",      phone:"210-400-3015" },
+  { id:"u043", name:"Treshock, T.",    rank:"MIDN 2/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"jet3778",  email:"jimmytreshock145@utexas.edu",  phone:"732-759-7001" },
+  { id:"u044", name:"Madulara",        rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"cam23254", email:"cnmadulara@gmail.com",         phone:"281-658-2600" },
+  { id:"u045", name:"Renslow",         rank:"MIDN 3/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"renslow",  email:"hgrenslow@gmail.com",          phone:"515-441-4144" },
+  { id:"u046", name:"Brakefield",      rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"afb868",   email:"afb868@utexas.edu",            phone:"(210)237-2884" },
+  { id:"u047", name:"Rajesh",          rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"ar84238",  email:"arajesh@utexas.edu",           phone:"703-599-2498" },
+  { id:"u048", name:"Rhodes",          rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"Mpr2348",  email:"Mpr2348@my.utexas.edu",        phone:"512-694-3039" },
+  { id:"u049", name:"Diedrich",        rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"gd22345",  email:"glincolnd4@gmail.com",         phone:"630-234-4045" },
+  { id:"u050", name:"Angeles",         rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"jma5962",  email:"jacobangeles@utexas.edu",      phone:"631-827-8716" },
+  { id:"u051", name:"Harpuder, E.",    rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"1st PC", password:"ehh589",   email:"ehharpuder@utexas.edu",        phone:"808-364-7319" },
+  { id:"u052", name:"Kessler",         rank:"OC",       role:"oc",      company:"Navy Alpha", platoon:"1st PC", password:"jnk788",   email:"jnk788@my.utexas.edu",         phone:"940-727-8105" },
+  { id:"u053", name:"Myers",           rank:"OC",       role:"oc",      company:"Navy Alpha", platoon:"1st PC", password:"cm68236",  email:"cannonm1023@gmail.com",        phone:"717-585-1996" },
+  { id:"u054", name:"Redington",       rank:"MIDN 3/C", role:"plt_cdr", company:"Navy Alpha", platoon:"2nd PC", password:"kjr2897",  email:"kjredington24@gmail.com",      phone:"917-561-3818" },
+  { id:"u055", name:"Bertrand",        rank:"MIDN 2/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"jb79929",  email:"jb79929@my.utexas.edu",        phone:"(516)305-0975" },
+  { id:"u056", name:"Morales",         rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"jm227556", email:"jm227556@eid.utexas.edu",      phone:"3617931889" },
+  { id:"u057", name:"Murray",          rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"egm2753",  email:"egrace1211@gmail.com",         phone:"903-436-3601" },
+  { id:"u058", name:"Opiela",          rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"neo392",   email:"natalie@opiela.org",           phone:"512-915-9446" },
+  { id:"u059", name:"Reis",            rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"dpr853",   email:"reisdeborah90@gmail.com",      phone:"512-992-5880" },
+  { id:"u060", name:"Straub",          rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"ncs2239",  email:"nstraub@utexas.edu",           phone:"(281)520-5259" },
+  { id:"u061", name:"Edwards",         rank:"MIDN 2/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"cae2726",  email:"cedwards49@icloud.com",        phone:"805-320-0311" },
+  { id:"u062", name:"Nicholas",        rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"han494",   email:"hannicholas@utexas.edu",       phone:"832-298-1395" },
+  { id:"u063", name:"Quidlat",         rank:"MIDN 2/C", role:"mid",     company:"Navy Alpha", platoon:"2nd PC", password:"mqq57",    email:"mjqquidlat@utexas.edu",        phone:"512-662-2622" },
+  { id:"u064", name:"Nugent",          rank:"OC",       role:"oc",      company:"Navy Alpha", platoon:"2nd PC", password:"nn9389",   email:"nugent.nicolas1@gmail.com",    phone:"717-425-4675" },
+  { id:"u065", name:"Lee",             rank:"MIDN 3/C", role:"plt_cdr", company:"Navy Alpha", platoon:"3rd PC", password:"dl38724",  email:"daniellee@utexas.edu",         phone:"213-800-2182" },
+  { id:"u066", name:"Hash, W.",        rank:"OC",       role:"oc",      company:"Navy Alpha", platoon:"3rd PC", password:"wgh543",   email:"weston.hash@utexas.edu",       phone:"512-738-6206" },
+  { id:"u067", name:"Jiwa",            rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"zcj232",   email:"zcj232@eid.utexas.edu",        phone:"512-496-4193" },
+  { id:"u068", name:"Ost",             rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"jco2524",  email:"jco2524@my.utexas.edu",        phone:"412-304-6961" },
+  { id:"u069", name:"Lopez",           rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"ml56697",  email:"marquezl2024@gmail.com",       phone:"830-968-7842" },
+  { id:"u070", name:"Handford",        rank:"MIDN 1/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"wbh725",   email:"wheeler.betz@utexas.edu",      phone:"904-485-3224" },
+  { id:"u071", name:"Courtney, L.",    rank:"MIDN 2/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"lec3474",  email:"laurencourtney@utexas.edu",    phone:"847-340-0995" },
+  { id:"u072", name:"Born",            rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"zpb265",   email:"Zborn73@gmail.com",            phone:"202-807-8663" },
+  { id:"u073", name:"Tuin",            rank:"MIDN 4/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"vet368",   email:"vet368@eid.utexas.edu",        phone:"682-220-5723" },
+  { id:"u074", name:"Evans, X.",       rank:"MIDN 2/C", role:"mid",     company:"Navy Alpha", platoon:"3rd PC", password:"ace2664",  email:"xander_evans@icloud.com",      phone:"425-505-7451" },
+  { id:"u075", name:"Sacco",           rank:"OC",       role:"oc",      company:"Navy Alpha", platoon:"3rd PC", password:"aps3622",  email:"alec.sacco.1@gmail.com",       phone:"469-321-1666" },
+  // NAVY BRAVO CO
+  { id:"u080", name:"Torres",          rank:"MIDN 2/C", role:"co_cdr",  company:"Navy Bravo", platoon:"CO",     password:"dat2999",  email:"dannytorres569@utexas.edu",    phone:"915-216-1651" },
+  { id:"u081", name:"Wende",           rank:"OC",       role:"sel",     company:"Navy Bravo", platoon:"SEL",    password:"drw3295",  email:"darrenrwende@gmail.com",       phone:"346-773-8825" },
+  { id:"u082", name:"Burrell",         rank:"MIDN 3/C", role:"plt_cdr", company:"Navy Bravo", platoon:"1st PC", password:"blb4644",  email:"byronburrell1@gmail.com",      phone:"469-500-0452" },
+  { id:"u083", name:"Crimmins",        rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"tjc3735",  email:"tjcrimmins@icloud.com",        phone:"301-741-1281" },
+  { id:"u084", name:"Lucas",           rank:"MIDN 1/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"mjl4272",  email:"lucashorns@utexas.edu",        phone:"512-590-9814" },
+  { id:"u085", name:"Bell",            rank:"OC",       role:"oc",      company:"Navy Bravo", platoon:"1st PC", password:"ab79952",  email:"alexkrisbell@utexas.edu",      phone:"720-839-7106" },
+  { id:"u086", name:"Savage",          rank:"OC",       role:"oc",      company:"Navy Bravo", platoon:"1st PC", password:"ccs3944",  email:"ccsavage04@gmail.com",         phone:"(214)966-2119" },
+  { id:"u087", name:"Paz",             rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"seu_paz",  email:"dpaz2@stedwards.edu",          phone:"956-245-9429" },
+  { id:"u088", name:"Carrizales",      rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"ac95845",  email:"alexcarrizales43@gmail.com",   phone:"512-672-9814" },
+  { id:"u089", name:"Downey",          rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"lsd793",   email:"logan.sage@gmail.com",         phone:"321-626-4234" },
+  { id:"u090", name:"Spooner, M.",     rank:"MIDN 3/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"mfs2535",  email:"mspooner@utexas.edu",          phone:"512-632-3258" },
+  { id:"u091", name:"Barto",           rank:"MIDN 3/C", role:"mid",     company:"Navy Bravo", platoon:"1st PC", password:"ekb2234",  email:"theevelyn@utexas.edu",         phone:"214-578-4716" },
+  { id:"u092", name:"Thai",            rank:"OC",       role:"oc",      company:"Navy Bravo", platoon:"1st PC", password:"jbt2399",  email:"jonathanbthai@utexas.edu",     phone:"(916)257-1880" },
+  { id:"u093", name:"Delgado",         rank:"MIDN 3/C", role:"plt_cdr", company:"Navy Bravo", platoon:"2nd PC", password:"cd38394",  email:"carolinadelgado@utexas.edu",   phone:"832-646-3786" },
+  { id:"u094", name:"Jennings",        rank:"MIDN 2/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"saj3222",  email:"saj3222@my.utexas.edu",        phone:"3392141051" },
+  { id:"u095", name:"Roque-Garcia",    rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"ncr839",   email:"natalie.groque0327@gmail.com", phone:"469-460-0237" },
+  { id:"u096", name:"Mireles",         rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"nvm389",   email:"nvm389@eid.utexas.edu",        phone:"956-203-7485" },
+  { id:"u097", name:"Cremer",          rank:"MIDN 2/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"jrc7734",  email:"joshuacremer@utexas.edu",      phone:"832-226-2604" },
+  { id:"u098", name:"Aquino",          rank:"OC",       role:"oc",      company:"Navy Bravo", platoon:"2nd PC", password:"ama8943",  email:"alexmaquino@yahoo.com",        phone:"714-869-5988" },
+  { id:"u099", name:"Harpuder, S.",    rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"sth2339",  email:"sharpuder@gmail.com",          phone:"808-375-5682" },
+  { id:"u100", name:"Barela, D.",      rank:"MIDN 2/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"dab5836",  email:"dylan.barela@utexas.edu",      phone:"(832)506-6377" },
+  { id:"u101", name:"Fernandez",       rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"df25644",  email:"df25644@my.utexas.edu",        phone:"830-344-9014" },
+  { id:"u102", name:"Petteway",        rank:"MIDN 3/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"eep982",   email:"epetteway15@gmail.com",        phone:"469-978-2712" },
+  { id:"u103", name:"Carnicle",        rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"2nd PC", password:"arc6339",  email:"abigail.carnicle07@gmail.com", phone:"9799009635" },
+  { id:"u104", name:"Simpson",         rank:"MIDN 3/C", role:"plt_cdr", company:"Navy Bravo", platoon:"3rd PC", password:"tws2236",  email:"Thomas.simpson@utexas.edu",    phone:"210-330-1509" },
+  { id:"u105", name:"Gu, A.",          rank:"MIDN 2/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"jg78873",  email:"alexgujiaming@gmail.com",      phone:"832-490-5818" },
+  { id:"u106", name:"Visintine",       rank:"MIDN 3/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"slv843",   email:"luke.visintine@gmail.com",     phone:"832-507-5542" },
+  { id:"u107", name:"Escamilla",       rank:"OC",       role:"oc",      company:"Navy Bravo", platoon:"3rd PC", password:"ame3747",  email:"andrewescamilla411@gmail.com", phone:"951-751-6259" },
+  { id:"u108", name:"Bailey",          rank:"MIDN 1/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"msb4354",  email:"msbailey9@utexas.edu",         phone:"(206)351-8072" },
+  { id:"u109", name:"Planchon, D.",    rank:"MIDN 3/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"dmp3637",  email:"dmedved@utexas.edu",           phone:"726-213-1790" },
+  { id:"u110", name:"Braun",           rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"dcb3454",  email:"doritlm.gamer@gmail.com",      phone:"737-412-2696" },
+  { id:"u111", name:"Farrell",         rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"jpf2493",  email:"j.patrick.farrell@gmail.com",  phone:"228-233-0620" },
+  { id:"u112", name:"Alonzo",          rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"mma4546",  email:"madelynn.alonzo@gmail.com",    phone:"903-271-1289" },
+  { id:"u113", name:"Nolan",           rank:"MIDN 2/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"rgn334",   email:"rubynolan@utexas.edu",         phone:"631-662-8783" },
+  { id:"u114", name:"Eng",             rank:"MIDN 4/C", role:"mid",     company:"Navy Bravo", platoon:"3rd PC", password:"be6627",   email:"brandoneng256@gmail.com",      phone:"936-330-5814" },
+];
+
+// Roster mirrors USERS for the recall roster page
+const ROSTER = USERS.map(u => ({
+  initials: u.name.split(" ").map(p => p[0]).join("").toUpperCase().slice(0,2),
+  rank:     u.rank,
+  name:     u.name,
+  company:  u.company,
+  platoon:  u.platoon,
+  phone:    u.phone,
+  email:    u.email,
+}));
+
+// ─── STATIC DATA ────────────────────────────────────────────
+const POTW = {
+  week: "Week 10 — Spring 2026",
+  title: "Chain of Command & Unity of Command",
+  body: "The principle of unity of command means each soldier receives orders from only one superior. Know your chain at all times: Squad Leader → Platoon Commander → Company Commander → Battalion Commander.",
+  points: ["Know your direct superior at all times", "All orders flow through proper channels", "Report issues up your chain promptly"],
+};
+
+const EVENTS = [
+  { date:"11", month:"MAR", title:"Morning PT — Formation Run", time:"0530–0700", type:"PT", location:"Gregory Gym" },
+  { date:"12", month:"MAR", title:"Leadership Lab", time:"1400–1700", type:"Leadlab", location:"UT Drill Field" },
+  { date:"13", month:"MAR", title:"CHIT Submission Deadline", time:"1700", type:"Admin", location:"Online" },
+  { date:"14", month:"MAR", title:"Morning PT — Weight Room", time:"0530–0700", type:"PT", location:"Gregory Gym" },
+  { date:"15", month:"MAR", title:"Battalion Review Board", time:"1000–1200", type:"Admin", location:"Jester Hall 312" },
+  { date:"17", month:"MAR", title:"Spring Ball Planning Mtg.", time:"1800", type:"Social", location:"UT Campus" },
+  { date:"19", month:"MAR", title:"Drill Competition Prep", time:"0600–0900", type:"Drill", location:"UT Drill Field" },
+];
+
+const BN = [
+  { name:"Marines Company", co:"MIDN 1/C McRae", xo:"SSgt Shahbaz Butt (SEL)", color:"#8B0000",
+    platoons:[
+      { name:"1st PC", plt:"MIDN 3/C Ramirez", psg:"SSgt Arevalo", mids: USERS.filter(u=>u.company==="Marines"&&u.platoon==="1st PC").length },
+      { name:"2nd PC", plt:"MIDN 1/C Lutz",    psg:"SSgt Felan",   mids: USERS.filter(u=>u.company==="Marines"&&u.platoon==="2nd PC").length },
+    ]},
+  { name:"Navy Alpha Company", co:"MIDN 2/C Irisari", xo:"OC Francis (SEL)", color:"#003087",
+    platoons:[
+      { name:"1st PC", plt:"MIDN 3/C Alcazar",   psg:"OC Kessler",  mids: USERS.filter(u=>u.company==="Navy Alpha"&&u.platoon==="1st PC").length },
+      { name:"2nd PC", plt:"MIDN 3/C Redington",  psg:"OC Nugent",   mids: USERS.filter(u=>u.company==="Navy Alpha"&&u.platoon==="2nd PC").length },
+      { name:"3rd PC", plt:"MIDN 3/C Lee",        psg:"OC Hash, W.", mids: USERS.filter(u=>u.company==="Navy Alpha"&&u.platoon==="3rd PC").length },
+    ]},
+  { name:"Navy Bravo Company", co:"MIDN 2/C Torres", xo:"OC Wende (SEL)", color:"#0D1B2A",
+    platoons:[
+      { name:"1st PC", plt:"MIDN 3/C Burrell",  psg:"OC Bell",      mids: USERS.filter(u=>u.company==="Navy Bravo"&&u.platoon==="1st PC").length },
+      { name:"2nd PC", plt:"MIDN 3/C Delgado",  psg:"OC Aquino",    mids: USERS.filter(u=>u.company==="Navy Bravo"&&u.platoon==="2nd PC").length },
+      { name:"3rd PC", plt:"MIDN 3/C Simpson",  psg:"OC Escamilla", mids: USERS.filter(u=>u.company==="Navy Bravo"&&u.platoon==="3rd PC").length },
+    ]},
+];
+
+const PT = [
+  { day:"Monday", focus:"Cardio / Run", exercises:[
+    { name:"Dynamic Warm-up", sets:"10 min", notes:"High knees, butt kicks, leg swings" },
+    { name:"4-Mile Timed Run", sets:"BFT Pace", notes:"Two-person accountability" },
+    { name:"Cool Down Stretch", sets:"5 min", notes:"" },
+  ]},
+  { day:"Wednesday", focus:"Strength / ACFT Prep", exercises:[
+    { name:"SDC (Sprint-Drag-Carry)", sets:"3x50m", notes:"Full gear" },
+    { name:"Deadlift (Hex Bar)", sets:"3x8 @ 60% 1RM", notes:"ACFT standard weight" },
+    { name:"Hand Release Push-Ups", sets:"3xMax", notes:"Rest 90s between sets" },
+    { name:"Plank Hold", sets:"3x1 min", notes:"" },
+  ]},
+  { day:"Friday", focus:"Team Fitness", exercises:[
+    { name:"Sandbag Circuit", sets:"4 rounds", notes:"Rotate stations every 2 min" },
+    { name:"Fireman Carries", sets:"4x25m", notes:"Alternate each rep" },
+    { name:"TRX Rows", sets:"3x8", notes:"" },
+    { name:"Flutter Kicks", sets:"3x30", notes:"Core finisher" },
+  ]},
+];
+
+const LEADLAB = [
+  { title:"Land Navigation", date:"Mar 12",
+    objectives:["Identify terrain features on a map","Plot an 8-digit grid coordinate","Navigate 3 points in under 90 min"],
+    notes:"Bring protractor, compass, pencil. MGRS map issued at 1345." },
+  { title:"React to Contact", date:"Mar 26",
+    objectives:["Identify threat direction","Issue a SALUTE report","Execute squad battle drill"],
+    notes:"ACU/camouflage required. No live ammo." },
+  { title:"Leadership Reaction Course", date:"Apr 9",
+    objectives:["Complete obstacle with assigned team","Issue and receive clear OPORD","Debrief AAR"],
+    notes:"Teams assigned day prior." },
+];
+
+const INIT_CHITS = [
+  { id:"CHT-001", userId:"u009", name:"Wilson, Ryan",    company:"Alpha",   platoon:"1st", date:"2026-03-14", reason:"Medical Appointment",    notes:"", status:"Pending",  route:["1st PC","Marines Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
+  { id:"CHT-002", userId:"u010", name:"Moore, Emma",     company:"Bravo",   platoon:"2nd", date:"2026-03-15", reason:"Family Emergency",         notes:"", status:"Approved", route:["2nd PC","Navy Alpha Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
+  { id:"CHT-003", userId:"u011", name:"Jackson, Tyler",  company:"Charlie", platoon:"1st", date:"2026-03-19", reason:"Academic Conflict — Exam", notes:"", status:"Pending",  route:["3rd PC","Navy Bravo Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
+];
+
+const INIT_QS = [
+  { id:1, authorId:"u009", author:"Wilson, Ryan",   rank:"CDT/PVT", subject:"Calculus II", time:"2h ago", answered:true,
+    text:"Struggling with integration by parts — when to use it vs u-substitution. Any tips for the LIATE rule?",
+    answers:[{ author:"Davis, Kyle", rank:"CDT/2LT", text:"LIATE = Logarithm, Inverse trig, Algebraic, Trig, Exponential. Pick your u from whichever type comes first in that list. Use IBP when you have a product of two different function types." }] },
+  { id:2, authorId:"u012", author:"Nguyen, Lily",   rank:"CDT/PFC", subject:"Physics I",   time:"5h ago", answered:true,
+    text:"Do we account for air resistance in PHY 301 projectile motion problems?",
+    answers:[{ author:"Peterson, Chris", rank:"CDT/MAJ", text:"Ignore air resistance unless explicitly stated. For max range on flat ground, 45 degrees is always your answer." }] },
+  { id:3, authorId:"u011", author:"Jackson, Tyler", rank:"CDT/SPC", subject:"Calculus III",time:"1d ago", answered:false,
+    text:"What is the best way to set up triple integrals? I keep confusing the order of integration.",
+    answers:[] },
+];
+
+const FORMS = [
+  { id:1, title:"Spring Ball RSVP",               deadline:"Mar 15", responses:34, total:82, status:"Open",   type:"Event" },
+  { id:2, title:"ACFT Readiness Self-Assessment",  deadline:"Mar 18", responses:61, total:82, status:"Open",   type:"PT" },
+  { id:3, title:"Leadership Lab AAR",              deadline:"Mar 12", responses:82, total:82, status:"Closed", type:"Training" },
+  { id:4, title:"Uniform Accountability Survey",   deadline:"Mar 20", responses:12, total:82, status:"Open",   type:"Admin" },
+];
+
+// ─── STYLES ─────────────────────────────────────────────────
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Source Sans 3', sans-serif; background: #FFF8F0; color: #1A1209; }
+
+  .topbar { background: #1A1209; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; height: 58px; border-bottom: 3px solid #BF5700; position: sticky; top: 0; z-index: 50; }
+  .topbar-logo { width: 36px; height: 36px; background: #BF5700; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: Oswald; font-weight: 700; font-size: 1rem; color: white; margin-right: 0.6rem; }
+  .topbar-title { font-family: Oswald; font-weight: 700; font-size: 1.15rem; letter-spacing: 2px; text-transform: uppercase; }
+  .topbar-title span { color: #F7941D; }
+  .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
+  .rank-pill { background: #BF5700; color: white; padding: 2px 8px; border-radius: 4px; font-family: Oswald; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; }
+  .role-pill { background: rgba(255,255,255,0.12); color: #ccc; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; text-transform: uppercase; }
+  .btn-logout { background: transparent; border: 1.5px solid rgba(255,255,255,0.25); color: #ccc; border-radius: 4px; padding: 3px 10px; font-size: 0.75rem; cursor: pointer; font-family: Oswald; letter-spacing: 1px; text-transform: uppercase; }
+  .btn-logout:hover { background: rgba(255,255,255,0.1); }
+
+  .layout { display: flex; min-height: calc(100vh - 58px); }
+  .sidebar { width: 210px; background: #0D1B2A; flex-shrink: 0; position: sticky; top: 58px; height: calc(100vh - 58px); overflow-y: auto; display: flex; flex-direction: column; }
+  .sidebar-group { padding: 1rem 0 0.5rem; }
+  .sidebar-label { font-family: Oswald; font-size: 0.62rem; letter-spacing: 3px; text-transform: uppercase; color: #7a8fa0; padding: 0 1rem; margin-bottom: 0.5rem; }
+  .nav-btn { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; cursor: pointer; color: #9ab0c4; font-size: 0.88rem; border-left: 3px solid transparent; transition: all 0.15s; background: none; border-top: none; border-right: none; border-bottom: none; width: 100%; text-align: left; }
+  .nav-btn:hover { background: rgba(255,255,255,0.05); color: white; }
+  .nav-btn.active { background: rgba(191,87,0,0.2); color: #F7941D; border-left-color: #BF5700; font-weight: 600; }
+  .sidebar-footer { padding: 1rem; border-top: 1px solid rgba(255,255,255,0.08); margin-top: auto; font-size: 0.75rem; color: #6b7e90; line-height: 1.6; }
+
+  .content { flex: 1; padding: 1.5rem; overflow-y: auto; min-width: 0; }
+
+  .page-title { font-family: Oswald; font-size: 1.7rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 0.2rem; }
+  .page-title span { color: #BF5700; }
+  .page-sub { font-size: 0.88rem; color: #6B6B6B; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 2px solid rgba(191,87,0,0.15); }
+
+  .card { background: white; border-radius: 10px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid rgba(191,87,0,0.1); margin-bottom: 1rem; }
+  .card-title { font-family: Oswald; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; color: #1A1209; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+  .stat { background: white; border-radius: 10px; padding: 1rem 1.2rem; border-left: 4px solid #BF5700; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+  .stat-n { font-family: Oswald; font-size: 2rem; font-weight: 700; color: #BF5700; line-height: 1; }
+  .stat-l { font-size: 0.78rem; color: #6B6B6B; text-transform: uppercase; letter-spacing: 1px; margin-top: 0.2rem; }
+
+  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; border-radius: 6px; font-family: Oswald; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; border: none; font-weight: 500; transition: all 0.15s; }
+  .btn-orange { background: #BF5700; color: white; }
+  .btn-orange:hover { background: #8B3D00; }
+  .btn-outline { background: transparent; border: 2px solid #BF5700; color: #BF5700; }
+  .btn-outline:hover { background: #BF5700; color: white; }
+  .btn-navy { background: #0D1B2A; color: white; }
+  .btn-sm { padding: 0.25rem 0.65rem; font-size: 0.72rem; }
+  .btn-green { background: #2A7D4F; color: white; }
+  .btn-red { background: #C0392B; color: white; }
+
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .badge-orange { background: rgba(191,87,0,0.12); color: #8B3D00; }
+  .badge-green  { background: rgba(42,125,79,0.15); color: #2A7D4F; }
+  .badge-red    { background: rgba(192,57,43,0.15); color: #C0392B; }
+  .badge-navy   { background: rgba(13,27,42,0.1); color: #0D1B2A; }
+  .badge-gray   { background: #eee; color: #666; }
+
+  .input { width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #ddd; border-radius: 6px; font-family: 'Source Sans 3', sans-serif; font-size: 0.9rem; color: #1A1209; background: white; }
+  .input:focus { outline: none; border-color: #BF5700; }
+  .input-group { margin-bottom: 0.9rem; }
+  .input-label { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #6B6B6B; margin-bottom: 0.3rem; }
+
+  .alert { background: rgba(191,87,0,0.08); border: 1.5px solid #BF5700; border-radius: 8px; padding: 0.65rem 1rem; font-size: 0.85rem; color: #8B3D00; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+  .alert-green { background: rgba(42,125,79,0.1); border-color: #2A7D4F; color: #2A7D4F; }
+  .privacy-note { background: rgba(13,27,42,0.05); border: 1.5px solid rgba(13,27,42,0.15); border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.82rem; color: #0D1B2A; margin-bottom: 1rem; }
+
+  .potw-card { background: linear-gradient(135deg, #1A1209 0%, #0D1B2A 100%); color: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+  .potw-week { font-family: Oswald; font-size: 0.68rem; letter-spacing: 3px; text-transform: uppercase; color: #F7941D; margin-bottom: 0.4rem; }
+  .potw-title { font-family: Oswald; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.6rem; }
+  .potw-body { font-size: 0.88rem; line-height: 1.6; color: #CCC; margin-bottom: 0.75rem; }
+
+  .event-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.7rem 0; border-bottom: 1px solid #f0ede8; }
+  .event-date { min-width: 46px; text-align: center; background: #BF5700; color: white; border-radius: 7px; padding: 3px; }
+  .event-day { font-family: Oswald; font-size: 1.35rem; font-weight: 700; line-height: 1; }
+  .event-mo  { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; }
+  .event-title { font-weight: 600; font-size: 0.88rem; }
+  .event-sub   { font-size: 0.78rem; color: #6B6B6B; }
+
+  .company-block { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 1rem; }
+  .company-header { color: white; padding: 0.8rem 1.2rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+  .company-name { font-family: Oswald; font-size: 1.05rem; letter-spacing: 2px; text-transform: uppercase; }
+  .company-co { font-size: 0.78rem; color: rgba(255,255,255,0.75); }
+  .platoon-grid { padding: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0.75rem; }
+  .platoon-card { border: 1.5px solid rgba(191,87,0,0.2); border-radius: 8px; padding: 0.75rem; }
+  .platoon-name { font-family: Oswald; font-size: 0.82rem; letter-spacing: 1.5px; color: #BF5700; margin-bottom: 0.35rem; }
+  .platoon-detail { font-size: 0.78rem; color: #6B6B6B; }
+
+  .pt-block { background: white; border-radius: 8px; overflow: hidden; margin-bottom: 0.75rem; border: 1px solid #eee; }
+  .pt-header { background: #BF5700; color: white; padding: 0.55rem 1rem; display: flex; align-items: center; justify-content: space-between; font-family: Oswald; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; }
+  .pt-row { display: flex; align-items: center; gap: 1rem; padding: 0.4rem 1rem; border-bottom: 1px solid #faf7f4; font-size: 0.85rem; }
+  .pt-name { flex: 1; font-weight: 500; }
+  .pt-sets { color: #BF5700; font-weight: 600; font-size: 0.82rem; min-width: 80px; }
+  .pt-notes { color: #888; font-size: 0.78rem; font-style: italic; }
+
+  .chit-card { border-left: 4px solid #BF5700; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 0.75rem; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .chit-route { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.78rem; }
+  .chit-node { background: rgba(191,87,0,0.1); border-radius: 4px; padding: 2px 7px; color: #8B3D00; }
+
+  .form-row { background: white; border-radius: 10px; padding: 1rem 1.2rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; border: 1.5px solid #eee; flex-wrap: wrap; }
+  .progress-bar { background: #eee; border-radius: 4px; height: 4px; margin-top: 4px; width: 60px; }
+  .progress-fill { background: #BF5700; height: 100%; border-radius: 4px; }
+
+  .roster-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0; border-bottom: 1px solid #f4f0eb; flex-wrap: wrap; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; background: #BF5700; color: white; display: flex; align-items: center; justify-content: center; font-family: Oswald; font-weight: 700; font-size: 0.82rem; flex-shrink: 0; }
+
+  .q-card { background: white; border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; border: 1.5px solid #eee; }
+  .q-meta { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+  .q-text { font-size: 0.92rem; line-height: 1.55; margin-bottom: 0.75rem; }
+  .answer-block { background: rgba(191,87,0,0.04); border-left: 3px solid #BF5700; padding: 0.55rem 0.75rem; border-radius: 0 6px 6px 0; margin-bottom: 0.5rem; font-size: 0.85rem; }
+  .answer-author { font-weight: 600; color: #8B3D00; font-size: 0.78rem; margin-bottom: 0.15rem; }
+
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .modal { background: white; border-radius: 12px; padding: 1.5rem; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+  .modal-title { font-family: Oswald; font-size: 1.1rem; letter-spacing: 2px; text-transform: uppercase; }
+  .modal-close { background: none; border: none; font-size: 1.4rem; color: #888; cursor: pointer; }
+
+  .tag { display: inline-block; padding: 2px 8px; background: rgba(191,87,0,0.1); border-radius: 20px; font-size: 0.72rem; color: #8B3D00; }
+
+  .login-wrap { min-height: 100vh; background: #1A1209; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .login-card { background: white; border-radius: 14px; padding: 2.25rem 1.75rem; max-width: 380px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+  .login-logo { display: flex; align-items: center; gap: 0.75rem; justify-content: center; margin-bottom: 1.25rem; }
+  .login-mark { width: 48px; height: 48px; background: #BF5700; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: Oswald; font-weight: 700; font-size: 1.3rem; color: white; }
+  .login-title { font-family: Oswald; font-size: 1.3rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+  .login-title span { color: #BF5700; }
+  .login-sub { text-align: center; font-size: 0.88rem; color: #888; margin-bottom: 1.5rem; }
+  .hint-box { margin-top: 1rem; background: #f5f2ee; border-radius: 8px; padding: 0.75rem; font-size: 0.75rem; color: #666; line-height: 1.6; }
+
+  .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: #1A1209; border-top: 2px solid #BF5700; z-index: 100; }
+  .mobile-nav-inner { display: flex; justify-content: space-around; padding: 0.35rem 0; }
+  .mobile-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0.3rem 0.5rem; cursor: pointer; color: #666; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.5px; background: none; border: none; }
+  .mobile-btn.active { color: #F7941D; }
+  .mobile-icon { font-size: 1.2rem; }
+
+  .empty { text-align: center; padding: 2rem; color: #888; }
+  .divider { border: none; border-top: 1px solid #f0ede8; margin: 0.75rem 0; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .mobile-nav { display: block; }
+    .content { padding: 1rem; padding-bottom: 5rem; }
+    .grid2 { grid-template-columns: 1fr; }
+    .grid3 { grid-template-columns: 1fr; }
+  }
+`;
+
+// ─── SMALL SHARED COMPONENTS ────────────────────────────────
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <span className="modal-title">{title}</span>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── PAGES ──────────────────────────────────────────────────
+
+function LoginPage({ onLogin }) {
+  const [name, setName] = useState("");
+  const [pass, setPass] = useState("");
+  const [err, setErr]   = useState("");
+
+  const go = () => {
+    const q = name.trim().toLowerCase();
+    const user = USERS.find(u =>
+      u.name.toLowerCase() === q ||
+      u.name.split(",")[0].trim().toLowerCase() === q ||
+      u.email.toLowerCase() === q
+    );
+    if (!user) { setErr("Name not found. Try your last name or full email."); return; }
+    if (user.password !== pass.trim()) { setErr("Incorrect password. Your password is your EID."); return; }
+    setErr("");
+    onLogin(user);
+  };
+
+  return (
+    <div className="login-wrap">
+      <div className="login-card">
+        <div className="login-logo">
+          <div className="login-mark">UT</div>
+          <div className="login-title">NROTC <span>BN</span></div>
+        </div>
+        <div className="login-sub">Sign in with your battalion credentials</div>
+        {err && <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>⚠ {err}</div>}
+        <div className="input-group">
+          <label className="input-label">Last Name or Email</label>
+          <input className="input" placeholder="e.g. Hinz  or  bnco.utnrotc@gmail.com" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && go()} />
+        </div>
+        <div className="input-group">
+          <label className="input-label">Password (your EID)</label>
+          <input className="input" type="password" placeholder="e.g. jh76769" value={pass} onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === "Enter" && go()} />
+        </div>
+        <button className="btn btn-orange" style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem" }} onClick={go}>
+          Sign In →
+        </button>
+        <div className="hint-box">
+          <strong>Username:</strong> your last name (e.g. <em>Hinz</em>) or full email<br />
+          <strong>Password:</strong> your UT/HT EID<br />
+          Contact your S1 if you need access help.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({ onNav }) {
+  const { user } = useAuth();
+  return (
+    <div>
+      <div className="page-title">BN <span>Dashboard</span></div>
+      <div className="page-sub">Welcome, {user.rank} {user.name} — Spring 2026</div>
+
+      <div className="alert">
+        🔔 <strong>Reminder:</strong> ACFT Readiness survey closes Mar 18. PT formation tomorrow 0530 at Gregory Gym.
+      </div>
+
+      <div className="grid3" style={{ marginBottom:"1rem" }}>
+        <div className="stat"><div className="stat-n">{USERS.length}</div><div className="stat-l">BN Strength</div></div>
+        <div className="stat" style={{ borderLeftColor:"#0D1B2A" }}><div className="stat-n" style={{ color:"#0D1B2A" }}>3</div><div className="stat-l">Open CHITs</div></div>
+        <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}><div className="stat-n" style={{ color:"#2A7D4F" }}>4</div><div className="stat-l">Active Forms</div></div>
+      </div>
+
+      <div className="grid2">
+        <div>
+          <div className="potw-card">
+            <div className="potw-week">📖 {POTW.week}</div>
+            <div className="potw-title">POTW: {POTW.title}</div>
+            <div className="potw-body">{POTW.body}</div>
+            {POTW.points.map((p,i) => <div key={i} style={{ fontSize:"0.82rem", color:"#aaa", marginBottom:"2px" }}>✓ {p}</div>)}
+          </div>
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">📅 Upcoming Events</span>
+              <button className="btn btn-outline btn-sm" onClick={() => onNav("calendar")}>View All</button>
+            </div>
+            {EVENTS.slice(0,4).map((e,i) => (
+              <div className="event-row" key={i}>
+                <div className="event-date"><div className="event-day">{e.date}</div><div className="event-mo">{e.month}</div></div>
+                <div style={{ flex:1 }}>
+                  <div className="event-title">{e.title}</div>
+                  <div className="event-sub">{e.time} · {e.location}</div>
+                </div>
+                <span className="badge badge-navy">{e.type}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="card">
+            <div className="card-header"><span className="card-title">📋 My CHITs</span><button className="btn btn-outline btn-sm" onClick={() => onNav("chits")}>Open</button></div>
+            <div style={{ fontSize:"0.83rem", color:"#666" }}>🔒 Private — only visible to you and your chain of command.</div>
+          </div>
+          <div className="card">
+            <div className="card-header"><span className="card-title">❓ Academic Board</span><button className="btn btn-outline btn-sm" onClick={() => onNav("academic")}>Open</button></div>
+            <div style={{ fontSize:"0.88rem" }}>Questions needing answers: <strong style={{ color:"#BF5700" }}>1</strong></div>
+          </div>
+          <div className="card">
+            <div className="card-header"><span className="card-title">📝 Open Forms</span><button className="btn btn-outline btn-sm" onClick={() => onNav("forms")}>View</button></div>
+            <div style={{ fontSize:"0.88rem" }}>{FORMS.filter(f => f.status === "Open").length} forms open for your response.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CalendarPage() {
+  const { user } = useAuth();
+  return (
+    <div>
+      <div className="page-title"><span>Calendar</span> & POTW</div>
+      <div className="page-sub">Battalion schedule — connect Google Calendar ID in config to go live</div>
+      <div className="potw-card">
+        <div className="potw-week">📖 {POTW.week}</div>
+        <div className="potw-title">{POTW.title}</div>
+        <div className="potw-body">{POTW.body}</div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:"0.5rem", marginTop:"0.5rem" }}>
+          {POTW.points.map((p,i) => <span key={i} style={{ background:"rgba(255,255,255,0.1)", borderRadius:"20px", padding:"2px 10px", fontSize:"0.78rem" }}>✓ {p}</span>)}
+        </div>
+      </div>
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">📅 March 2026</span>
+          {canEdit(user,"potw") && <span style={{fontFamily:"Oswald",fontSize:"0.72rem",letterSpacing:"1.5px",textTransform:"uppercase",color:"#BF5700"}}>✏ Senior Staff — edit EVENTS array to update</span>}
+        </div>
+        {EVENTS.map((e,i) => (
+          <div className="event-row" key={i}>
+            <div className="event-date"><div className="event-day">{e.date}</div><div className="event-mo">{e.month}</div></div>
+            <div style={{ flex:1 }}>
+              <div className="event-title">{e.title}</div>
+              <div className="event-sub">🕐 {e.time} · 📍 {e.location}</div>
+            </div>
+            <span className="badge badge-navy">{e.type}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StructurePage() {
+  const [open, setOpen] = useState({ 0:true, 1:false, 2:false });
+  const total = BN.reduce((a, co) => a + co.platoons.reduce((b, p) => b + p.mids, 0), 0);
+  return (
+    <div>
+      <div className="page-title">BN <span>Structure</span></div>
+      <div className="page-sub">UT NROTC Battalion — {total} Midshipmen</div>
+      <div className="grid3" style={{ marginBottom:"1rem" }}>
+        {BN.map((co,i) => (
+          <div className="stat" key={i} style={{ borderLeftColor:co.color }}>
+            <div className="stat-n" style={{ color:co.color }}>{co.platoons.reduce((a,p) => a+p.mids, 0)}</div>
+            <div className="stat-l">{co.name}</div>
+          </div>
+        ))}
+      </div>
+      <div className="card" style={{ padding:"0.75rem 1.2rem", marginBottom:"1rem" }}>
+        <div style={{ display:"flex", gap:"1rem", flexWrap:"wrap", fontSize:"0.86rem", alignItems:"center" }}>
+          <span style={{ color:"#888", fontSize:"0.75rem", textTransform:"uppercase", letterSpacing:"1px" }}>BN CDR:</span> <strong>MIDN 1/C Hinz (BNCO)</strong>
+          <span style={{ color:"#888", fontSize:"0.75rem", textTransform:"uppercase", letterSpacing:"1px" }}>XO:</span> <strong>MIDN 1/C Townsend (BNXO)</strong>
+          <span style={{ color:"#888", fontSize:"0.75rem", textTransform:"uppercase", letterSpacing:"1px" }}>OPS:</span> <strong>MIDN 1/C Galan (OPS)</strong>
+        </div>
+      </div>
+      {BN.map((co, ci) => (
+        <div className="company-block" key={ci}>
+          <div className="company-header" style={{ background:co.color }} onClick={() => setOpen(s => ({ ...s, [ci]:!s[ci] }))}>
+            <div>
+              <div className="company-name">{co.name}</div>
+              <div className="company-co">CO: {co.co} · XO: {co.xo}</div>
+            </div>
+            <span>{open[ci] ? "▲" : "▼"}</span>
+          </div>
+          {open[ci] && (
+            <div className="platoon-grid">
+              {co.platoons.map((p, pi) => (
+                <div className="platoon-card" key={pi}>
+                  <div className="platoon-name">{p.name}</div>
+                  <div className="platoon-detail">PLT: {p.plt}</div>
+                  <div className="platoon-detail">PSG: {p.psg}</div>
+                  <div style={{ marginTop:"0.4rem" }}><span className="badge badge-orange">{p.mids} Mids</span></div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TrainingPage() {
+  const { user } = useAuth();
+  const [tab, setTab] = useState("pt");
+  const [open, setOpen] = useState({ 0:true, 1:false, 2:false });
+  return (
+    <div>
+      <div className="page-title">Training <span>Plans</span></div>
+      <div className="page-sub">Weekly PT and Leadership Lab Schedules</div>
+      <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1.25rem", borderBottom:"2px solid #eee", paddingBottom:"-2px" }}>
+        {["pt","leadlab"].map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{ padding:"0.5rem 1rem", fontFamily:"Oswald", fontSize:"0.8rem", letterSpacing:"1.5px", textTransform:"uppercase", cursor:"pointer", background:"none", border:"none", borderBottom: tab===t ? "2px solid #BF5700":"2px solid transparent", color: tab===t ? "#BF5700":"#888", marginBottom:"-2px" }}>
+            {t === "pt" ? "PT Plan" : "LeadLab"}
+          </button>
+        ))}
+      </div>
+      {tab === "pt" && (
+        <>
+          <div className="alert">💪 ACFT goal: All Mids score 60+ per event by Apr 30.</div>
+      {canEdit(user,"pt") && (
+        <div style={{marginBottom:"0.75rem"}}>
+          <span style={{fontFamily:"Oswald",fontSize:"0.72rem",letterSpacing:"1.5px",textTransform:"uppercase",color:"#BF5700"}}>✏ PTO Edit Mode — you can update this plan</span>
+        </div>
+      )}
+          {PT.map((d,i) => (
+            <div className="pt-block" key={i}>
+              <div className="pt-header" onClick={() => setOpen(s => ({ ...s, [i]:!s[i] }))}>
+                <span>{d.day} — {d.focus}</span>
+                <span>{open[i] ? "▲" : "▼"}</span>
+              </div>
+              {open[i] && d.exercises.map((ex,j) => (
+                <div className="pt-row" key={j}>
+                  <div className="pt-name">{ex.name}</div>
+                  <div className="pt-sets">{ex.sets}</div>
+                  {ex.notes && <div className="pt-notes">{ex.notes}</div>}
+                </div>
+              ))}
+            </div>
+          ))}
+        </>
+      )}
+      {tab === "leadlab" && canEdit(user,"leadlab") && (
+        <div style={{marginBottom:"0.75rem"}}>
+          <span style={{fontFamily:"Oswald",fontSize:"0.72rem",letterSpacing:"1.5px",textTransform:"uppercase",color:"#BF5700"}}>✏ TRAINO Edit Mode — you can update this schedule</span>
+        </div>
+      )}
+      {tab === "leadlab" && LEADLAB.map((ll,i) => (
+        <div className="card" key={i}>
+          <div className="card-header"><span className="card-title">{ll.title}</span><span className="badge badge-orange">{ll.date}</span></div>
+          <div style={{ marginBottom:"0.75rem" }}>
+            <div style={{ fontFamily:"Oswald", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.35rem" }}>Objectives</div>
+            {ll.objectives.map((o,j) => <div key={j} style={{ display:"flex", gap:"0.5rem", fontSize:"0.86rem", marginBottom:"0.2rem" }}><span style={{ color:"#BF5700", flexShrink:0 }}>▸</span>{o}</div>)}
+          </div>
+          <div style={{ background:"#f5f2ee", borderRadius:"6px", padding:"0.6rem 0.8rem", fontSize:"0.8rem", color:"#666" }}>📋 {ll.notes}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChitsPage({ chits, setChits }) {
+  const { user } = useAuth();
+  const coc = isCoC(user);
+  const [showModal, setShowModal] = useState(false);
+  const [toast, setToast] = useState("");
+  const [form, setForm] = useState({ date:"", reason:"", notes:"" });
+
+  const canSeeAll = isCoC(user);
+  const visible = canSeeAll ? chits : chits.filter(c => c.userId === user.id);
+
+  const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+
+  const submit = () => {
+    if (!form.date || !form.reason) return;
+    const c = {
+      id: "CHT-" + String(chits.length + 1).padStart(3, "0"),
+      userId: user.id,
+      name: user.name,
+      company: user.company,
+      platoon: user.platoon,
+      date: form.date,
+      reason: form.reason,
+      notes: form.notes,
+      status: "Pending",
+      route: [user.platoon + " PC", user.company + " Co CDR", "ADJ (Courtney)", "BNXO (Townsend)", "BNCO (Hinz)"],
+    };
+    setChits(prev => [...prev, c]);
+    setShowModal(false);
+    setForm({ date:"", reason:"", notes:"" });
+    fire("✅ CHIT submitted! Your chain of command has been notified.");
+  };
+
+  const updateStatus = (id, status) => {
+    setChits(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+    fire("CHIT " + id + " marked " + status + ".");
+  };
+
+  return (
+    <div>
+      <div className="page-title">CHIT <span>Routing</span></div>
+      <div className="page-sub">Submit and track absence requests</div>
+
+      {toast && <div className="alert alert-green">{toast}</div>}
+
+      <div className="privacy-note">
+        🔒 {coc
+          ? <strong>CoC View — you can see all battalion CHITs ({user.role.replace("_"," ").toUpperCase()})</strong>
+          : <span><strong>Private.</strong> Only you and your chain of command can see your CHITs.</span>}
+      </div>
+
+      <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
+        <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Submit New CHIT</button>
+      </div>
+
+      {visible.length === 0 && <div className="empty"><div style={{ fontSize:"2rem" }}>📋</div><div style={{ marginTop:"0.5rem" }}>No CHITs on file.</div></div>}
+
+      {visible.map((c, i) => (
+        <div className="chit-card" key={i}>
+          <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.3rem" }}>
+            <div>
+              <strong>{c.id}</strong>
+              {coc && <span style={{ color:"#888", fontSize:"0.82rem", marginLeft:"0.75rem" }}>{c.name} · {c.company} Co, {c.platoon} Plt</span>}
+            </div>
+            <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
+          </div>
+          <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · Absent: {c.date}</div>
+          {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", fontStyle:"italic", marginTop:"0.2rem" }}>{c.notes}</div>}
+          <div className="chit-route">
+            <span style={{ color:"#888", fontFamily:"Oswald", fontSize:"0.68rem", letterSpacing:"1.5px", textTransform:"uppercase" }}>Route:</span>
+            {c.route.map((n, j) => (
+              <span key={j} style={{ display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
+                <span className="chit-node">{n}</span>
+                {j < c.route.length - 1 && <span style={{ color:"#BF5700" }}>→</span>}
+              </span>
+            ))}
+          </div>
+          {coc && c.status === "Pending" && (
+            <div style={{ display:"flex", gap:"0.5rem", marginTop:"0.75rem" }}>
+              <button className="btn btn-green btn-sm" onClick={() => updateStatus(c.id, "Approved")}>✓ Approve</button>
+              <button className="btn btn-red btn-sm" onClick={() => updateStatus(c.id, "Denied")}>✕ Deny</button>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {showModal && (
+        <Modal title="Submit CHIT" onClose={() => setShowModal(false)}>
+          <div className="privacy-note">🔒 Private — only you and your CoC will see this.</div>
+          <div className="input-group">
+            <label className="input-label">Date of Absence</label>
+            <input className="input" type="date" value={form.date} onChange={e => setForm(s => ({ ...s, date:e.target.value }))} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Reason</label>
+            <select className="input" value={form.reason} onChange={e => setForm(s => ({ ...s, reason:e.target.value }))}>
+              <option value="">Select reason…</option>
+              <option>Medical Appointment</option>
+              <option>Academic Conflict — Exam</option>
+              <option>Academic Conflict — Lab</option>
+              <option>Family Emergency</option>
+              <option>Personal Emergency</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Notes (optional)</label>
+            <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} />
+          </div>
+          <div style={{ background:"#f5f2ee", borderRadius:"8px", padding:"0.65rem", fontSize:"0.8rem", color:"#666", marginBottom:"1rem" }}>
+            Submitting notifies: <strong>PC → Co CDR → ADJ → BNXO → BNCO</strong>
+          </div>
+          <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
+            <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-orange" onClick={submit}>Submit & Notify CoC</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function RosterPage() {
+  const [q, setQ] = useState("");
+  const [co, setCo] = useState("");
+  const fil = ROSTER.filter(p =>
+    (!q || p.name.toLowerCase().includes(q.toLowerCase()) || p.rank.toLowerCase().includes(q.toLowerCase())) &&
+    (!co || p.company === co)
+  );
+  return (
+    <div>
+      <div className="page-title">Recall <span>Roster</span></div>
+      <div className="page-sub">BN contact directory — replace ROSTER array with your real data, or connect Google Sheets</div>
+      <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap" }}>
+        <div style={{ position:"relative", flex:1, minWidth:"180px" }}>
+          <span style={{ position:"absolute", left:"0.7rem", top:"50%", transform:"translateY(-50%)", color:"#aaa" }}>🔍</span>
+          <input className="input" style={{ paddingLeft:"2.1rem" }} placeholder="Search name or rank…" value={q} onChange={e => setQ(e.target.value)} />
+        </div>
+        <select className="input" style={{ maxWidth:"170px" }} value={co} onChange={e => setCo(e.target.value)}>
+          <option value="">All Companies</option>
+          <option>BN</option><option>Marines</option><option>Navy Alpha</option><option>Navy Bravo</option>
+        </select>
+      </div>
+      <div className="card">
+        <div style={{ fontSize:"0.78rem", color:"#888", marginBottom:"0.75rem" }}>{fil.length} result{fil.length !== 1 ? "s" : ""}</div>
+        {fil.length === 0 && <div className="empty">No results found.</div>}
+        {fil.map((p, i) => (
+          <div className="roster-row" key={i}>
+            <div className="avatar">{p.initials}</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:600, fontSize:"0.9rem" }}>{p.name}</div>
+              <div style={{ fontSize:"0.78rem", color:"#BF5700", fontWeight:600 }}>{p.rank} · {p.year}</div>
+              <div style={{ fontSize:"0.78rem", color:"#888" }}>{p.company} Co · {p.platoon} Plt</div>
+            </div>
+            <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginLeft:"auto" }}>
+              {p.phone && <a href={"tel:" + p.phone}><button className="btn btn-outline btn-sm">📞 {p.phone}</button></a>}
+              {p.email && <a href={"mailto:" + p.email}><button className="btn btn-navy btn-sm">✉ Email</button></a>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FormsPage() {
+  const { user } = useAuth();
+  const coc = canEdit(user,"forms");
+  const [showModal, setShowModal] = useState(false);
+  const [toast, setToast] = useState("");
+  return (
+    <div>
+      <div className="page-title">Forms & <span>Surveys</span></div>
+      <div className="page-sub">Battalion Google Forms hub</div>
+      {toast && <div className="alert alert-green">{toast}</div>}
+      <div className="grid3" style={{ marginBottom:"1rem" }}>
+        <div className="stat"><div className="stat-n">{FORMS.filter(f => f.status==="Open").length}</div><div className="stat-l">Open Forms</div></div>
+        <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}><div className="stat-n" style={{ color:"#2A7D4F" }}>{FORMS.reduce((a,f) => a+f.responses,0)}</div><div className="stat-l">Total Responses</div></div>
+        <div className="stat" style={{ borderLeftColor:"#0D1B2A" }}><div className="stat-n" style={{ color:"#0D1B2A" }}>82</div><div className="stat-l">BN Strength</div></div>
+      </div>
+      {coc && <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}><button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Share New Form</button></div>}
+      {FORMS.map((f, i) => (
+        <div className="form-row" key={i}>
+          <div style={{ flex:1 }}>
+            <div style={{ fontWeight:600, marginBottom:"0.2rem" }}>{f.title}</div>
+            <div style={{ fontSize:"0.8rem", color:"#888" }}>Deadline: {f.deadline} · <span className="tag">{f.type}</span></div>
+          </div>
+          <div style={{ textAlign:"center", minWidth:"58px" }}>
+            <div style={{ fontFamily:"Oswald", fontSize:"1.4rem", fontWeight:700, color:"#BF5700", lineHeight:1 }}>{f.responses}</div>
+            <div style={{ fontSize:"0.68rem", color:"#888", textTransform:"uppercase" }}>/ {f.total}</div>
+            <div className="progress-bar"><div className="progress-fill" style={{ width: Math.round(f.responses/f.total*100) + "%" }} /></div>
+          </div>
+          <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+            <span className={`badge ${f.status==="Open" ? "badge-green":"badge-gray"}`}>{f.status}</span>
+            {f.status === "Open" && <button className="btn btn-orange btn-sm">Fill Out ↗</button>}
+            {coc && <button className="btn btn-outline btn-sm">Results</button>}
+          </div>
+        </div>
+      ))}
+      {showModal && (
+        <Modal title="Share New Form" onClose={() => setShowModal(false)}>
+          <div className="input-group"><label className="input-label">Form Title</label><input className="input" placeholder="e.g. ACFT Readiness Survey" /></div>
+          <div className="input-group"><label className="input-label">Google Form URL</label><input className="input" placeholder="https://forms.google.com/…" /></div>
+          <div className="input-group"><label className="input-label">Category</label>
+            <select className="input"><option>Admin</option><option>PT</option><option>Training</option><option>Event</option></select>
+          </div>
+          <div className="input-group"><label className="input-label">Deadline</label><input className="input" type="date" /></div>
+          <div className="input-group"><label className="input-label">Distribute To</label>
+            <select className="input"><option>Entire Battalion</option><option>Alpha Company</option><option>Bravo Company</option><option>Charlie Company</option></select>
+          </div>
+          <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
+            <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-orange" onClick={() => { setShowModal(false); setToast("Form shared with the battalion!"); }}>Share Form</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function AcademicPage() {
+  const { user } = useAuth();
+  const [qs, setQs] = useState(INIT_QS);
+  const [showModal, setShowModal] = useState(false);
+  const [ansFor, setAnsFor] = useState(null);
+  const [filter, setFilter] = useState("");
+  const [newQ, setNewQ] = useState({ subject:"", text:"" });
+  const [ansText, setAnsText] = useState("");
+
+  const subjects = [...new Set(qs.map(q => q.subject))];
+  const visible = qs.filter(q => !filter || q.subject === filter);
+
+  const postQ = () => {
+    if (!newQ.subject || !newQ.text) return;
+    setQs(prev => [{
+      id: Date.now(), authorId: user.id, author: user.name,
+      rank: user.rank, subject: newQ.subject, time: "Just now",
+      answered: false, text: newQ.text, answers: []
+    }, ...prev]);
+    setShowModal(false);
+    setNewQ({ subject:"", text:"" });
+  };
+
+  const postAns = (qid) => {
+    if (!ansText.trim()) return;
+    setQs(prev => prev.map(q => q.id === qid ? {
+      ...q, answered: true,
+      answers: [...q.answers, { author: user.name, rank: user.rank, text: ansText }]
+    } : q));
+    setAnsFor(null);
+    setAnsText("");
+  };
+
+  return (
+    <div>
+      <div className="page-title">Academic <span>Help Board</span></div>
+      <div className="page-sub">Post questions · Get answers from upperclassmen</div>
+      <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1.25rem", flexWrap:"wrap", alignItems:"center" }}>
+        <select className="input" style={{ maxWidth:"200px" }} value={filter} onChange={e => setFilter(e.target.value)}>
+          <option value="">All Subjects</option>
+          {subjects.map(s => <option key={s}>{s}</option>)}
+        </select>
+        <span style={{ fontSize:"0.82rem", color:"#888", flex:1 }}>
+          {qs.filter(q => !q.answered).length} question{qs.filter(q => !q.answered).length !== 1 ? "s" : ""} need answers
+        </span>
+        <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Ask a Question</button>
+      </div>
+
+      {visible.map((q, i) => (
+        <div className="q-card" key={i}>
+          <div className="q-meta">
+            <div className="avatar" style={{ width:32, height:32, fontSize:"0.72rem" }}>
+              {q.author.split(",")[0]?.[0]}{q.author.split(",")[1]?.trim()?.[0]}
+            </div>
+            <strong style={{ fontSize:"0.85rem" }}>{q.author}</strong>
+            <span className="badge badge-navy">{q.rank}</span>
+            <span className="tag">{q.subject}</span>
+            <span style={{ fontSize:"0.75rem", color:"#aaa" }}>{q.time}</span>
+            <span className={`badge ${q.answered ? "badge-green":"badge-orange"}`} style={{ marginLeft:"auto" }}>
+              {q.answered ? "Answered" : "Needs Answer"}
+            </span>
+          </div>
+          <div className="q-text">{q.text}</div>
+          {q.answers.length > 0 && (
+            <div>
+              <div style={{ fontFamily:"Oswald", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>
+                Answers ({q.answers.length})
+              </div>
+              {q.answers.map((a, j) => (
+                <div className="answer-block" key={j}>
+                  <div className="answer-author">{a.author} · {a.rank}</div>
+                  {a.text}
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ marginTop:"0.75rem" }}>
+            <button className="btn btn-outline btn-sm" onClick={() => setAnsFor(ansFor === q.id ? null : q.id)}>
+              {ansFor === q.id ? "Cancel" : "✏ Add Answer"}
+            </button>
+          </div>
+          {ansFor === q.id && (
+            <div style={{ marginTop:"0.75rem" }}>
+              <textarea className="input" style={{ minHeight:"80px", resize:"vertical", marginBottom:"0.5rem" }}
+                placeholder="Write your answer…" value={ansText} onChange={e => setAnsText(e.target.value)} />
+              <button className="btn btn-orange btn-sm" onClick={() => postAns(q.id)}>Post Answer</button>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {showModal && (
+        <Modal title="Ask a Question" onClose={() => setShowModal(false)}>
+          <div className="input-group">
+            <label className="input-label">Subject</label>
+            <select className="input" value={newQ.subject} onChange={e => setNewQ(s => ({ ...s, subject:e.target.value }))}>
+              <option value="">Select subject…</option>
+              <option>Calculus I</option><option>Calculus II</option><option>Calculus III</option>
+              <option>Physics I</option><option>Physics II</option><option>Chemistry</option>
+              <option>Statics</option><option>Naval Science</option><option>Other</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Your Question</label>
+            <textarea className="input" style={{ minHeight:"100px", resize:"vertical" }}
+              placeholder="Be specific — include what you have already tried…"
+              value={newQ.text} onChange={e => setNewQ(s => ({ ...s, text:e.target.value }))} />
+          </div>
+          <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
+            <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-orange" onClick={postQ}>Post Question</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ─── ROOT APP ────────────────────────────────────────────────
+const NAV = [
+  { id:"dashboard", label:"Dashboard",     icon:"🏠" },
+  { id:"calendar",  label:"Calendar/POTW", icon:"📅" },
+  { id:"structure", label:"BN Structure",  icon:"🏛" },
+  { id:"training",  label:"PT & LeadLab",  icon:"💪" },
+  { id:"chits",     label:"CHIT Routing",  icon:"📋" },
+  { id:"roster",    label:"Recall Roster", icon:"📒" },
+  { id:"forms",     label:"Forms",         icon:"📝" },
+  { id:"academic",  label:"Academic Board",icon:"🎓" },
+];
+
+const MNAV = [
+  { id:"dashboard", label:"Home",   icon:"🏠" },
+  { id:"calendar",  label:"Cal",    icon:"📅" },
+  { id:"chits",     label:"CHITs",  icon:"📋" },
+  { id:"roster",    label:"Roster", icon:"📒" },
+  { id:"academic",  label:"Help",   icon:"🎓" },
+];
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [page, setPage] = useState("dashboard");
+  const [chits, setChits] = useState(INIT_CHITS);
+
+  if (!user) {
+    return (
+      <>
+        <style>{CSS}</style>
+        <LoginPage onLogin={setUser} />
+      </>
+    );
+  }
+
+  const renderPage = () => {
+    if (page === "dashboard")  return <Dashboard onNav={setPage} />;
+    if (page === "calendar")   return <CalendarPage />;
+    if (page === "structure")  return <StructurePage />;
+    if (page === "training")   return <TrainingPage />;
+    if (page === "chits")      return <ChitsPage chits={chits} setChits={setChits} />;
+    if (page === "roster")     return <RosterPage />;
+    if (page === "forms")      return <FormsPage />;
+    if (page === "academic")   return <AcademicPage />;
+    return <Dashboard onNav={setPage} />;
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, setUser }}>
+      <style>{CSS}</style>
+      <div>
+        <header className="topbar">
+          <div style={{ display:"flex", alignItems:"center" }}>
+            <div className="topbar-logo">UT</div>
+            <div className="topbar-title">NROTC <span>Battalion</span></div>
+          </div>
+          <div className="topbar-right">
+            <div style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
+              <span className="rank-pill">{user.rank.split("/")[1] || user.rank}</span>
+              <span style={{ color:"#ccc", fontSize:"0.85rem" }}>{user.name.split(",")[0]}</span>
+              {isCoC(user) && <span className="role-pill">{user.role.replace("_"," ")}</span>}
+            </div>
+            <button className="btn-logout" onClick={() => { setUser(null); setPage("dashboard"); }}>Sign Out</button>
+          </div>
+        </header>
+
+        <div className="layout">
+          <nav className="sidebar">
+            <div className="sidebar-group">
+              <div className="sidebar-label">Navigation</div>
+              {NAV.map(item => (
+                <button key={item.id} className={`nav-btn ${page === item.id ? "active" : ""}`} onClick={() => setPage(item.id)}>
+                  <span>{item.icon}</span> {item.label}
+                </button>
+              ))}
+            </div>
+            <div className="sidebar-footer">
+              <strong style={{ color:"#9ab0c4" }}>{user.name}</strong><br />
+              {user.company} Co · {user.platoon}<br />
+              <span style={{ color:"#F7941D" }}>{user.role.replace("_"," ").toUpperCase()}</span>
+            </div>
+          </nav>
+
+          <main className="content">
+            {renderPage()}
+          </main>
+        </div>
+
+        <nav className="mobile-nav">
+          <div className="mobile-nav-inner">
+            {MNAV.map(item => (
+              <button key={item.id} className={`mobile-btn ${page === item.id ? "active" : ""}`} onClick={() => setPage(item.id)}>
+                <span className="mobile-icon">{item.icon}</span>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </nav>
+      </div>
+    </AuthContext.Provider>
+  );
+}
