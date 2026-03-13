@@ -261,7 +261,7 @@ const FORMS = [
 //   6. Set the same token below
 //   7. Save — the app will pull live data on each page load.
 //      If the URL is empty, the hardcoded USERS array above is used as a fallback.
-const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbw9qfSJUbSQMZqLY54jNma8ySYG-Hl7nVdTo-qWFbBAQTvfFQWA5qN7VK37LxKFsGjKnA/exec";
+const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbxYN2LwoOq3a73HKb6b9M3OBhPHK7wT41CdurcoRQByRtIAyoUWmzxeKeRu1kHWs3WRZw/exec";
 const SHEETS_API_TOKEN = "UT_NROTC";
 
 // Sheet columns A→J: company, name, class, email, phone number, major, campus, eid, password, billet
