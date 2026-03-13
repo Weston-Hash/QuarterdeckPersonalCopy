@@ -1003,12 +1003,15 @@ function FirstLoginGate({ onPasswordChange }) {
 
 // ─── PAGES ──────────────────────────────────────────────────
 
-function LoginPage({ onLogin, userList }) {
+function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   const [name, setName] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr]   = useState("");
 
+  const locked = !sheetSynced; // inputs disabled until roster is fully loaded
+
   const go = () => {
+    if (locked) return;
     const q = name.trim().toLowerCase();
     const user = userList.find(u =>
       u.name.toLowerCase() === q ||
@@ -1030,19 +1033,57 @@ function LoginPage({ onLogin, userList }) {
           <div className="login-title">NROTC <span>BN</span></div>
         </div>
         <div className="login-sub">Sign in with your battalion credentials</div>
-        {userList.length === 0 && <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem" }}>⏳ Loading roster from Google Sheets…</div>}
+
+        {/* Sync status banners */}
+        {!sheetSynced && (
+          <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem", display:"flex", alignItems:"center", gap:"0.6rem" }}>
+            <span style={{ fontSize:"1.1rem" }}>⏳</span>
+            <span>Syncing roster from Google Sheets… please wait.</span>
+          </div>
+        )}
+        {sheetSynced && sheetError && (
+          <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>
+            ⚠ Could not reach Google Sheets. Check your connection and{" "}
+            <button onClick={onRetry} style={{ background:"none", border:"none", color:"#C0392B", fontWeight:700, textDecoration:"underline", cursor:"pointer", fontSize:"inherit", padding:0 }}>retry</button>.
+          </div>
+        )}
+
         {err && <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>⚠ {err}</div>}
+
         <div className="input-group">
           <label className="input-label">Last Name, Email, or EID</label>
-          <input className="input" placeholder="Last name, email, or EID" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && go()} />
+          <input
+            className="input"
+            placeholder={locked ? "Waiting for roster sync…" : "Last name, email, or EID"}
+            value={name}
+            disabled={locked}
+            style={locked ? { opacity:0.45, cursor:"not-allowed" } : {}}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && go()}
+          />
         </div>
         <div className="input-group">
           <label className="input-label">Password</label>
-          <input className="input" type="password" placeholder="Your password" value={pass} onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === "Enter" && go()} />
+          <input
+            className="input"
+            type="password"
+            placeholder={locked ? "Waiting for roster sync…" : "Your password"}
+            value={pass}
+            disabled={locked}
+            style={locked ? { opacity:0.45, cursor:"not-allowed" } : {}}
+            onChange={e => setPass(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && go()}
+          />
         </div>
-        <button className="btn btn-orange" style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem" }} onClick={go}>
-          Sign In →
+        <button
+          className="btn btn-orange"
+          style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity: locked ? 0.45 : 1, cursor: locked ? "not-allowed" : "pointer" }}
+          disabled={locked}
+          onClick={go}
+        >
+          {locked ? "⏳ Syncing…" : "Sign In →"}
         </button>
+
         <div className="hint-box">
           <strong>Username:</strong> your last name, full email, or EID<br />
           Contact your S1 (ADJ) if you need a password reset.
@@ -2107,21 +2148,33 @@ export default function App() {
   const [showAccount, setShowAccount] = useState(false);
   // userList: populated from Google Sheet on mount; empty until fetch completes
   const [userList, setUserList]   = useState([]);
+  // sheetSynced: true only after the Sheets fetch resolves OR rejects (never while in-flight)
+  const [sheetSynced, setSheetSynced] = useState(!SHEETS_API_URL); // skip wait if no URL
+  const [sheetError,  setSheetError]  = useState(false);
 
-  // Fetch roster from private Google Sheet via Apps Script on mount
-  useEffect(() => {
-    if (!SHEETS_API_URL) return;
+  const fetchRoster = () => {
+    if (!SHEETS_API_URL) { setSheetSynced(true); return; }
+    setSheetSynced(false);
+    setSheetError(false);
     const url = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}`;
     fetch(url)
       .then(r => r.json())
       .then(data => {
         if (data.users && data.users.length > 0) {
-          const mapped = data.users.map((row, i) => sheetRowToUser(row, i));
-          setUserList(mapped);
+          setUserList(data.users.map((row, i) => sheetRowToUser(row, i)));
+        } else {
+          setSheetError(true);
         }
+        setSheetSynced(true);
       })
-      .catch(() => {}); // fetch failed — userList stays empty
-  }, []);
+      .catch(() => {
+        setSheetError(true);
+        setSheetSynced(true);
+      });
+  };
+
+  // Fetch roster from private Google Sheet via Apps Script on mount
+  useEffect(fetchRoster, []);
 
   const handleLogin = (loggedInUser) => {
     // Sync with live userList in case Sheets data was fetched
@@ -2138,7 +2191,7 @@ export default function App() {
     return (
       <>
         <style>{CSS}</style>
-        <LoginPage onLogin={handleLogin} userList={userList} />
+        <LoginPage onLogin={handleLogin} userList={userList} sheetSynced={sheetSynced} sheetError={sheetError} onRetry={fetchRoster} />
       </>
     );
   }
