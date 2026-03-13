@@ -1025,7 +1025,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
       <div className="login-card">
         <div className="login-logo">
           <div className="login-mark">UT</div>
-          <div className="login-title">NROTC <span>BN</span></div>
+          <div className="login-title">The <span>Quarterdeck</span></div>
         </div>
         <div className="login-sub">Sign in with your battalion credentials</div>
 
@@ -1236,7 +1236,7 @@ function StructurePage({ userList }) {
   return (
     <div>
       <div className="page-title">BN <span>Structure</span></div>
-      <div className="page-sub">UT NROTC Battalion — {grandTotal} Personnel</div>
+      <div className="page-sub">The Quarterdeck — {grandTotal} Personnel</div>
 
       {/* Big Four */}
       <div className="card" style={{ padding:"1rem 1.2rem", marginBottom:"1rem" }}>
@@ -2662,7 +2662,7 @@ export default function App() {
         <header className="topbar">
           <div style={{ display:"flex", alignItems:"center" }}>
             <div className="topbar-logo">UT</div>
-            <div className="topbar-title">NROTC <span>Battalion</span></div>
+            <div className="topbar-title">The <span>Quarterdeck</span></div>
           </div>
           <div className="topbar-right">
             <div
