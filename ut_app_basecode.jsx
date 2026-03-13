@@ -1095,16 +1095,55 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   );
 }
 
-function Dashboard({ onNav, userList, forms }) {
+function Dashboard({ onNav, userList, forms, reminder, setReminder }) {
   const { user } = useAuth();
+  const canManageReminder = isBigFour(user);
+  const [editingReminder, setEditingReminder] = React.useState(false);
+  const [draftText, setDraftText] = React.useState(reminder.text);
+
+  const saveReminder = () => {
+    setReminder({ enabled: draftText.trim().length > 0, text: draftText.trim() });
+    setEditingReminder(false);
+  };
+
   return (
     <div>
       <div className="page-title">BN <span>Dashboard</span></div>
       <div className="page-sub">Welcome, {user.rank} {user.name} — Spring 2026</div>
 
-      <div className="alert">
-        🔔 <strong>Reminder:</strong> ACFT Readiness survey closes Mar 18. PT formation tomorrow 0530 at Gregory Gym.
-      </div>
+      {/* Reminder — visible to all when enabled; Big Four can manage it */}
+      {reminder.enabled && reminder.text && (
+        <div className="alert">
+          🔔 <strong>Reminder:</strong> {reminder.text}
+        </div>
+      )}
+      {canManageReminder && (
+        <div style={{ marginBottom:"1rem" }}>
+          {editingReminder ? (
+            <div className="stage-action-box">
+              <div className="stage-action-label">BN Reminder</div>
+              <textarea
+                className="input"
+                style={{ minHeight:"60px", resize:"vertical", marginBottom:"0.5rem", fontSize:"0.85rem" }}
+                placeholder="Type reminder text… (leave blank to hide)"
+                value={draftText}
+                onChange={e => setDraftText(e.target.value)}
+              />
+              <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                <button className="btn btn-green btn-sm" onClick={saveReminder}>Save</button>
+                {reminder.enabled && (
+                  <button className="btn btn-red btn-sm" onClick={() => { setReminder({ enabled:false, text:"" }); setDraftText(""); setEditingReminder(false); }}>Turn Off</button>
+                )}
+                <button className="btn btn-outline btn-sm" onClick={() => { setDraftText(reminder.text); setEditingReminder(false); }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button className="btn btn-outline btn-sm" onClick={() => { setDraftText(reminder.text); setEditingReminder(true); }}>
+              {reminder.enabled ? "✏ Edit Reminder" : "+ Add Reminder"}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="grid3" style={{ marginBottom:"1rem" }}>
         <div className="stat"><div className="stat-n">{userList.length}</div><div className="stat-l">BN Strength</div></div>
@@ -2585,6 +2624,7 @@ const MNAV = [
 export default function App() {
   const [user, setUser]           = useState(null);
   const [page, setPage]           = useState("dashboard");
+  const [reminder, setReminder]   = useState({ enabled: false, text: "" });
   const [chits, setChits]         = useState(INIT_CHITS);
   const [fitrebs, setFitrebs]     = useState(INIT_FITREBS);
   const [showAccount, setShowAccount] = useState(false);
@@ -2655,7 +2695,7 @@ export default function App() {
   }
 
   const renderPage = () => {
-    if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} forms={forms} />;
+    if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} forms={forms} reminder={reminder} setReminder={setReminder} />;
     if (page === "calendar")   return <CalendarPage />;
     if (page === "structure")  return <StructurePage userList={userList} />;
     if (page === "training")   return <TrainingPage ptPlans={ptPlans} setPtPlans={setPtPlans} llSessions={llSessions} setLlSessions={setLlSessions} />;
