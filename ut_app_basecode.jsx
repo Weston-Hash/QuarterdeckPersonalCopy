@@ -858,34 +858,121 @@ function CalendarPage() {
   );
 }
 
-function StructurePage() {
-  const [open, setOpen] = useState({ 0:true, 1:false, 2:false });
-  const total = BN.reduce((a, co) => a + co.platoons.reduce((b, p) => b + p.mids, 0), 0);
+function StructurePage({ userList }) {
+  const [open, setOpen] = useState({});
+  const [billetsOpen, setBilletsOpen] = useState(true);
+
+  // Helper: find user(s) by role/billet
+  const byRole = (role) => userList.filter(u => u.role === role);
+  const byBillet = (billet) => userList.filter(u => u.billet === billet);
+  const fmt = (u) => u ? `${u.rank} ${u.name}` : "—";
+
+  // Big Four: BNCO → BNXO → OPS → SEL
+  const bnco = byRole("bn_cdr")[0];
+  const bnxo = byRole("xo")[0];
+  const ops  = byRole("ops")[0];
+  const sel  = userList.find(u => u.role === "sel" && u.company === "BN");
+
+  // All billet holders (non-MIR, non-Big Four, plus CCs and PCs)
+  const billetHolders = userList.filter(u =>
+    u.billet && u.billet !== "MIR" &&
+    !["BNCO","BNXO","OPS"].includes(u.billet) &&
+    !(u.billet === "SEL" && u.company === "BN")
+  );
+
+  // Company definitions derived from live data
+  const COMPANY_DEFS = [
+    { key: "Marines",    name: "Marines Company",    color: "#8B0000" },
+    { key: "Navy Alpha", name: "Navy Alpha Company",  color: "#003087" },
+    { key: "Navy Bravo", name: "Navy Bravo Company",  color: "#0D1B2A" },
+  ];
+
+  // Build companies dynamically from userList
+  const companies = COMPANY_DEFS.map(def => {
+    const members = userList.filter(u => u.company === def.key);
+    const co  = members.find(u => u.role === "co_cdr");
+    const sel = members.find(u => u.role === "sel");
+
+    // Group platoons by platoon field matching "Xst/nd/rd/th PC"
+    const platoonNames = [...new Set(members.map(u => u.platoon).filter(p => /\d+(st|nd|rd|th) PC/i.test(p)))].sort();
+    const platoons = platoonNames.map(pName => {
+      const pMembers = members.filter(u => u.platoon === pName);
+      const pc = pMembers.find(u => u.role === "plt_cdr");
+      const mids = pMembers.filter(u => u.role === "mid");
+      return { name: pName, pc, mids: mids.length, total: pMembers.length };
+    });
+
+    return { ...def, co, sel, platoons, total: members.length };
+  });
+
+  const grandTotal = userList.length;
+
   return (
     <div>
       <div className="page-title">BN <span>Structure</span></div>
-      <div className="page-sub">UT NROTC Battalion — {total} Midshipmen</div>
+      <div className="page-sub">UT NROTC Battalion — {grandTotal} Personnel</div>
+
+      {/* Big Four */}
+      <div className="card" style={{ padding:"1rem 1.2rem", marginBottom:"1rem" }}>
+        <div style={{ fontSize:"0.72rem", textTransform:"uppercase", letterSpacing:"1.5px", color:"#888", marginBottom:"0.6rem", fontWeight:600 }}>Battalion Leadership</div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:"0.75rem" }}>
+          {[
+            { label:"BNCO", user:bnco },
+            { label:"BNXO", user:bnxo },
+            { label:"OPS",  user:ops },
+            { label:"SEL",  user:sel },
+          ].map(({ label, user:u }) => (
+            <div key={label} style={{ background:"#f8f8f8", borderRadius:"8px", padding:"0.6rem 0.8rem", borderLeft:"3px solid #BF5700" }}>
+              <div style={{ fontSize:"0.68rem", textTransform:"uppercase", letterSpacing:"1px", color:"#BF5700", fontWeight:700 }}>{label}</div>
+              <div style={{ fontSize:"0.88rem", fontWeight:600, marginTop:"0.15rem" }}>{u ? fmt(u) : "—"}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Company Stats */}
       <div className="grid3" style={{ marginBottom:"1rem" }}>
-        {BN.map((co,i) => (
-          <div className="stat" key={i} style={{ borderLeftColor:co.color }}>
-            <div className="stat-n" style={{ color:co.color }}>{co.platoons.reduce((a,p) => a+p.mids, 0)}</div>
+        {companies.map((co, i) => (
+          <div className="stat" key={i} style={{ borderLeftColor: co.color }}>
+            <div className="stat-n" style={{ color: co.color }}>{co.total}</div>
             <div className="stat-l">{co.name}</div>
           </div>
         ))}
       </div>
-      <div className="card" style={{ padding:"0.75rem 1.2rem", marginBottom:"1rem" }}>
-        <div style={{ display:"flex", gap:"1rem", flexWrap:"wrap", fontSize:"0.86rem", alignItems:"center" }}>
-          <span style={{ color:"#888", fontSize:"0.75rem", textTransform:"uppercase", letterSpacing:"1px" }}>BN CDR:</span> <strong>MIDN 1/C Hinz (BNCO)</strong>
-          <span style={{ color:"#888", fontSize:"0.75rem", textTransform:"uppercase", letterSpacing:"1px" }}>XO:</span> <strong>MIDN 1/C Townsend (BNXO)</strong>
-          <span style={{ color:"#888", fontSize:"0.75rem", textTransform:"uppercase", letterSpacing:"1px" }}>OPS:</span> <strong>MIDN 1/C Galan (OPS)</strong>
+
+      {/* Billets Section */}
+      <div className="company-block">
+        <div className="company-header" style={{ background:"#333" }} onClick={() => setBilletsOpen(s => !s)}>
+          <div>
+            <div className="company-name">Billet Holders</div>
+            <div className="company-co">{billetHolders.length} billets assigned</div>
+          </div>
+          <span>{billetsOpen ? "▲" : "▼"}</span>
         </div>
+        {billetsOpen && (
+          <div style={{ padding:"0.75rem 1rem" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))", gap:"0.5rem" }}>
+              {billetHolders.map((u, i) => (
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"0.45rem 0.7rem", background:"#f8f8f8", borderRadius:"6px", fontSize:"0.82rem" }}>
+                  <span style={{ fontWeight:600 }}>{fmt(u)}</span>
+                  <span className="badge badge-orange" style={{ fontSize:"0.68rem" }}>{u.billet}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-      {BN.map((co, ci) => (
+
+      {/* Companies - Collapsible */}
+      {companies.map((co, ci) => (
         <div className="company-block" key={ci}>
-          <div className="company-header" style={{ background:co.color }} onClick={() => setOpen(s => ({ ...s, [ci]:!s[ci] }))}>
+          <div className="company-header" style={{ background: co.color }} onClick={() => setOpen(s => ({ ...s, [ci]: !s[ci] }))}>
             <div>
               <div className="company-name">{co.name}</div>
-              <div className="company-co">CO: {co.co} · XO: {co.xo}</div>
+              <div className="company-co">
+                CO: {co.co ? fmt(co.co) : "—"}
+                {co.sel ? ` · SEL: ${fmt(co.sel)}` : ""}
+              </div>
             </div>
             <span>{open[ci] ? "▲" : "▼"}</span>
           </div>
@@ -894,9 +981,11 @@ function StructurePage() {
               {co.platoons.map((p, pi) => (
                 <div className="platoon-card" key={pi}>
                   <div className="platoon-name">{p.name}</div>
-                  <div className="platoon-detail">PLT: {p.plt}</div>
-                  <div className="platoon-detail">PSG: {p.psg}</div>
-                  <div style={{ marginTop:"0.4rem" }}><span className="badge badge-orange">{p.mids} Mids</span></div>
+                  <div className="platoon-detail">PC: {p.pc ? fmt(p.pc) : "—"}</div>
+                  <div style={{ marginTop:"0.4rem" }}>
+                    <span className="badge badge-orange">{p.mids} Mids</span>
+                    <span style={{ fontSize:"0.72rem", color:"#888", marginLeft:"0.4rem" }}>{p.total} total</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1564,7 +1653,7 @@ export default function App() {
   const renderPage = () => {
     if (page === "dashboard")  return <Dashboard onNav={setPage} />;
     if (page === "calendar")   return <CalendarPage />;
-    if (page === "structure")  return <StructurePage />;
+    if (page === "structure")  return <StructurePage userList={userList} />;
     if (page === "training")   return <TrainingPage />;
     if (page === "chits")      return <ChitsPage chits={chits} setChits={setChits} />;
     if (page === "fitreps")    return <FitrepsPage fitrebs={fitrebs} setFitrebs={setFitrebs} />;
