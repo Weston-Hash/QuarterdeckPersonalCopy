@@ -1673,7 +1673,7 @@ function ChitsPage({ chits, setChits, userList }) {
 
   return (
     <div>
-      <div className="page-title">CHIT <span>Routing</span></div>
+      <div className="page-title"><span>CHITs</span></div>
       <div className="page-sub">Submit and track absence requests</div>
 
       {toast && <div className="alert alert-green">{toast}</div>}
@@ -2549,7 +2549,7 @@ const NAV = [
   { id:"calendar",  label:"POTW",          icon:"📅" },
   { id:"structure", label:"BN Structure",  icon:"🏛" },
   { id:"training",  label:"PT & LL",       icon:"💪" },
-  { id:"chits",     label:"CHIT Routing",  icon:"📋" },
+  { id:"chits",     label:"CHITs",         icon:"📋" },
   { id:"fitreps",   label:"FITREPs",       icon:"📊" },
   { id:"roster",    label:"Recall Roster", icon:"📒" },
   { id:"forms",     label:"Forms",         icon:"📝" },
