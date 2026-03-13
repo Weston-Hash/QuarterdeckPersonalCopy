@@ -601,21 +601,25 @@ function sheetRowToUser(row, index) {
 }
 
 // ─── FITREP DATA ─────────────────────────────────────────────
-// Pipeline: Submitted → PC Review → Co CDR Review → BNXO Review → BNCO Approval → Complete
+// Pipeline: Submitted → PC Review → Co CDR Review → ADJ Review → BNXO Review → BNCO Approval → Complete
+// Used only as a reference template for stage icons; each fitrep stores its own stages array.
 const FITREP_STAGES = [
   { name:"Submitted",      approverRole:null,      icon:"📝" },
-  { name:"PC Review",      approverRole:"plt_cdr",  icon:"👤" },
-  { name:"Co CDR Review",  approverRole:"co_cdr",   icon:"⭐" },
-  { name:"BNXO Review",    approverRole:"xo",       icon:"🎖" },
-  { name:"BNCO Approval",  approverRole:"bn_cdr",   icon:"✅" },
-  { name:"Complete",       approverRole:null,       icon:"🏅" },
+  { name:"PC Review",      approverRole:"plt_cdr", icon:"👤" },
+  { name:"Co CDR Review",  approverRole:"co_cdr",  icon:"⭐" },
+  { name:"ADJ Review",     approverRole:"adj",     icon:"🗂" },
+  { name:"BNXO Review",    approverRole:"xo",      icon:"🎖" },
+  { name:"BNCO Approval",  approverRole:"bn_cdr",  icon:"✅" },
+  { name:"Complete",       approverRole:null,      icon:"🏅" },
 ];
 
-// Returns true if `user` is the designated approver for the fitrep's current stage
+// Returns true if `user` is the designated approver for the fitrep's current stage.
+// Uses per-fitrep stages array (same pattern as canActOnChit).
 function canActOnFitrep(user, fitrep) {
-  if (!user || fitrep.currentStage >= FITREP_STAGES.length - 1) return false;
-  const stage = FITREP_STAGES[fitrep.currentStage];
-  if (!stage.approverRole) return false;
+  if (!user || !fitrep?.stages || fitrep.currentStage >= fitrep.stages.length - 1) return false;
+  const stage = fitrep.stages[fitrep.currentStage];
+  if (!stage?.approverRole) return false;
+  if (stage.approverId && user.id === stage.approverId) return true;
   if (stage.approverRole === "plt_cdr")
     return user.role === "plt_cdr" &&
       normalizeCompany(user.company) === normalizeCompany(fitrep.company) &&
@@ -625,52 +629,72 @@ function canActOnFitrep(user, fitrep) {
   return user.role === stage.approverRole;
 }
 
+// Only those in the routing chain (or the subject) can view a fitrep.
+// OPS and BN SEL are NOT in the pipeline and therefore cannot see fitreps.
 function canViewFitrep(user, fitrep) {
   if (!user || !fitrep) return false;
+  // Subject always sees their own
   if (matchesUserIdentity(user, { id: fitrep.subjectId, name: fitrep.subjectName })) return true;
-  if (user.role === "bn_cdr" || user.role === "xo") return true;
-  if (user.role === "co_cdr") {
-    return normalizeCompany(user.company) === normalizeCompany(fitrep.company);
-  }
-  if (user.role === "plt_cdr") {
-    return normalizeCompany(user.company) === normalizeCompany(fitrep.company) &&
-      normalizePlatoon(user.platoon) === normalizePlatoon(fitrep.platoon);
-  }
-  return false;
+  // Check if user is listed in any routing stage
+  return !!fitrep.stages?.some(stage => {
+    if (!stage.approverRole) return false;
+    if (stage.approverId && matchesUserIdentity(user, { id: stage.approverId })) return true;
+    if (stage.approverRole === "plt_cdr") {
+      return user.role === "plt_cdr" &&
+        normalizeCompany(user.company) === normalizeCompany(fitrep.company) &&
+        normalizePlatoon(user.platoon) === normalizePlatoon(fitrep.platoon);
+    }
+    if (stage.approverRole === "co_cdr") {
+      return user.role === "co_cdr" && normalizeCompany(user.company) === normalizeCompany(fitrep.company);
+    }
+    return user.role === stage.approverRole;
+  });
+}
+
+// Helper: build a blank approval stage node for demo data (no specific approver ID)
+function _demoStage(name, approverRole, icon, completedBy, completedAt, comment) {
+  return { name, routeLabel:"", approverId:null, approverRole, approverName:"", icon,
+    completedBy: completedBy || null, completedAt: completedAt || null, comment: comment || "" };
 }
 
 const INIT_FITREBS = [
   {
     id:"FIT-001", subjectId:"u023", subjectName:"Locklin", subjectRank:"MIDN 4/C",
-    company:"Alpha", platoon:"1st PC", period:"Spring 2026", currentStage:1,
+    company:"Alpha", platoon:"1st PC", period:"Spring 2026", status:"Pending", currentStage:1,
     stages:[
-      { name:"Submitted",     completedBy:"Locklin",  completedAt:"2026-03-01", comment:"" },
-      { name:"PC Review",     completedBy:null,       completedAt:null,         comment:"" },
-      { name:"Co CDR Review", completedBy:null,       completedAt:null,         comment:"" },
-      { name:"BNXO Review",   completedBy:null,       completedAt:null,         comment:"" },
-      { name:"BNCO Approval", completedBy:null,       completedAt:null,         comment:"" },
+      _demoStage("Submitted",      null,      "📝", "Locklin",  "2026-03-01", ""),
+      _demoStage("PC Review",      "plt_cdr", "👤", null, null, ""),
+      _demoStage("Co CDR Review",  "co_cdr",  "⭐", null, null, ""),
+      _demoStage("ADJ Review",     "adj",     "🗂", null, null, ""),
+      _demoStage("BNXO Review",    "xo",      "🎖", null, null, ""),
+      _demoStage("BNCO Approval",  "bn_cdr",  "✅", null, null, ""),
+      _demoStage("Complete",       null,      "🏅", null, null, ""),
     ],
   },
   {
     id:"FIT-002", subjectId:"u044", subjectName:"Madulara", subjectRank:"MIDN 4/C",
-    company:"Bravo", platoon:"1st PC", period:"Spring 2026", currentStage:2,
+    company:"Bravo", platoon:"1st PC", period:"Spring 2026", status:"Pending", currentStage:2,
     stages:[
-      { name:"Submitted",     completedBy:"Madulara",  completedAt:"2026-03-02", comment:"" },
-      { name:"PC Review",     completedBy:"Alcazar",   completedAt:"2026-03-05", comment:"Strong performer. Shows initiative in platoon activities." },
-      { name:"Co CDR Review", completedBy:null,        completedAt:null,         comment:"" },
-      { name:"BNXO Review",   completedBy:null,        completedAt:null,         comment:"" },
-      { name:"BNCO Approval", completedBy:null,        completedAt:null,         comment:"" },
+      _demoStage("Submitted",      null,      "📝", "Madulara", "2026-03-02", ""),
+      _demoStage("PC Review",      "plt_cdr", "👤", "Alcazar",  "2026-03-05", "Strong performer. Shows initiative in platoon activities."),
+      _demoStage("Co CDR Review",  "co_cdr",  "⭐", null, null, ""),
+      _demoStage("ADJ Review",     "adj",     "🗂", null, null, ""),
+      _demoStage("BNXO Review",    "xo",      "🎖", null, null, ""),
+      _demoStage("BNCO Approval",  "bn_cdr",  "✅", null, null, ""),
+      _demoStage("Complete",       null,      "🏅", null, null, ""),
     ],
   },
   {
     id:"FIT-003", subjectId:"u083", subjectName:"Crimmins", subjectRank:"MIDN 4/C",
-    company:"Charlie", platoon:"1st PC", period:"Spring 2026", currentStage:3,
+    company:"Charlie", platoon:"1st PC", period:"Spring 2026", status:"Pending", currentStage:3,
     stages:[
-      { name:"Submitted",     completedBy:"Crimmins",  completedAt:"2026-03-01", comment:"" },
-      { name:"PC Review",     completedBy:"Burrell",   completedAt:"2026-03-04", comment:"Excellent leadership potential. Consistently performs above expectations." },
-      { name:"Co CDR Review", completedBy:"Torres",    completedAt:"2026-03-07", comment:"Concur with PC assessment. Recommend early promotion consideration." },
-      { name:"BNXO Review",   completedBy:null,        completedAt:null,         comment:"" },
-      { name:"BNCO Approval", completedBy:null,        completedAt:null,         comment:"" },
+      _demoStage("Submitted",      null,      "📝", "Crimmins", "2026-03-01", ""),
+      _demoStage("PC Review",      "plt_cdr", "👤", "Burrell",  "2026-03-04", "Excellent leadership potential. Consistently performs above expectations."),
+      _demoStage("Co CDR Review",  "co_cdr",  "⭐", "Torres",   "2026-03-07", "Concur with PC assessment. Recommend early promotion consideration."),
+      _demoStage("ADJ Review",     "adj",     "🗂", null, null, ""),
+      _demoStage("BNXO Review",    "xo",      "🎖", null, null, ""),
+      _demoStage("BNCO Approval",  "bn_cdr",  "✅", null, null, ""),
+      _demoStage("Complete",       null,      "🏅", null, null, ""),
     ],
   },
 ];
@@ -1089,44 +1113,14 @@ function Dashboard({ onNav, userList }) {
   );
 }
 
+// CalendarPage: displays the static POTW schedule.
+// Live Google Calendar integration would require a GCAL API key (see GCAL_CALENDAR_ID above).
+// Until that is configured, POTW.operations is the authoritative source.
 function CalendarPage() {
-  const { user } = useAuth();
-  const [events, setEvents] = useState(null); // null = loading, [] = loaded (empty or no key)
-
   const mon = getCurrentWeekMonday();
   const weekNum = getWeekNumber(mon);
   const weekRange = formatWeekRange(mon);
   const weekLabel = `Week ${weekNum} — ${SEMESTER_LABEL}`;
-
-  useEffect(() => {
-    if (!GCAL_API_KEY) { setEvents([]); return; }
-    const fri = new Date(mon); fri.setDate(fri.getDate() + 4); fri.setHours(23, 59, 59, 999);
-    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(GCAL_CALENDAR_ID)}/events`
-      + `?key=${GCAL_API_KEY}&timeMin=${mon.toISOString()}&timeMax=${fri.toISOString()}`
-      + `&singleEvents=true&orderBy=startTime`;
-    fetch(url)
-      .then(r => r.json())
-      .then(data => {
-        const M = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-        const ops = (data.items || []).map(e => {
-          const start = new Date(e.start.dateTime || e.start.date);
-          const isAllDay = !e.start.dateTime;
-          const timeStr = isAllDay ? "All Day"
-            : `${formatEventTime(e.start.dateTime)}–${formatEventTime(e.end.dateTime)}`;
-          return {
-            date: `${start.getDate()} ${M[start.getMonth()]}`,
-            title: e.summary || "(no title)",
-            time: timeStr,
-            location: e.location || "",
-            type: guessEventType(e.summary),
-          };
-        });
-        setEvents(ops);
-      })
-      .catch(() => setEvents([]));
-  }, []);
-
-  const displayEvents = events !== null ? events : POTW.operations;
 
   return (
     <div>
@@ -1138,13 +1132,11 @@ function CalendarPage() {
       <div className="card">
         <div className="card-header">
           <span className="card-title">📅 {weekRange}</span>
-          {!GCAL_API_KEY && <span style={{fontSize:"0.75rem",color:"#999"}}>Add GCAL_API_KEY to load live events</span>}
-          {events === null && GCAL_API_KEY && <span style={{fontSize:"0.75rem",color:"#999"}}>Loading…</span>}
         </div>
-        {displayEvents.length === 0 && (
-          <div style={{fontSize:"0.88rem",color:"#666",padding:"0.5rem 0"}}>No events found for this week.</div>
+        {POTW.operations.length === 0 && (
+          <div style={{fontSize:"0.88rem",color:"#666",padding:"0.5rem 0"}}>No events scheduled for this week.</div>
         )}
-        {displayEvents.map((e,i) => (
+        {POTW.operations.map((e,i) => (
           <div className="event-row" key={i}>
             <div className="event-date"><div className="event-day">{e.date.split(" ")[0]}</div><div className="event-mo">{e.date.split(" ")[1] || ""}</div></div>
             <div style={{ flex:1 }}>
@@ -1352,41 +1344,86 @@ function TrainingPage() {
   );
 }
 
-function ChitsPage({ chits, setChits }) {
+function ChitsPage({ chits, setChits, userList }) {
   const { user } = useAuth();
-  const coc = isCoC(user);
+  const canSubmit = canSubmitChit(user);
+  const needsRouteSelect = requiresChitRouteSelection(user);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState("");
-  const [form, setForm] = useState({ date:"", reason:"", notes:"" });
+  const [form, setForm] = useState({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"" });
+  const [activeComment, setActiveComment] = useState(null);
+  const [commentText, setCommentText] = useState("");
 
-  const canSeeAll = isCoC(user);
-  const visible = canSeeAll ? chits : chits.filter(c => c.userId === user.id);
+  // Only show CHITs the logged-in user is permitted to see (routing line + subject)
+  const visible = chits.filter(c => canViewChit(user, c));
 
-  const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+  const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
+
+  const getPlatoons = (company) => {
+    const pcs = userList.filter(u => normalizeCompany(u.company) === company && u.role === "plt_cdr");
+    return [...new Set(pcs.map(u => normalizePlatoon(u.platoon)).filter(Boolean))].sort();
+  };
+
+  const routeHint = () => {
+    if (user.role === "adj")    return "BNXO → BNCO";
+    if (user.role === "co_cdr") return "ADJ → BNXO → BNCO";
+    if (user.role === "plt_cdr") return "CC → ADJ → BNXO → BNCO";
+    return "PC → CC → ADJ → BNXO → BNCO";
+  };
 
   const submit = () => {
     if (!form.date || !form.reason) return;
+    if (needsRouteSelect && (!form.routeCompany || !form.routePlatoon)) {
+      fire("⚠ Please select your company and platoon."); return;
+    }
+    const routeContext = resolveChitRoutingContext(user, form);
+    const approvalChain = buildChitApprovalChain(userList, user, routeContext);
+    if (approvalChain.length === 0) {
+      fire("⚠ Could not build approval chain. Ensure your company/platoon has assigned personnel."); return;
+    }
+    const now = new Date().toISOString().split("T")[0];
+    const stages = buildChitStages(user.name, now, approvalChain);
     const c = {
       id: "CHT-" + String(chits.length + 1).padStart(3, "0"),
       userId: user.id,
       name: user.name,
-      company: normalizeCompany(user.company),
-      platoon: user.platoon,
+      company: routeContext.company,
+      platoon: routeContext.platoon,
       date: form.date,
       reason: form.reason,
       notes: form.notes,
       status: "Pending",
-      route: [user.platoon + " PC", getCompanyShortName(user.company) + " Co CDR", "ADJ (Courtney)", "BNXO (Townsend)", "BNCO (Hinz)"],
+      currentStage: 1,
+      stages,
     };
     setChits(prev => [...prev, c]);
     setShowModal(false);
-    setForm({ date:"", reason:"", notes:"" });
-    fire("✅ CHIT submitted! Your chain of command has been notified.");
+    setForm({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"" });
+    fire("✅ CHIT submitted and routed to your chain of command.");
   };
 
-  const updateStatus = (id, status) => {
-    setChits(prev => prev.map(c => c.id === id ? { ...c, status } : c));
-    fire("CHIT " + id + " marked " + status + ".");
+  const advanceStage = (id, action) => {
+    const comment = commentText.trim();
+    setChits(prev => prev.map(c => {
+      if (c.id !== id) return c;
+      const updated = [...c.stages];
+      updated[c.currentStage] = {
+        ...updated[c.currentStage],
+        completedBy: user.name,
+        completedAt: new Date().toISOString().split("T")[0],
+        comment,
+      };
+      const next = action === "denied"
+        ? c.stages.length - 1
+        : Math.min(c.currentStage + 1, c.stages.length - 1);
+      const status = action === "denied" ? "Denied"
+        : next === c.stages.length - 1 ? "Approved"
+        : "Pending";
+      return { ...c, currentStage: next, stages: updated, status };
+    }));
+    setActiveComment(null);
+    setCommentText("");
+    fire("CHIT updated.");
   };
 
   return (
@@ -1397,49 +1434,128 @@ function ChitsPage({ chits, setChits }) {
       {toast && <div className="alert alert-green">{toast}</div>}
 
       <div className="privacy-note">
-        🔒 {coc
-          ? <strong>CoC View — you can see all battalion CHITs ({user.role.replace("_"," ").toUpperCase()})</strong>
-          : <span><strong>Private.</strong> Only you and your chain of command can see your CHITs.</span>}
+        🔒 <strong>Private.</strong> Only you and your chain of command can see your CHITs.
       </div>
 
-      <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
-        <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Submit New CHIT</button>
-      </div>
-
-      {visible.length === 0 && <div className="empty"><div style={{ fontSize:"2rem" }}>📋</div><div style={{ marginTop:"0.5rem" }}>No CHITs on file.</div></div>}
-
-      {visible.map((c, i) => (
-        <div className="chit-card" key={i}>
-          <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.3rem" }}>
-            <div>
-              <strong>{c.id}</strong>
-              {coc && <span style={{ color:"#888", fontSize:"0.82rem", marginLeft:"0.75rem" }}>{c.name} · {formatCompanyCoLabel(c.company)}, {c.platoon} Plt</span>}
-            </div>
-            <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
-          </div>
-          <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · Absent: {c.date}</div>
-          {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", fontStyle:"italic", marginTop:"0.2rem" }}>{c.notes}</div>}
-          <div className="chit-route">
-            <span style={{ color:"#888", fontFamily:"Oswald", fontSize:"0.68rem", letterSpacing:"1.5px", textTransform:"uppercase" }}>Route:</span>
-            {c.route.map((n, j) => (
-              <span key={j} style={{ display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
-                <span className="chit-node">{n}</span>
-                {j < c.route.length - 1 && <span style={{ color:"#BF5700" }}>→</span>}
-              </span>
-            ))}
-          </div>
-          {coc && c.status === "Pending" && (
-            <div style={{ display:"flex", gap:"0.5rem", marginTop:"0.75rem" }}>
-              <button className="btn btn-green btn-sm" onClick={() => updateStatus(c.id, "Approved")}>✓ Approve</button>
-              <button className="btn btn-red btn-sm" onClick={() => updateStatus(c.id, "Denied")}>✕ Deny</button>
-            </div>
-          )}
+      {canSubmit && (
+        <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
+          <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Submit New CHIT</button>
         </div>
-      ))}
+      )}
+
+      {visible.length === 0 && (
+        <div className="empty">
+          <div style={{ fontSize:"2rem" }}>📋</div>
+          <div style={{ marginTop:"0.5rem" }}>No CHITs on file.</div>
+        </div>
+      )}
+
+      {visible.map((c, i) => {
+        const canAct = canActOnChit(user, c);
+        const isDone = c.status === "Approved" || c.status === "Denied";
+        const currentStageName = c.stages?.[c.currentStage]?.name || "";
+
+        return (
+          <div className="chit-card" key={i}>
+            <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.3rem" }}>
+              <div>
+                <strong>{c.id}</strong>
+                <span style={{ color:"#888", fontSize:"0.82rem", marginLeft:"0.75rem" }}>
+                  {c.name} · {formatCompanyCoLabel(c.company)}, {formatPlatoonLabel(c.platoon)}
+                </span>
+              </div>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+                <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
+                {canAct && !isDone && <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>}
+              </div>
+            </div>
+            <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · Absent: {c.date}</div>
+            {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", fontStyle:"italic", marginTop:"0.2rem" }}>{c.notes}</div>}
+
+            {/* Stage tracker */}
+            {c.stages && (
+              <div className="stage-track" style={{ marginTop:"0.75rem" }}>
+                {c.stages.map((s, j) => {
+                  const done   = j < c.currentStage;
+                  const active = j === c.currentStage && !isDone;
+                  return (
+                    <div key={j} className={`stage-item ${done ? "done" : active ? "active" : ""}`}>
+                      <div className={`stage-dot ${done ? "done" : active ? "active" : "pending"}`}>
+                        {done ? "✓" : s.icon}
+                      </div>
+                      <div className={`stage-label ${done ? "done" : active ? "active" : ""}`}>{s.name}</div>
+                      {active && canAct && <div className="stage-approver active">● You</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Completed stage comments */}
+            {c.stages?.some(s => s.completedBy && s.comment) && (
+              <div style={{ marginTop:"0.5rem" }}>
+                {c.stages.map((s, j) => s.completedBy && s.comment ? (
+                  <div className="stage-comment" key={j}>
+                    <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
+                    {s.comment}
+                  </div>
+                ) : null)}
+              </div>
+            )}
+
+            {/* Action box for current approver */}
+            {canAct && !isDone && (
+              <div className="stage-action-box" style={{ marginTop:"0.75rem" }}>
+                <div className="stage-action-label">⭐ Your Review — {currentStageName}</div>
+                {activeComment === c.id ? (
+                  <>
+                    <textarea
+                      className="input"
+                      style={{ minHeight:"70px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
+                      placeholder="Add comments (optional)…"
+                      value={commentText}
+                      onChange={e => setCommentText(e.target.value)}
+                    />
+                    <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                      <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
+                      <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "denied")}>✕ Deny</button>
+                      <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>Cancel</button>
+                    </div>
+                  </>
+                ) : (
+                  <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(c.id); setCommentText(""); }}>
+                    ✏ Review CHIT
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       {showModal && (
         <Modal title="Submit CHIT" onClose={() => setShowModal(false)}>
           <div className="privacy-note">🔒 Private — only you and your CoC will see this.</div>
+          {needsRouteSelect && (
+            <>
+              <div className="input-group">
+                <label className="input-label">Your Company</label>
+                <select className="input" value={form.routeCompany} onChange={e => setForm(s => ({ ...s, routeCompany:e.target.value, routePlatoon:"" }))}>
+                  <option value="">Select company…</option>
+                  {["Alpha","Bravo","Charlie"].map(co => <option key={co} value={co}>{co}</option>)}
+                </select>
+              </div>
+              {form.routeCompany && (
+                <div className="input-group">
+                  <label className="input-label">Your Platoon</label>
+                  <select className="input" value={form.routePlatoon} onChange={e => setForm(s => ({ ...s, routePlatoon:e.target.value }))}>
+                    <option value="">Select platoon…</option>
+                    {getPlatoons(form.routeCompany).map(p => <option key={p} value={p}>{formatPlatoonLabel(p)}</option>)}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
           <div className="input-group">
             <label className="input-label">Date of Absence</label>
             <input className="input" type="date" value={form.date} onChange={e => setForm(s => ({ ...s, date:e.target.value }))} />
@@ -1461,11 +1577,11 @@ function ChitsPage({ chits, setChits }) {
             <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} />
           </div>
           <div style={{ background:"#f5f2ee", borderRadius:"8px", padding:"0.65rem", fontSize:"0.8rem", color:"#666", marginBottom:"1rem" }}>
-            Submitting notifies: <strong>PC → Co CDR → ADJ → BNXO → BNCO</strong>
+            Your CHIT routes to: <strong>{routeHint()}</strong>
           </div>
           <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
             <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
-            <button className="btn btn-orange" onClick={submit}>Submit & Notify CoC</button>
+            <button className="btn btn-orange" onClick={submit}>Submit CHIT</button>
           </div>
         </Modal>
       )}
@@ -1690,24 +1806,64 @@ function AcademicPage() {
 }
 
 // ─── FITREP PAGE ─────────────────────────────────────────────
-function FitrepsPage({ fitrebs, setFitrebs }) {
+function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   const { user } = useAuth();
-  const [activeComment, setActiveComment] = useState(null); // id of fitrep being commented on
+  const canSubmit = canSubmitChit(user); // same Big Four restriction
+  const needsRouteSelect = requiresChitRouteSelection(user);
+  const [showModal, setShowModal]         = useState(false);
+  const [submitForm, setSubmitForm]       = useState({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"" });
+  const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText]     = useState("");
   const [toast, setToast]                 = useState("");
   const [filter, setFilter]               = useState("");
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
-  // Scope: seniors/adj see all; co_cdr sees their company; plt_cdr sees their platoon; mids see only their own
-  const visible = (() => {
-    if (isSenior(user) || user.role === "adj") return fitrebs;
-    if (user.role === "co_cdr")  return fitrebs.filter(f => normalizeCompany(f.company) === normalizeCompany(user.company));
-    if (user.role === "plt_cdr") return fitrebs.filter(f => normalizeCompany(f.company) === normalizeCompany(user.company) && f.platoon === user.platoon);
-    return fitrebs.filter(f => f.subjectId === user.id);
-  })();
-
+  // Only show FITREPs the user is permitted to see (routing line + subject)
+  const visible  = fitrebs.filter(f => canViewFitrep(user, f));
   const filtered = filter ? visible.filter(f => normalizeCompany(f.company) === filter) : visible;
+
+  const getPlatoons = (company) => {
+    const pcs = userList.filter(u => normalizeCompany(u.company) === company && u.role === "plt_cdr");
+    return [...new Set(pcs.map(u => normalizePlatoon(u.platoon)).filter(Boolean))].sort();
+  };
+
+  const routeHint = () => {
+    if (user.role === "adj")     return "BNXO → BNCO";
+    if (user.role === "co_cdr")  return "ADJ → BNXO → BNCO";
+    if (user.role === "plt_cdr") return "CC → ADJ → BNXO → BNCO";
+    return "PC → CC → ADJ → BNXO → BNCO";
+  };
+
+  const handleSubmit = () => {
+    if (!submitForm.period) return;
+    if (needsRouteSelect && (!submitForm.routeCompany || !submitForm.routePlatoon)) {
+      fire("⚠ Please select your company and platoon."); return;
+    }
+    const routeContext = resolveChitRoutingContext(user, submitForm);
+    const approvalChain = buildChitApprovalChain(userList, user, routeContext);
+    if (approvalChain.length === 0) {
+      fire("⚠ Could not build approval chain. Ensure your company/platoon has assigned personnel."); return;
+    }
+    const now = new Date().toISOString().split("T")[0];
+    const stages = buildChitStages(user.name, now, approvalChain);
+    const f = {
+      id: "FIT-" + String(fitrebs.length + 1).padStart(3, "0"),
+      subjectId: user.id,
+      subjectName: user.name,
+      subjectRank: user.rank,
+      company: routeContext.company,
+      platoon: routeContext.platoon,
+      period: submitForm.period,
+      status: "Pending",
+      currentStage: 1,
+      stages,
+    };
+    setFitrebs(prev => [...prev, f]);
+    setShowModal(false);
+    setSubmitForm({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"" });
+    fire("✅ FITREP submitted and routed to your chain of command.");
+  };
 
   const advanceStage = (id) => {
     const comment = commentText.trim();
@@ -1720,68 +1876,71 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
         completedAt: new Date().toISOString().split("T")[0],
         comment,
       };
-      const next = Math.min(f.currentStage + 1, FITREP_STAGES.length - 1);
-      return { ...f, currentStage: next, stages: updated };
+      const next = Math.min(f.currentStage + 1, f.stages.length - 1);
+      const status = next === f.stages.length - 1 ? "Approved" : "Pending";
+      return { ...f, currentStage: next, stages: updated, status };
     }));
     setActiveComment(null);
     setCommentText("");
     fire("✅ FITREP advanced. Stage comments saved.");
   };
 
-  const stageLabel = (idx) => {
-    const s = FITREP_STAGES[idx];
-    if (!s) return "";
-    if (idx === FITREP_STAGES.length - 1) return "Complete";
-    return s.name;
-  };
-
-  const companies = [...new Set(fitrebs.map(f => normalizeCompany(f.company)))];
+  const companies = [...new Set(visible.map(f => normalizeCompany(f.company)))];
 
   return (
     <div>
       <div className="page-title">FITREP <span>Tracker</span></div>
-      <div className="page-sub">Fitness Report pipeline — {fitrebs.length} report{fitrebs.length !== 1 ? "s" : ""} in system</div>
+      <div className="page-sub">Fitness Report pipeline — {visible.length} report{visible.length !== 1 ? "s" : ""} visible to you</div>
 
       {toast && <div className="alert alert-green">{toast}</div>}
 
-      {/* Summary stats */}
+      <div className="privacy-note">
+        🔒 <strong>Private.</strong> Only you and your chain of command can see your FITREPs.
+      </div>
+
+      {/* Summary stats (based on what user can see) */}
       <div className="grid3" style={{ marginBottom:"1rem" }}>
         <div className="stat">
-          <div className="stat-n">{fitrebs.filter(f => f.currentStage > 0 && f.currentStage < FITREP_STAGES.length - 1).length}</div>
+          <div className="stat-n">{visible.filter(f => f.currentStage > 0 && f.currentStage < f.stages.length - 1).length}</div>
           <div className="stat-l">In Progress</div>
         </div>
         <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}>
-          <div className="stat-n" style={{ color:"#2A7D4F" }}>{fitrebs.filter(f => f.currentStage === FITREP_STAGES.length - 1).length}</div>
+          <div className="stat-n" style={{ color:"#2A7D4F" }}>{visible.filter(f => f.currentStage === f.stages.length - 1).length}</div>
           <div className="stat-l">Complete</div>
         </div>
         <div className="stat" style={{ borderLeftColor:"#0D1B2A" }}>
-          <div className="stat-n" style={{ color:"#0D1B2A" }}>{fitrebs.filter(f => f.currentStage === 1).length}</div>
+          <div className="stat-n" style={{ color:"#0D1B2A" }}>{visible.filter(f => f.currentStage === 1).length}</div>
           <div className="stat-l">Awaiting PC</div>
         </div>
       </div>
 
-      {/* Filters (CoC only) */}
-      {isCoC(user) && (
-        <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap" }}>
+      <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap", alignItems:"center" }}>
+        {/* Company filter — only show if user can see multiple companies */}
+        {companies.length > 1 && (
           <select className="input" style={{ maxWidth:"200px" }} value={filter} onChange={e => setFilter(e.target.value)}>
             <option value="">All Companies</option>
             {companies.map(c => <option key={c} value={c}>{getCompanyShortName(c)}</option>)}
           </select>
-          <span style={{ fontSize:"0.82rem", color:"#888", alignSelf:"center" }}>{filtered.length} report{filtered.length !== 1 ? "s" : ""} shown</span>
-        </div>
-      )}
+        )}
+        <span style={{ fontSize:"0.82rem", color:"#888", flex:1 }}>
+          {filtered.length} report{filtered.length !== 1 ? "s" : ""} shown
+        </span>
+        {canSubmit && (
+          <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Submit FITREP</button>
+        )}
+      </div>
 
       {filtered.length === 0 && (
         <div className="empty">
-          <div style={{ fontSize:"2rem" }}>📋</div>
+          <div style={{ fontSize:"2rem" }}>📊</div>
           <div style={{ marginTop:"0.5rem" }}>No FITREPs on file.</div>
         </div>
       )}
 
       {filtered.map(f => {
         const canAct = canActOnFitrep(user, f);
-        const isDone = f.currentStage >= FITREP_STAGES.length - 1;
-        const currentStageName = stageLabel(f.currentStage);
+        const isDone = f.currentStage >= f.stages.length - 1;
+        const currentStageName = isDone ? "Complete" : (f.stages?.[f.currentStage]?.name || "");
 
         return (
           <div className="fitrep-card" key={f.id}>
@@ -1789,7 +1948,9 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
             <div className="fitrep-header">
               <div>
                 <strong style={{ fontSize:"0.95rem" }}>{f.subjectRank} {f.subjectName}</strong>
-                <div style={{ fontSize:"0.78rem", color:"#888", marginTop:"1px" }}>{formatCompanyCoLabel(f.company)} · {f.platoon} · {f.period}</div>
+                <div style={{ fontSize:"0.78rem", color:"#888", marginTop:"1px" }}>
+                  {formatCompanyCoLabel(f.company)} · {formatPlatoonLabel(f.platoon)} · {f.period}
+                </div>
               </div>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
                 <span className="badge badge-navy">{f.id}</span>
@@ -1803,13 +1964,12 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
               </div>
             </div>
 
-            {/* Stage tracker */}
+            {/* Stage tracker — uses per-fitrep stages */}
             <div className="fitrep-body">
               <div className="stage-track">
-                {FITREP_STAGES.map((s, i) => {
-                  const done    = i < f.currentStage;
-                  const active  = i === f.currentStage && !isDone;
-                  const pending = i > f.currentStage;
+                {f.stages.map((s, i) => {
+                  const done   = i < f.currentStage;
+                  const active = i === f.currentStage && !isDone;
                   return (
                     <div key={i} className={`stage-item ${done ? "done" : active ? "active" : ""}`}>
                       <div className={`stage-dot ${done ? "done" : active ? "active" : "pending"}`}>
@@ -1822,13 +1982,13 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
                 })}
               </div>
 
-              {/* Stage comments (completed stages) */}
+              {/* Completed stage comments */}
               {f.stages.some(s => s.completedBy && s.comment) && (
                 <div style={{ marginTop:"0.75rem" }}>
                   <div style={{ fontFamily:"Oswald", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>Stage Comments</div>
                   {f.stages.map((s, i) => s.completedBy && s.comment ? (
                     <div className="stage-comment" key={i}>
-                      <div className="stage-comment-by">{FITREP_STAGES[i]?.name} · {s.completedBy} · {s.completedAt}</div>
+                      <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
                       {s.comment}
                     </div>
                   ) : null)}
@@ -1868,6 +2028,52 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
           </div>
         );
       })}
+
+      {/* Submit FITREP modal */}
+      {showModal && (
+        <Modal title="Submit FITREP" onClose={() => setShowModal(false)}>
+          <div className="privacy-note">🔒 Private — only you and your CoC will see this.</div>
+          {needsRouteSelect && (
+            <>
+              <div className="input-group">
+                <label className="input-label">Your Company</label>
+                <select className="input" value={submitForm.routeCompany} onChange={e => setSubmitForm(s => ({ ...s, routeCompany:e.target.value, routePlatoon:"" }))}>
+                  <option value="">Select company…</option>
+                  {["Alpha","Bravo","Charlie"].map(co => <option key={co} value={co}>{co}</option>)}
+                </select>
+              </div>
+              {submitForm.routeCompany && (
+                <div className="input-group">
+                  <label className="input-label">Your Platoon</label>
+                  <select className="input" value={submitForm.routePlatoon} onChange={e => setSubmitForm(s => ({ ...s, routePlatoon:e.target.value }))}>
+                    <option value="">Select platoon…</option>
+                    {getPlatoons(submitForm.routeCompany).map(p => <option key={p} value={p}>{formatPlatoonLabel(p)}</option>)}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
+          <div className="input-group">
+            <label className="input-label">Period</label>
+            <select className="input" value={submitForm.period} onChange={e => setSubmitForm(s => ({ ...s, period:e.target.value }))}>
+              <option>Spring 2026</option>
+              <option>Fall 2025</option>
+              <option>Spring 2025</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Notes (optional)</label>
+            <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} value={submitForm.notes} onChange={e => setSubmitForm(s => ({ ...s, notes:e.target.value }))} />
+          </div>
+          <div style={{ background:"#f5f2ee", borderRadius:"8px", padding:"0.65rem", fontSize:"0.8rem", color:"#666", marginBottom:"1rem" }}>
+            Your FITREP routes to: <strong>{routeHint()}</strong>
+          </div>
+          <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
+            <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-orange" onClick={handleSubmit}>Submit FITREP</button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -1952,8 +2158,8 @@ export default function App() {
     if (page === "calendar")   return <CalendarPage />;
     if (page === "structure")  return <StructurePage userList={userList} />;
     if (page === "training")   return <TrainingPage />;
-    if (page === "chits")      return <ChitsPage chits={chits} setChits={setChits} />;
-    if (page === "fitreps")    return <FitrepsPage fitrebs={fitrebs} setFitrebs={setFitrebs} />;
+    if (page === "chits")      return <ChitsPage chits={chits} setChits={setChits} userList={userList} />;
+    if (page === "fitreps")    return <FitrepsPage fitrebs={fitrebs} setFitrebs={setFitrebs} userList={userList} />;
     if (page === "roster")     return <RosterPage userList={userList} />;
     if (page === "forms")      return <FormsPage />;
     if (page === "academic")   return <AcademicPage />;
