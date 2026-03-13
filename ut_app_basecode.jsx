@@ -338,8 +338,10 @@ function buildChitStages(submitterName, submittedAt, approvalChain) {
 }
 
 function canActOnChit(user, chit) {
-  if (!user || !chit?.stages || chit.status === "Approved" || chit.status === "Denied") return false;
+  if (!user || !chit?.stages || chit.status === "Approved" || chit.status === "Denied" || chit.status === "Returned") return false;
   if (chit.currentStage >= chit.stages.length - 1) return false;
+  // Enforce CoC order: every prior stage must be completed before acting on the current one
+  if (!chit.stages.slice(0, chit.currentStage).every(s => s.completedBy)) return false;
   const stage = chit.stages[chit.currentStage];
   if (!stage?.approverRole) return false;
   if (stage.approverId && user.id === stage.approverId) return true;
@@ -611,7 +613,9 @@ const FITREP_STAGES = [
 // Returns true if `user` is the designated approver for the fitrep's current stage.
 // Uses per-fitrep stages array (same pattern as canActOnChit).
 function canActOnFitrep(user, fitrep) {
-  if (!user || !fitrep?.stages || fitrep.currentStage >= fitrep.stages.length - 1) return false;
+  if (!user || !fitrep?.stages || fitrep.status === "Returned" || fitrep.currentStage >= fitrep.stages.length - 1) return false;
+  // Enforce CoC order: every prior stage must be completed before acting on the current one
+  if (!fitrep.stages.slice(0, fitrep.currentStage).every(s => s.completedBy)) return false;
   const stage = fitrep.stages[fitrep.currentStage];
   if (!stage?.approverRole) return false;
   if (stage.approverId && user.id === stage.approverId) return true;
@@ -842,11 +846,14 @@ const CSS = `
   .stage-dot { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1rem; border:3px solid #eee; background:white; z-index:1; position:relative; flex-shrink:0; }
   .stage-dot.done  { border-color:#2A7D4F; background:#2A7D4F; color:white; }
   .stage-dot.active { border-color:#BF5700; background:#BF5700; color:white; box-shadow:0 0 0 4px rgba(191,87,0,0.2); animation: pulse 2s infinite; }
-  .stage-dot.pending { border-color:#ddd; background:#f5f5f5; color:#aaa; }
+  .stage-dot.pending  { border-color:#ddd; background:#f5f5f5; color:#aaa; }
+  .stage-dot.returned { border-color:#9b1c1c; background:#9b1c1c; color:white; }
+  .stage-item.returned::after { background:#9b1c1c; }
   @keyframes pulse { 0%,100% { box-shadow:0 0 0 4px rgba(191,87,0,0.2); } 50% { box-shadow:0 0 0 8px rgba(191,87,0,0.08); } }
   .stage-label { font-size:0.65rem; text-align:center; margin-top:0.35rem; text-transform:uppercase; letter-spacing:0.5px; line-height:1.3; color:#888; font-family:Oswald; }
-  .stage-label.active { color:#BF5700; font-weight:700; }
-  .stage-label.done   { color:#2A7D4F; }
+  .stage-label.active   { color:#BF5700; font-weight:700; }
+  .stage-label.done     { color:#2A7D4F; }
+  .stage-label.returned { color:#9b1c1c; font-weight:700; }
   .stage-approver { font-size:0.6rem; color:#aaa; text-align:center; }
   .stage-approver.active { color:#BF5700; }
 
@@ -1658,10 +1665,10 @@ function ChitsPage({ chits, setChits, userList }) {
         completedAt: new Date().toISOString().split("T")[0],
         comment,
       };
-      const next = action === "denied"
-        ? c.stages.length - 1
+      const next = action === "returned"
+        ? c.currentStage   // stay at denial stage so audit trail is visible
         : Math.min(c.currentStage + 1, c.stages.length - 1);
-      const status = action === "denied" ? "Denied"
+      const status = action === "returned" ? "Returned"
         : next === c.stages.length - 1 ? "Approved"
         : "Pending";
       return { ...c, currentStage: next, stages: updated, status };
@@ -1697,7 +1704,7 @@ function ChitsPage({ chits, setChits, userList }) {
 
       {visible.map((c, i) => {
         const canAct = canActOnChit(user, c);
-        const isDone = c.status === "Approved" || c.status === "Denied";
+        const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
         const currentStageName = c.stages?.[c.currentStage]?.name || "";
 
         return (
@@ -1710,7 +1717,7 @@ function ChitsPage({ chits, setChits, userList }) {
                 </span>
               </div>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
-                <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
+                <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" || c.status==="Returned" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
                 {canAct && !isDone && <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>}
               </div>
             </div>
@@ -1734,14 +1741,15 @@ function ChitsPage({ chits, setChits, userList }) {
             {c.stages && (
               <div className="stage-track" style={{ marginTop:"0.75rem" }}>
                 {c.stages.map((s, j) => {
-                  const done   = j < c.currentStage;
-                  const active = j === c.currentStage && !isDone;
+                  const done     = j < c.currentStage;
+                  const returned = j === c.currentStage && c.status === "Returned";
+                  const active   = j === c.currentStage && !isDone;
                   return (
-                    <div key={j} className={`stage-item ${done ? "done" : active ? "active" : ""}`}>
-                      <div className={`stage-dot ${done ? "done" : active ? "active" : "pending"}`}>
-                        {done ? "✓" : s.icon}
+                    <div key={j} className={`stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>
+                      <div className={`stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`}>
+                        {done ? "✓" : returned ? "↩" : s.icon}
                       </div>
-                      <div className={`stage-label ${done ? "done" : active ? "active" : ""}`}>{s.name}</div>
+                      <div className={`stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>{s.name}</div>
                       {active && canAct && <div className="stage-approver active">● You</div>}
                     </div>
                   );
@@ -1776,7 +1784,7 @@ function ChitsPage({ chits, setChits, userList }) {
                     />
                     <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
                       <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
-                      <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "denied")}>✕ Deny</button>
+                      <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return to Originator</button>
                       <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>Cancel</button>
                     </div>
                   </>
@@ -2268,7 +2276,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
     fire("✅ FITREP submitted and routed to your chain of command.");
   };
 
-  const advanceStage = (id) => {
+  const advanceStage = (id, action = "approved") => {
     const comment = commentText.trim();
     setFitrebs(prev => prev.map(f => {
       if (f.id !== id) return f;
@@ -2279,13 +2287,17 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         completedAt: new Date().toISOString().split("T")[0],
         comment,
       };
-      const next = Math.min(f.currentStage + 1, f.stages.length - 1);
-      const status = next === f.stages.length - 1 ? "Approved" : "Pending";
+      const next = action === "returned"
+        ? f.currentStage   // stay at denial stage so audit trail is visible
+        : Math.min(f.currentStage + 1, f.stages.length - 1);
+      const status = action === "returned" ? "Returned"
+        : next === f.stages.length - 1 ? "Approved"
+        : "Pending";
       return { ...f, currentStage: next, stages: updated, status };
     }));
     setActiveComment(null);
     setCommentText("");
-    fire("✅ FITREP advanced. Stage comments saved.");
+    fire(action === "returned" ? "FITREP returned to originator." : "✅ FITREP advanced. Stage comments saved.");
   };
 
   const companies = [...new Set(visible.map(f => normalizeCompany(f.company)))];
@@ -2342,8 +2354,8 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
 
       {filtered.map(f => {
         const canAct = canActOnFitrep(user, f);
-        const isDone = f.currentStage >= f.stages.length - 1;
-        const currentStageName = isDone ? "Complete" : (f.stages?.[f.currentStage]?.name || "");
+        const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
+        const currentStageName = isDone ? (f.status === "Returned" ? "Returned" : "Complete") : (f.stages?.[f.currentStage]?.name || "");
 
         return (
           <div className="fitrep-card" key={f.id}>
@@ -2357,9 +2369,11 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
               </div>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
                 <span className="badge badge-navy">{f.id}</span>
-                {isDone
-                  ? <span className="badge badge-green">Complete</span>
-                  : <span className="badge badge-orange">{currentStageName}</span>
+                {f.status === "Returned"
+                  ? <span className="badge badge-red">Returned</span>
+                  : isDone
+                    ? <span className="badge badge-green">Complete</span>
+                    : <span className="badge badge-orange">{currentStageName}</span>
                 }
                 {canAct && !isDone && (
                   <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>
@@ -2383,14 +2397,15 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
               )}
               <div className="stage-track">
                 {f.stages.map((s, i) => {
-                  const done   = i < f.currentStage;
-                  const active = i === f.currentStage && !isDone;
+                  const done     = i < f.currentStage;
+                  const returned = i === f.currentStage && f.status === "Returned";
+                  const active   = i === f.currentStage && !isDone;
                   return (
-                    <div key={i} className={`stage-item ${done ? "done" : active ? "active" : ""}`}>
-                      <div className={`stage-dot ${done ? "done" : active ? "active" : "pending"}`}>
-                        {done ? "✓" : s.icon}
+                    <div key={i} className={`stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>
+                      <div className={`stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`}>
+                        {done ? "✓" : returned ? "↩" : s.icon}
                       </div>
-                      <div className={`stage-label ${done ? "done" : active ? "active" : ""}`}>{s.name}</div>
+                      <div className={`stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>{s.name}</div>
                       {active && canAct && <div className="stage-approver active">● You</div>}
                     </div>
                   );
@@ -2424,8 +2439,11 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
                         onChange={e => setCommentText(e.target.value)}
                       />
                       <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-                        <button className="btn btn-green btn-sm" onClick={() => advanceStage(f.id)}>
+                        <button className="btn btn-green btn-sm" onClick={() => advanceStage(f.id, "approved")}>
                           ✓ Approve & Advance
+                        </button>
+                        <button className="btn btn-red btn-sm" onClick={() => advanceStage(f.id, "returned")}>
+                          ↩ Return to Originator
                         </button>
                         <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>
                           Cancel
