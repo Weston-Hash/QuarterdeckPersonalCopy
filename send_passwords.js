@@ -34,7 +34,7 @@ const CONFIG = {
   // Google Sheets (for writing passwords back to the roster sheet)
   // Leave SPREADSHEET_ID empty to skip the Sheets write step.
   spreadsheetId:  "",                    // e.g. "1Hlbb_9hW6h2NQ8Fn8nIA2f-kF6nnppUL4Jwipr7TIp4"
-  sheetName:      "Sheet1",             // tab name
+  sheetName:      "MASTER WEBSITE",     // tab name
   googleKeyFile:  "./service-account.json",  // path to service account JSON
 
   // Only send to users whose mustChangePassword column is TRUE in the sheet.
