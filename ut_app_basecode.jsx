@@ -289,9 +289,11 @@ const BILLET_TO_ROLE = {
   "A SEL":  "sel",
   "B SEL":  "sel",
   "C SEL":  "sel",
-  "1st PC": "plt_cdr",
-  "2nd PC": "plt_cdr",
-  "3rd PC": "plt_cdr",
+  "1st PC":   "plt_cdr",
+  "2nd PC":   "plt_cdr",
+  "3rd PC":   "plt_cdr",
+  "CC":       "co_cdr",
+  "SEL":      "sel",
   "AOPS":   "mid",
   "PAO":    "mid",
   "SUPPO":  "mid",
@@ -322,8 +324,9 @@ function sheetRowToUser(row, index) {
   // Rank: "1/C"→"MIDN 1/C", "GySgt"→"GySgt", etc.
   const rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
 
-  // Role from billet
-  const role = BILLET_TO_ROLE[billetRaw] || "mid";
+  // Role from billet — strip company letter prefix for matching (e.g. "A 1st PC" → "1st PC")
+  const billetNorm = billetRaw.replace(/^[ABC]\s+/, "");
+  const role = BILLET_TO_ROLE[billetRaw] || BILLET_TO_ROLE[billetNorm] || "mid";
 
   return {
     id:       (row.eid || `sheet-${index}`).trim(),
