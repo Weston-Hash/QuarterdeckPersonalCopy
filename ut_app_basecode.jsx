@@ -27,7 +27,7 @@ function canEdit(user, section) {
     case "chits":     return ["adj", "co_cdr", "plt_cdr"].includes(user.role);
     case "structure": return user.role === "adj";
     case "academic":  return user.role === "academics";
-    case "forms":     return ["co_cdr", "adj"].includes(user.role);
+    case "forms":     return ["adj", "pto", "traino", "academics"].includes(user.role); // billets excl. PC/CC
     case "fitreps":   return ["adj", "co_cdr", "plt_cdr"].includes(user.role);
     default:          return false;
   }
@@ -487,12 +487,6 @@ const INIT_QS = [
     answers:[] },
 ];
 
-const FORMS = [
-  { id:1, title:"Spring Ball RSVP",               deadline:"Mar 15", responses:34, total:82, status:"Open",   type:"Event" },
-  { id:2, title:"ACFT Readiness Self-Assessment",  deadline:"Mar 18", responses:61, total:82, status:"Open",   type:"PT" },
-  { id:3, title:"Leadership Lab AAR",              deadline:"Mar 12", responses:82, total:82, status:"Closed", type:"Training" },
-  { id:4, title:"Uniform Accountability Survey",   deadline:"Mar 20", responses:12, total:82, status:"Open",   type:"Admin" },
-];
 
 // ─── GOOGLE SHEETS CONFIG (Option B — Private Sheet via Apps Script) ──
 // HOW TO CONNECT YOUR PRIVATE ROSTER GOOGLE SHEET:
@@ -1094,7 +1088,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   );
 }
 
-function Dashboard({ onNav, userList }) {
+function Dashboard({ onNav, userList, forms }) {
   const { user } = useAuth();
   return (
     <div>
@@ -1147,7 +1141,7 @@ function Dashboard({ onNav, userList }) {
           </div>
           <div className="card">
             <div className="card-header"><span className="card-title">📝 Open Forms</span><button className="btn btn-outline btn-sm" onClick={() => onNav("forms")}>View</button></div>
-            <div style={{ fontSize:"0.88rem" }}>{FORMS.filter(f => f.status === "Open").length} forms open for your response.</div>
+            <div style={{ fontSize:"0.88rem" }}>{forms.length} form{forms.length !== 1 ? "s" : ""} posted for your response.</div>
           </div>
         </div>
       </div>
@@ -1946,54 +1940,138 @@ function RosterPage({ userList }) {
   );
 }
 
-function FormsPage() {
+function FormsPage({ forms, setForms }) {
   const { user } = useAuth();
-  const coc = canEdit(user,"forms");
+  // Big Four (isSenior) + billets excluding PC (plt_cdr) and CC (co_cdr)
+  const canManage = isSenior(user) || ["adj", "pto", "traino", "academics"].includes(user.role);
+
   const [showModal, setShowModal] = useState(false);
-  const [toast, setToast] = useState("");
+  const [toast, setToast]         = useState("");
+  const [draft, setDraft]         = useState({ title:"", url:"", category:"Admin", deadline:"" });
+
+  const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+
+  const addForm = () => {
+    if (!draft.title.trim() || !draft.url.trim()) { fire("⚠ Title and URL are required."); return; }
+    setForms(prev => [...prev, {
+      id:       Date.now(),
+      title:    draft.title.trim(),
+      url:      draft.url.trim(),
+      category: draft.category,
+      deadline: draft.deadline,
+      addedBy:  user.name,
+      addedAt:  new Date().toLocaleDateString(),
+      clicks:   {},   // { [userId]: true } once they click Fill Out
+    }]);
+    setShowModal(false);
+    setDraft({ title:"", url:"", category:"Admin", deadline:"" });
+    fire("✅ Form posted to the battalion.");
+  };
+
+  const deleteForm = id => {
+    setForms(prev => prev.filter(f => f.id !== id));
+    fire("Form removed.");
+  };
+
+  const handleFillOut = id => {
+    const f = forms.find(f => f.id === id);
+    if (!f) return;
+    // Mark this user as having opened the link
+    setForms(prev => prev.map(f => f.id === id
+      ? { ...f, clicks: { ...f.clicks, [user.id]: true } }
+      : f
+    ));
+    window.open(f.url, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div>
-      <div className="page-title">Forms & <span>Surveys</span></div>
-      <div className="page-sub">Battalion Google Forms hub</div>
+      <div className="page-title">Forms & <span>Links</span></div>
+      <div className="page-sub">Click a link to open the form — your status updates automatically</div>
+
       {toast && <div className="alert alert-green">{toast}</div>}
-      <div className="grid3" style={{ marginBottom:"1rem" }}>
-        <div className="stat"><div className="stat-n">{FORMS.filter(f => f.status==="Open").length}</div><div className="stat-l">Open Forms</div></div>
-        <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}><div className="stat-n" style={{ color:"#2A7D4F" }}>{FORMS.reduce((a,f) => a+f.responses,0)}</div><div className="stat-l">Total Responses</div></div>
-        <div className="stat" style={{ borderLeftColor:"#0D1B2A" }}><div className="stat-n" style={{ color:"#0D1B2A" }}>82</div><div className="stat-l">BN Strength</div></div>
-      </div>
-      {coc && <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}><button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Share New Form</button></div>}
-      {FORMS.map((f, i) => (
-        <div className="form-row" key={i}>
-          <div style={{ flex:1 }}>
-            <div style={{ fontWeight:600, marginBottom:"0.2rem" }}>{f.title}</div>
-            <div style={{ fontSize:"0.8rem", color:"#888" }}>Deadline: {f.deadline} · <span className="tag">{f.type}</span></div>
-          </div>
-          <div style={{ textAlign:"center", minWidth:"58px" }}>
-            <div style={{ fontFamily:"Oswald", fontSize:"1.4rem", fontWeight:700, color:"#BF5700", lineHeight:1 }}>{f.responses}</div>
-            <div style={{ fontSize:"0.68rem", color:"#888", textTransform:"uppercase" }}>/ {f.total}</div>
-            <div className="progress-bar"><div className="progress-fill" style={{ width: Math.round(f.responses/f.total*100) + "%" }} /></div>
-          </div>
-          <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
-            <span className={`badge ${f.status==="Open" ? "badge-green":"badge-gray"}`}>{f.status}</span>
-            {f.status === "Open" && <button className="btn btn-orange btn-sm">Fill Out ↗</button>}
-            {coc && <button className="btn btn-outline btn-sm">Results</button>}
-          </div>
+
+      {canManage && (
+        <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
+          <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Add Form</button>
         </div>
-      ))}
-      {showModal && (
-        <Modal title="Share New Form" onClose={() => setShowModal(false)}>
-          <div className="input-group"><label className="input-label">Form Title</label><input className="input" placeholder="e.g. ACFT Readiness Survey" /></div>
-          <div className="input-group"><label className="input-label">Google Form URL</label><input className="input" placeholder="https://forms.google.com/…" /></div>
-          <div className="input-group"><label className="input-label">Category</label>
-            <select className="input"><option>Admin</option><option>PT</option><option>Training</option><option>Event</option></select>
+      )}
+
+      {forms.length === 0 && (
+        <div className="empty">
+          <div style={{ fontSize:"2rem" }}>📝</div>
+          <div style={{ marginTop:"0.5rem" }}>No forms posted yet.</div>
+          {canManage && (
+            <div style={{ fontSize:"0.8rem", color:"#BF5700", marginTop:"0.3rem" }}>
+              Use the Add Form button to share a link with the battalion.
+            </div>
+          )}
+        </div>
+      )}
+
+      {forms.map(f => {
+        const opened = !!f.clicks[user.id];
+        return (
+          <div className="form-row" key={f.id} style={{ alignItems:"center" }}>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:600, marginBottom:"0.2rem" }}>{f.title}</div>
+              <div style={{ fontSize:"0.78rem", color:"#888" }}>
+                <span className="tag">{f.category}</span>
+                {f.deadline && <span> · Due: {f.deadline}</span>}
+                <span> · Added by {f.addedBy} · {f.addedAt}</span>
+              </div>
+            </div>
+
+            <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+              {opened
+                ? <span className="badge badge-green">✓ Opened</span>
+                : <span className="badge" style={{ background:"#f5f2ee", color:"#bbb" }}>Not opened</span>
+              }
+              <button className="btn btn-orange btn-sm" onClick={() => handleFillOut(f.id)}>
+                Fill Out ↗
+              </button>
+              {canManage && (
+                <button
+                  className="btn btn-sm"
+                  style={{ background:"transparent", border:"1.5px solid #C0392B", color:"#C0392B" }}
+                  onClick={() => deleteForm(f.id)}
+                >🗑</button>
+              )}
+            </div>
           </div>
-          <div className="input-group"><label className="input-label">Deadline</label><input className="input" type="date" /></div>
-          <div className="input-group"><label className="input-label">Distribute To</label>
-            <select className="input"><option>Entire Battalion</option><option>Alpha Company</option><option>Bravo Company</option><option>Charlie Company</option></select>
+        );
+      })}
+
+      {showModal && (
+        <Modal title="Add Form" onClose={() => setShowModal(false)}>
+          <div className="input-group">
+            <label className="input-label">Title <span style={{ color:"#C0392B" }}>*</span></label>
+            <input className="input" placeholder="e.g. ACFT Readiness Survey"
+              value={draft.title} onChange={e => setDraft(s => ({ ...s, title:e.target.value }))} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">URL <span style={{ color:"#C0392B" }}>*</span></label>
+            <input className="input" type="url" placeholder="https://forms.google.com/…"
+              value={draft.url} onChange={e => setDraft(s => ({ ...s, url:e.target.value }))} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Category</label>
+            <select className="input" value={draft.category} onChange={e => setDraft(s => ({ ...s, category:e.target.value }))}>
+              <option>Admin</option>
+              <option>PT</option>
+              <option>Training</option>
+              <option>Event</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Deadline (optional)</label>
+            <input className="input" type="date"
+              value={draft.deadline} onChange={e => setDraft(s => ({ ...s, deadline:e.target.value }))} />
           </div>
           <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
             <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
-            <button className="btn btn-orange" onClick={() => { setShowModal(false); setToast("Form shared with the battalion!"); }}>Share Form</button>
+            <button className="btn btn-orange" onClick={addForm}>Add Form</button>
           </div>
         </Modal>
       )}
@@ -2492,6 +2570,8 @@ export default function App() {
   const [chits, setChits]         = useState(INIT_CHITS);
   const [fitrebs, setFitrebs]     = useState(INIT_FITREBS);
   const [showAccount, setShowAccount] = useState(false);
+  // Forms: posted by billets/Big Four, clicks tracked per user id.
+  const [forms, setForms]         = useState([]);
   // PT plan PDFs: one per session key (monday/wednesday/thursday). Null until OPS uploads.
   const [ptPlans, setPtPlans]     = useState({ monday:null, wednesday:null, thursday:null });
   // LL session list: TRAINO manages text notes; everyone reads.
@@ -2557,14 +2637,14 @@ export default function App() {
   }
 
   const renderPage = () => {
-    if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} />;
+    if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} forms={forms} />;
     if (page === "calendar")   return <CalendarPage />;
     if (page === "structure")  return <StructurePage userList={userList} />;
     if (page === "training")   return <TrainingPage ptPlans={ptPlans} setPtPlans={setPtPlans} llSessions={llSessions} setLlSessions={setLlSessions} />;
     if (page === "chits")      return <ChitsPage chits={chits} setChits={setChits} userList={userList} />;
     if (page === "fitreps")    return <FitrepsPage fitrebs={fitrebs} setFitrebs={setFitrebs} userList={userList} />;
     if (page === "roster")     return <RosterPage userList={userList} />;
-    if (page === "forms")      return <FormsPage />;
+    if (page === "forms")      return <FormsPage forms={forms} setForms={setForms} />;
     if (page === "academic")   return <AcademicPage />;
     return <Dashboard onNav={setPage} />;
   };
