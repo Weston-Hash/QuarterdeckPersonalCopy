@@ -375,10 +375,54 @@ function canViewChit(user, chit) {
 // User data is sourced entirely from Google Sheets via Apps Script.
 // No credentials are stored in this file. See SHEETS_API_URL below.
 
+// ─── GOOGLE CALENDAR CONFIG ──────────────────────────────────
+// To enable live event fetching, create a free API key at console.cloud.google.com
+// (Enable "Google Calendar API", restrict key to Calendar API readonly).
+const GCAL_API_KEY      = "";  // ← paste your key here
+const GCAL_CALENDAR_ID  = "8favdaqbd14bfquur8fvil5ecc@group.calendar.google.com";
+
+// Spring 2026: Week 1 starts Monday Jan 19 2026.  Change each semester.
+const SEMESTER_START = new Date("2026-01-19T00:00:00");
+const SEMESTER_LABEL = "Spring 2026";
+
+function getCurrentWeekMonday() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun … 6=Sat
+  const daysBack = day === 0 ? 6 : day - 1;
+  const mon = new Date(now);
+  mon.setHours(0, 0, 0, 0);
+  mon.setDate(mon.getDate() - daysBack);
+  // On Saturday or Sunday flip forward to the upcoming Monday
+  if (day === 6 || day === 0) mon.setDate(mon.getDate() + 7);
+  return mon;
+}
+function getWeekNumber(mon) {
+  return Math.round((mon - SEMESTER_START) / (7 * 24 * 3600 * 1000)) + 1;
+}
+function formatWeekRange(mon) {
+  const fri = new Date(mon); fri.setDate(fri.getDate() + 4);
+  const M = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  const f = d => `${String(d.getDate()).padStart(2,"0")}${M[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
+  return `${f(mon)} - ${f(fri)}`;
+}
+function formatEventTime(isoStr) {
+  if (!isoStr) return "";
+  const d = new Date(isoStr);
+  return `${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}`;
+}
+function guessEventType(title) {
+  const t = (title || "").toLowerCase();
+  if (/\bpt\b|run|fep|drill/.test(t)) return "PT";
+  if (/fitrep|chit|inspection/.test(t)) return "Admin";
+  if (/leadership|leadlab|\bll\b/.test(t)) return "Leadership";
+  if (/tutor|calculus|physics/.test(t)) return "Academic";
+  if (/staff|meeting|sync/.test(t)) return "Staff";
+  if (/conference/.test(t)) return "Conference";
+  return "Event";
+}
+
 // ─── STATIC DATA ────────────────────────────────────────────
 const POTW = {
-  week: "Week 10 — Spring 2026",
-  range: "23MAR26 - 27MAR26",
   operations: [
     { date:"23 MAR", title:"Battalion PT", time:"0700–0800", type:"PT", location:"Caven Lacrosse and Sports Center at Clark Field" },
     { date:"23 MAR", title:"Digital FITREPs due to PCs", time:"1500–1600", type:"Admin", location:"" },
@@ -1004,10 +1048,10 @@ function Dashboard({ onNav, userList }) {
       <div className="grid2">
         <div>
           <div className="potw-card">
-            <div className="potw-week">📖 {POTW.week}</div>
-            <div className="potw-title">POTW: {POTW.range}</div>
-            <div className="potw-body">{POTW.operations.length} scheduled operations this week</div>
-            {POTW.operations.slice(0,3).map((op,i) => <div key={i} style={{ fontSize:"0.82rem", color:"#aaa", marginBottom:"2px" }}>✓ {op.date} — {op.title}</div>)}
+            {(() => { const mon = getCurrentWeekMonday(); return (<>
+              <div className="potw-week">📖 Week {getWeekNumber(mon)} — {SEMESTER_LABEL}</div>
+              <div className="potw-title">POTW: {formatWeekRange(mon)}</div>
+            </>); })()}
           </div>
           <div className="card">
             <div className="card-header">
@@ -1047,24 +1091,60 @@ function Dashboard({ onNav, userList }) {
 
 function CalendarPage() {
   const { user } = useAuth();
+  const [events, setEvents] = useState(null); // null = loading, [] = loaded (empty or no key)
+
+  const mon = getCurrentWeekMonday();
+  const weekNum = getWeekNumber(mon);
+  const weekRange = formatWeekRange(mon);
+  const weekLabel = `Week ${weekNum} — ${SEMESTER_LABEL}`;
+
+  useEffect(() => {
+    if (!GCAL_API_KEY) { setEvents([]); return; }
+    const fri = new Date(mon); fri.setDate(fri.getDate() + 4); fri.setHours(23, 59, 59, 999);
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(GCAL_CALENDAR_ID)}/events`
+      + `?key=${GCAL_API_KEY}&timeMin=${mon.toISOString()}&timeMax=${fri.toISOString()}`
+      + `&singleEvents=true&orderBy=startTime`;
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        const M = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+        const ops = (data.items || []).map(e => {
+          const start = new Date(e.start.dateTime || e.start.date);
+          const isAllDay = !e.start.dateTime;
+          const timeStr = isAllDay ? "All Day"
+            : `${formatEventTime(e.start.dateTime)}–${formatEventTime(e.end.dateTime)}`;
+          return {
+            date: `${start.getDate()} ${M[start.getMonth()]}`,
+            title: e.summary || "(no title)",
+            time: timeStr,
+            location: e.location || "",
+            type: guessEventType(e.summary),
+          };
+        });
+        setEvents(ops);
+      })
+      .catch(() => setEvents([]));
+  }, []);
+
+  const displayEvents = events !== null ? events : POTW.operations;
+
   return (
     <div>
-      <div className="page-title"><span>Calendar</span> & POTW</div>
-      <div className="page-sub">Battalion schedule — connect Google Calendar ID in config to go live</div>
+      <div className="page-title"><span>POTW</span></div>
       <div className="potw-card">
-        <div className="potw-week">📖 {POTW.week}</div>
-        <div className="potw-title">{POTW.range}</div>
-        <div className="potw-body">{POTW.operations.length} scheduled operations this week</div>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:"0.5rem", marginTop:"0.5rem" }}>
-          {POTW.operations.slice(0,5).map((op,i) => <span key={i} style={{ background:"rgba(255,255,255,0.1)", borderRadius:"20px", padding:"2px 10px", fontSize:"0.78rem" }}>✓ {op.date} — {op.title}</span>)}
-        </div>
+        <div className="potw-week">📖 {weekLabel}</div>
+        <div className="potw-title">{weekRange}</div>
       </div>
       <div className="card">
         <div className="card-header">
-          <span className="card-title">📅 March 2026</span>
-          {canEdit(user,"potw") && <span style={{fontFamily:"Oswald",fontSize:"0.72rem",letterSpacing:"1.5px",textTransform:"uppercase",color:"#BF5700"}}>✏ Senior Staff — edit POTW operations to update</span>}
+          <span className="card-title">📅 {weekRange}</span>
+          {!GCAL_API_KEY && <span style={{fontSize:"0.75rem",color:"#999"}}>Add GCAL_API_KEY to load live events</span>}
+          {events === null && GCAL_API_KEY && <span style={{fontSize:"0.75rem",color:"#999"}}>Loading…</span>}
         </div>
-        {POTW.operations.map((e,i) => (
+        {displayEvents.length === 0 && (
+          <div style={{fontSize:"0.88rem",color:"#666",padding:"0.5rem 0"}}>No events found for this week.</div>
+        )}
+        {displayEvents.map((e,i) => (
           <div className="event-row" key={i}>
             <div className="event-date"><div className="event-day">{e.date.split(" ")[0]}</div><div className="event-mo">{e.date.split(" ")[1] || ""}</div></div>
             <div style={{ flex:1 }}>
@@ -1795,7 +1875,7 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
 // ─── ROOT APP ────────────────────────────────────────────────
 const NAV = [
   { id:"dashboard", label:"Dashboard",     icon:"🏠" },
-  { id:"calendar",  label:"Calendar/POTW", icon:"📅" },
+  { id:"calendar",  label:"POTW",          icon:"📅" },
   { id:"structure", label:"BN Structure",  icon:"🏛" },
   { id:"training",  label:"PT & LeadLab",  icon:"💪" },
   { id:"chits",     label:"CHIT Routing",  icon:"📋" },
@@ -1807,7 +1887,7 @@ const NAV = [
 
 const MNAV = [
   { id:"dashboard", label:"Home",    icon:"🏠" },
-  { id:"calendar",  label:"Cal",     icon:"📅" },
+  { id:"calendar",  label:"POTW",    icon:"📅" },
   { id:"chits",     label:"CHITs",   icon:"📋" },
   { id:"fitreps",   label:"FITREPs", icon:"📊" },
   { id:"roster",    label:"Roster",  icon:"📒" },
