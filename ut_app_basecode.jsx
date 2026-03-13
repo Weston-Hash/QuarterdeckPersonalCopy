@@ -2670,7 +2670,7 @@ export default function App() {
               onClick={() => setShowAccount(true)}
               title="Account Info"
             >
-              <span className="rank-pill">{user.rank.split("/")[1] || user.rank}</span>
+              <span className="rank-pill">{user.rank.split(" ")[0] || user.rank}</span>
               <span style={{ color:"#ccc", fontSize:"0.85rem" }}>{user.name.split(",")[0]}</span>
               {isCoC(user) && <span className="role-pill">{user.role.replace("_"," ")}</span>}
             </div>
