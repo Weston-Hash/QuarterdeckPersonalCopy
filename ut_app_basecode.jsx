@@ -1631,6 +1631,7 @@ function ChitsPage({ chits, setChits, userList }) {
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState("");
   const [form, setForm] = useState({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
+  const [chitSubmitAttempted, setChitSubmitAttempted] = useState(false);
   const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText] = useState("");
 
@@ -1659,7 +1660,10 @@ function ChitsPage({ chits, setChits, userList }) {
   };
 
   const submit = () => {
-    if (!form.date || !form.reason) return;
+    setChitSubmitAttempted(true);
+    if (!form.date || !form.reason) {
+      fire("⚠ Date of Absence and Reason are required."); return;
+    }
     if (!form.routingSheet || !form.chitDoc) {
       fire("⚠ Both PDFs are required: Routing Sheet and CHIT Document."); return;
     }
@@ -1690,6 +1694,7 @@ function ChitsPage({ chits, setChits, userList }) {
     setChits(prev => [...prev, c]);
     setShowModal(false);
     setForm({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
+    setChitSubmitAttempted(false);
     fire("✅ CHIT submitted and routed to your chain of command.");
   };
 
