@@ -500,7 +500,7 @@ const INIT_QS = [
 //   6. Set the same token below
 //   7. Save — the app will pull live data on each page load.
 //      In sheet-only mode, the app stays locked until this feed loads successfully.
-const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbwk8lmqWiujlDyRkz4typfRoD67F6vKOWMa__tIt5Ie-upx-mHs_dO105_Och1Jq6SL/exec";
+const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbzlf-kNMTGKZDvvTS9zBeMuqphwM_ybCQZLalZIKL0-SxTnQ-hj0hT-X30QEr1mQM8/exec";
 const SHEETS_API_TOKEN = "UT_NROTC";
 const ROSTER_CACHE_KEY = "quarterdeck_roster_cache_v1";
 
@@ -722,24 +722,23 @@ const INIT_FITREBS = [
 
 // ─── STYLES ─────────────────────────────────────────────────
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Source Sans 3', sans-serif; background: #FFF8F0; color: #1A1209; }
+  body { font-family: "Trebuchet MS", "Segoe UI", sans-serif; background: #FFF8F0; color: #1A1209; }
 
   .topbar { background: #1A1209; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; height: 58px; border-bottom: 3px solid #BF5700; position: sticky; top: 0; z-index: 50; }
-  .topbar-logo { width: 36px; height: 36px; background: #BF5700; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: Oswald; font-weight: 700; font-size: 1rem; color: white; margin-right: 0.6rem; }
-  .topbar-title { font-family: Oswald; font-weight: 700; font-size: 1.15rem; letter-spacing: 2px; text-transform: uppercase; }
+  .topbar-logo { width: 36px; height: 36px; background: #BF5700; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-weight: 700; font-size: 1rem; color: white; margin-right: 0.6rem; }
+  .topbar-title { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-weight: 700; font-size: 1.15rem; letter-spacing: 2px; text-transform: uppercase; }
   .topbar-title span { color: #F7941D; }
   .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
-  .rank-pill { background: #BF5700; color: white; padding: 2px 8px; border-radius: 4px; font-family: Oswald; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; }
+  .rank-pill { background: #BF5700; color: white; padding: 2px 8px; border-radius: 4px; font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; }
   .role-pill { background: rgba(255,255,255,0.12); color: #ccc; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; text-transform: uppercase; }
-  .btn-logout { background: transparent; border: 1.5px solid rgba(255,255,255,0.25); color: #ccc; border-radius: 4px; padding: 3px 10px; font-size: 0.75rem; cursor: pointer; font-family: Oswald; letter-spacing: 1px; text-transform: uppercase; }
+  .btn-logout { background: transparent; border: 1.5px solid rgba(255,255,255,0.25); color: #ccc; border-radius: 4px; padding: 3px 10px; font-size: 0.75rem; cursor: pointer; font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; letter-spacing: 1px; text-transform: uppercase; }
   .btn-logout:hover { background: rgba(255,255,255,0.1); }
 
   .layout { display: flex; min-height: calc(100vh - 58px); }
   .sidebar { width: 210px; background: #0D1B2A; flex-shrink: 0; position: sticky; top: 58px; height: calc(100vh - 58px); overflow-y: auto; display: flex; flex-direction: column; }
   .sidebar-group { padding: 1rem 0 0.5rem; }
-  .sidebar-label { font-family: Oswald; font-size: 0.62rem; letter-spacing: 3px; text-transform: uppercase; color: #7a8fa0; padding: 0 1rem; margin-bottom: 0.5rem; }
+  .sidebar-label { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-size: 0.62rem; letter-spacing: 3px; text-transform: uppercase; color: #7a8fa0; padding: 0 1rem; margin-bottom: 0.5rem; }
   .nav-btn { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; cursor: pointer; color: #9ab0c4; font-size: 0.88rem; border-left: 3px solid transparent; transition: all 0.15s; background: none; border-top: none; border-right: none; border-bottom: none; width: 100%; text-align: left; }
   .nav-btn:hover { background: rgba(255,255,255,0.05); color: white; }
   .nav-btn.active { background: rgba(191,87,0,0.2); color: #F7941D; border-left-color: #BF5700; font-weight: 600; }
@@ -747,12 +746,12 @@ const CSS = `
 
   .content { flex: 1; padding: 1.5rem; overflow-y: auto; min-width: 0; }
 
-  .page-title { font-family: Oswald; font-size: 1.7rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 0.2rem; }
+  .page-title { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-size: 1.7rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 0.2rem; }
   .page-title span { color: #BF5700; }
   .page-sub { font-size: 0.88rem; color: #6B6B6B; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 2px solid rgba(191,87,0,0.15); }
 
   .card { background: white; border-radius: 10px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid rgba(191,87,0,0.1); margin-bottom: 1rem; }
-  .card-title { font-family: Oswald; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; color: #1A1209; }
+  .card-title { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; color: #1A1209; }
   .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
 
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
