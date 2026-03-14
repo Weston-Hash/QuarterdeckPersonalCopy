@@ -672,53 +672,7 @@ function canViewFitrep(user, fitrep) {
   });
 }
 
-// Helper: build a blank approval stage node for demo data (no specific approver ID)
-function _demoStage(name, approverRole, icon, completedBy, completedAt, comment) {
-  return { name, routeLabel:"", approverId:null, approverRole, approverName:"", icon,
-    completedBy: completedBy || null, completedAt: completedAt || null, comment: comment || "" };
-}
-
-const INIT_FITREBS = [
-  {
-    id:"FIT-001", subjectId:"u023", subjectName:"Locklin", subjectRank:"MIDN 4/C",
-    company:"Alpha", platoon:"1st PC", period:"Spring 2026", status:"Pending", currentStage:1,
-    stages:[
-      _demoStage("Submitted",      null,      "📝", "Locklin",  "2026-03-01", ""),
-      _demoStage("PC Review",      "plt_cdr", "👤", null, null, ""),
-      _demoStage("Co CDR Review",  "co_cdr",  "⭐", null, null, ""),
-      _demoStage("ADJ Review",     "adj",     "🗂", null, null, ""),
-      _demoStage("BNXO Review",    "xo",      "🎖", null, null, ""),
-      _demoStage("BNCO Approval",  "bn_cdr",  "✅", null, null, ""),
-      _demoStage("Complete",       null,      "🏅", null, null, ""),
-    ],
-  },
-  {
-    id:"FIT-002", subjectId:"u044", subjectName:"Madulara", subjectRank:"MIDN 4/C",
-    company:"Bravo", platoon:"1st PC", period:"Spring 2026", status:"Pending", currentStage:2,
-    stages:[
-      _demoStage("Submitted",      null,      "📝", "Madulara", "2026-03-02", ""),
-      _demoStage("PC Review",      "plt_cdr", "👤", "Alcazar",  "2026-03-05", "Strong performer. Shows initiative in platoon activities."),
-      _demoStage("Co CDR Review",  "co_cdr",  "⭐", null, null, ""),
-      _demoStage("ADJ Review",     "adj",     "🗂", null, null, ""),
-      _demoStage("BNXO Review",    "xo",      "🎖", null, null, ""),
-      _demoStage("BNCO Approval",  "bn_cdr",  "✅", null, null, ""),
-      _demoStage("Complete",       null,      "🏅", null, null, ""),
-    ],
-  },
-  {
-    id:"FIT-003", subjectId:"u083", subjectName:"Crimmins", subjectRank:"MIDN 4/C",
-    company:"Charlie", platoon:"1st PC", period:"Spring 2026", status:"Pending", currentStage:3,
-    stages:[
-      _demoStage("Submitted",      null,      "📝", "Crimmins", "2026-03-01", ""),
-      _demoStage("PC Review",      "plt_cdr", "👤", "Burrell",  "2026-03-04", "Excellent leadership potential. Consistently performs above expectations."),
-      _demoStage("Co CDR Review",  "co_cdr",  "⭐", "Torres",   "2026-03-07", "Concur with PC assessment. Recommend early promotion consideration."),
-      _demoStage("ADJ Review",     "adj",     "🗂", null, null, ""),
-      _demoStage("BNXO Review",    "xo",      "🎖", null, null, ""),
-      _demoStage("BNCO Approval",  "bn_cdr",  "✅", null, null, ""),
-      _demoStage("Complete",       null,      "🏅", null, null, ""),
-    ],
-  },
-];
+const INIT_FITREBS = [];
 
 // ─── STYLES ─────────────────────────────────────────────────
 const CSS = `
