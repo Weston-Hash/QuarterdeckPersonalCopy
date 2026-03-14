@@ -3561,7 +3561,7 @@
     const [mfaLoading, setMfaLoading] = (0, import_react.useState)(false);
     const [mfaInfo, setMfaInfo] = (0, import_react.useState)("");
     const hasRoster = userList.length > 0;
-    const locked = !sheetSynced && !hasRoster;
+    const locked = !sheetSynced;
     const go = () => {
       if (locked) return;
       const q = name.trim().toLowerCase();

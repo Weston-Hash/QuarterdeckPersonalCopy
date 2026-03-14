@@ -993,7 +993,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   const [mfaInfo, setMfaInfo]   = useState("");       // non-error info message
 
   const hasRoster = userList.length > 0;
-  const locked = !sheetSynced && !hasRoster;
+  const locked = !sheetSynced;
 
   // ── Step 1: validate credentials → send MFA code ──────────────────────────
   const go = () => {
