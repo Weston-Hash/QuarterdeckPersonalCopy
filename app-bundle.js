@@ -3315,7 +3315,7 @@
 
   .event-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.7rem 0; border-bottom: 1px solid #f0ede8; }
   .event-date { min-width: 46px; text-align: center; background: #BF5700; color: white; border-radius: 7px; padding: 3px; }
-  .event-day { font-family: 'Rajdhani'; font-size: 1.35rem; font-weight: 700; line-height: 1; }
+  .event-day { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 1.35rem; font-weight: 700; line-height: 1; }
   .event-mo  { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; }
   .event-title { font-weight: 600; font-size: 0.88rem; }
   .event-sub   { font-size: 0.78rem; color: #6B6B6B; }
