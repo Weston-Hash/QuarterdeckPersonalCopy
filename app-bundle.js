@@ -2434,7 +2434,7 @@
           var HostPortal = 4;
           var HostComponent = 5;
           var HostText = 6;
-          var Fragment = 7;
+          var Fragment2 = 7;
           var Mode = 8;
           var ContextConsumer = 9;
           var ContextProvider = 10;
@@ -3591,7 +3591,7 @@
                 return "DehydratedFragment";
               case ForwardRef:
                 return getWrappedName$1(type, type.render, "ForwardRef");
-              case Fragment:
+              case Fragment2:
                 return "Fragment";
               case HostComponent:
                 return type;
@@ -12020,7 +12020,7 @@
               }
             }
             function updateFragment2(returnFiber, current2, fragment, lanes, key) {
-              if (current2 === null || current2.tag !== Fragment) {
+              if (current2 === null || current2.tag !== Fragment2) {
                 var created = createFiberFromFragment(fragment, returnFiber.mode, lanes, key);
                 created.return = returnFiber;
                 return created;
@@ -12423,7 +12423,7 @@
                 if (child.key === key) {
                   var elementType = element.type;
                   if (elementType === REACT_FRAGMENT_TYPE) {
-                    if (child.tag === Fragment) {
+                    if (child.tag === Fragment2) {
                       deleteRemainingChildren(returnFiber, child.sibling);
                       var existing = useFiber(child, element.props.children);
                       existing.return = returnFiber;
@@ -17899,7 +17899,7 @@
                 var _resolvedProps2 = workInProgress2.elementType === type ? _unresolvedProps2 : resolveDefaultProps(type, _unresolvedProps2);
                 return updateForwardRef(current2, workInProgress2, type, _resolvedProps2, renderLanes2);
               }
-              case Fragment:
+              case Fragment2:
                 return updateFragment(current2, workInProgress2, renderLanes2);
               case Mode:
                 return updateMode(current2, workInProgress2, renderLanes2);
@@ -18171,7 +18171,7 @@
               case SimpleMemoComponent:
               case FunctionComponent:
               case ForwardRef:
-              case Fragment:
+              case Fragment2:
               case Mode:
               case Profiler:
               case ContextConsumer:
@@ -22432,7 +22432,7 @@
             return fiber;
           }
           function createFiberFromFragment(elements, mode, lanes, key) {
-            var fiber = createFiber(Fragment, elements, key, mode);
+            var fiber = createFiber(Fragment2, elements, key, mode);
             fiber.lanes = lanes;
             return fiber;
           }
@@ -23581,12 +23581,918 @@
     }
   });
 
+  // node_modules/react/cjs/react-jsx-runtime.development.js
+  var require_react_jsx_runtime_development = __commonJS({
+    "node_modules/react/cjs/react-jsx-runtime.development.js"(exports) {
+      "use strict";
+      if (true) {
+        (function() {
+          "use strict";
+          var React3 = require_react();
+          var REACT_ELEMENT_TYPE = Symbol.for("react.element");
+          var REACT_PORTAL_TYPE = Symbol.for("react.portal");
+          var REACT_FRAGMENT_TYPE = Symbol.for("react.fragment");
+          var REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode");
+          var REACT_PROFILER_TYPE = Symbol.for("react.profiler");
+          var REACT_PROVIDER_TYPE = Symbol.for("react.provider");
+          var REACT_CONTEXT_TYPE = Symbol.for("react.context");
+          var REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref");
+          var REACT_SUSPENSE_TYPE = Symbol.for("react.suspense");
+          var REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list");
+          var REACT_MEMO_TYPE = Symbol.for("react.memo");
+          var REACT_LAZY_TYPE = Symbol.for("react.lazy");
+          var REACT_OFFSCREEN_TYPE = Symbol.for("react.offscreen");
+          var MAYBE_ITERATOR_SYMBOL = Symbol.iterator;
+          var FAUX_ITERATOR_SYMBOL = "@@iterator";
+          function getIteratorFn(maybeIterable) {
+            if (maybeIterable === null || typeof maybeIterable !== "object") {
+              return null;
+            }
+            var maybeIterator = MAYBE_ITERATOR_SYMBOL && maybeIterable[MAYBE_ITERATOR_SYMBOL] || maybeIterable[FAUX_ITERATOR_SYMBOL];
+            if (typeof maybeIterator === "function") {
+              return maybeIterator;
+            }
+            return null;
+          }
+          var ReactSharedInternals = React3.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
+          function error(format) {
+            {
+              {
+                for (var _len2 = arguments.length, args = new Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
+                  args[_key2 - 1] = arguments[_key2];
+                }
+                printWarning("error", format, args);
+              }
+            }
+          }
+          function printWarning(level, format, args) {
+            {
+              var ReactDebugCurrentFrame2 = ReactSharedInternals.ReactDebugCurrentFrame;
+              var stack = ReactDebugCurrentFrame2.getStackAddendum();
+              if (stack !== "") {
+                format += "%s";
+                args = args.concat([stack]);
+              }
+              var argsWithFormat = args.map(function(item) {
+                return String(item);
+              });
+              argsWithFormat.unshift("Warning: " + format);
+              Function.prototype.apply.call(console[level], console, argsWithFormat);
+            }
+          }
+          var enableScopeAPI = false;
+          var enableCacheElement = false;
+          var enableTransitionTracing = false;
+          var enableLegacyHidden = false;
+          var enableDebugTracing = false;
+          var REACT_MODULE_REFERENCE;
+          {
+            REACT_MODULE_REFERENCE = Symbol.for("react.module.reference");
+          }
+          function isValidElementType(type) {
+            if (typeof type === "string" || typeof type === "function") {
+              return true;
+            }
+            if (type === REACT_FRAGMENT_TYPE || type === REACT_PROFILER_TYPE || enableDebugTracing || type === REACT_STRICT_MODE_TYPE || type === REACT_SUSPENSE_TYPE || type === REACT_SUSPENSE_LIST_TYPE || enableLegacyHidden || type === REACT_OFFSCREEN_TYPE || enableScopeAPI || enableCacheElement || enableTransitionTracing) {
+              return true;
+            }
+            if (typeof type === "object" && type !== null) {
+              if (type.$$typeof === REACT_LAZY_TYPE || type.$$typeof === REACT_MEMO_TYPE || type.$$typeof === REACT_PROVIDER_TYPE || type.$$typeof === REACT_CONTEXT_TYPE || type.$$typeof === REACT_FORWARD_REF_TYPE || // This needs to include all possible module reference object
+              // types supported by any Flight configuration anywhere since
+              // we don't know which Flight build this will end up being used
+              // with.
+              type.$$typeof === REACT_MODULE_REFERENCE || type.getModuleId !== void 0) {
+                return true;
+              }
+            }
+            return false;
+          }
+          function getWrappedName(outerType, innerType, wrapperName) {
+            var displayName = outerType.displayName;
+            if (displayName) {
+              return displayName;
+            }
+            var functionName = innerType.displayName || innerType.name || "";
+            return functionName !== "" ? wrapperName + "(" + functionName + ")" : wrapperName;
+          }
+          function getContextName(type) {
+            return type.displayName || "Context";
+          }
+          function getComponentNameFromType(type) {
+            if (type == null) {
+              return null;
+            }
+            {
+              if (typeof type.tag === "number") {
+                error("Received an unexpected object in getComponentNameFromType(). This is likely a bug in React. Please file an issue.");
+              }
+            }
+            if (typeof type === "function") {
+              return type.displayName || type.name || null;
+            }
+            if (typeof type === "string") {
+              return type;
+            }
+            switch (type) {
+              case REACT_FRAGMENT_TYPE:
+                return "Fragment";
+              case REACT_PORTAL_TYPE:
+                return "Portal";
+              case REACT_PROFILER_TYPE:
+                return "Profiler";
+              case REACT_STRICT_MODE_TYPE:
+                return "StrictMode";
+              case REACT_SUSPENSE_TYPE:
+                return "Suspense";
+              case REACT_SUSPENSE_LIST_TYPE:
+                return "SuspenseList";
+            }
+            if (typeof type === "object") {
+              switch (type.$$typeof) {
+                case REACT_CONTEXT_TYPE:
+                  var context = type;
+                  return getContextName(context) + ".Consumer";
+                case REACT_PROVIDER_TYPE:
+                  var provider = type;
+                  return getContextName(provider._context) + ".Provider";
+                case REACT_FORWARD_REF_TYPE:
+                  return getWrappedName(type, type.render, "ForwardRef");
+                case REACT_MEMO_TYPE:
+                  var outerName = type.displayName || null;
+                  if (outerName !== null) {
+                    return outerName;
+                  }
+                  return getComponentNameFromType(type.type) || "Memo";
+                case REACT_LAZY_TYPE: {
+                  var lazyComponent = type;
+                  var payload = lazyComponent._payload;
+                  var init = lazyComponent._init;
+                  try {
+                    return getComponentNameFromType(init(payload));
+                  } catch (x) {
+                    return null;
+                  }
+                }
+              }
+            }
+            return null;
+          }
+          var assign = Object.assign;
+          var disabledDepth = 0;
+          var prevLog;
+          var prevInfo;
+          var prevWarn;
+          var prevError;
+          var prevGroup;
+          var prevGroupCollapsed;
+          var prevGroupEnd;
+          function disabledLog() {
+          }
+          disabledLog.__reactDisabledLog = true;
+          function disableLogs() {
+            {
+              if (disabledDepth === 0) {
+                prevLog = console.log;
+                prevInfo = console.info;
+                prevWarn = console.warn;
+                prevError = console.error;
+                prevGroup = console.group;
+                prevGroupCollapsed = console.groupCollapsed;
+                prevGroupEnd = console.groupEnd;
+                var props = {
+                  configurable: true,
+                  enumerable: true,
+                  value: disabledLog,
+                  writable: true
+                };
+                Object.defineProperties(console, {
+                  info: props,
+                  log: props,
+                  warn: props,
+                  error: props,
+                  group: props,
+                  groupCollapsed: props,
+                  groupEnd: props
+                });
+              }
+              disabledDepth++;
+            }
+          }
+          function reenableLogs() {
+            {
+              disabledDepth--;
+              if (disabledDepth === 0) {
+                var props = {
+                  configurable: true,
+                  enumerable: true,
+                  writable: true
+                };
+                Object.defineProperties(console, {
+                  log: assign({}, props, {
+                    value: prevLog
+                  }),
+                  info: assign({}, props, {
+                    value: prevInfo
+                  }),
+                  warn: assign({}, props, {
+                    value: prevWarn
+                  }),
+                  error: assign({}, props, {
+                    value: prevError
+                  }),
+                  group: assign({}, props, {
+                    value: prevGroup
+                  }),
+                  groupCollapsed: assign({}, props, {
+                    value: prevGroupCollapsed
+                  }),
+                  groupEnd: assign({}, props, {
+                    value: prevGroupEnd
+                  })
+                });
+              }
+              if (disabledDepth < 0) {
+                error("disabledDepth fell below zero. This is a bug in React. Please file an issue.");
+              }
+            }
+          }
+          var ReactCurrentDispatcher = ReactSharedInternals.ReactCurrentDispatcher;
+          var prefix;
+          function describeBuiltInComponentFrame(name, source, ownerFn) {
+            {
+              if (prefix === void 0) {
+                try {
+                  throw Error();
+                } catch (x) {
+                  var match = x.stack.trim().match(/\n( *(at )?)/);
+                  prefix = match && match[1] || "";
+                }
+              }
+              return "\n" + prefix + name;
+            }
+          }
+          var reentry = false;
+          var componentFrameCache;
+          {
+            var PossiblyWeakMap = typeof WeakMap === "function" ? WeakMap : Map;
+            componentFrameCache = new PossiblyWeakMap();
+          }
+          function describeNativeComponentFrame(fn, construct) {
+            if (!fn || reentry) {
+              return "";
+            }
+            {
+              var frame = componentFrameCache.get(fn);
+              if (frame !== void 0) {
+                return frame;
+              }
+            }
+            var control;
+            reentry = true;
+            var previousPrepareStackTrace = Error.prepareStackTrace;
+            Error.prepareStackTrace = void 0;
+            var previousDispatcher;
+            {
+              previousDispatcher = ReactCurrentDispatcher.current;
+              ReactCurrentDispatcher.current = null;
+              disableLogs();
+            }
+            try {
+              if (construct) {
+                var Fake = function() {
+                  throw Error();
+                };
+                Object.defineProperty(Fake.prototype, "props", {
+                  set: function() {
+                    throw Error();
+                  }
+                });
+                if (typeof Reflect === "object" && Reflect.construct) {
+                  try {
+                    Reflect.construct(Fake, []);
+                  } catch (x) {
+                    control = x;
+                  }
+                  Reflect.construct(fn, [], Fake);
+                } else {
+                  try {
+                    Fake.call();
+                  } catch (x) {
+                    control = x;
+                  }
+                  fn.call(Fake.prototype);
+                }
+              } else {
+                try {
+                  throw Error();
+                } catch (x) {
+                  control = x;
+                }
+                fn();
+              }
+            } catch (sample) {
+              if (sample && control && typeof sample.stack === "string") {
+                var sampleLines = sample.stack.split("\n");
+                var controlLines = control.stack.split("\n");
+                var s = sampleLines.length - 1;
+                var c = controlLines.length - 1;
+                while (s >= 1 && c >= 0 && sampleLines[s] !== controlLines[c]) {
+                  c--;
+                }
+                for (; s >= 1 && c >= 0; s--, c--) {
+                  if (sampleLines[s] !== controlLines[c]) {
+                    if (s !== 1 || c !== 1) {
+                      do {
+                        s--;
+                        c--;
+                        if (c < 0 || sampleLines[s] !== controlLines[c]) {
+                          var _frame = "\n" + sampleLines[s].replace(" at new ", " at ");
+                          if (fn.displayName && _frame.includes("<anonymous>")) {
+                            _frame = _frame.replace("<anonymous>", fn.displayName);
+                          }
+                          {
+                            if (typeof fn === "function") {
+                              componentFrameCache.set(fn, _frame);
+                            }
+                          }
+                          return _frame;
+                        }
+                      } while (s >= 1 && c >= 0);
+                    }
+                    break;
+                  }
+                }
+              }
+            } finally {
+              reentry = false;
+              {
+                ReactCurrentDispatcher.current = previousDispatcher;
+                reenableLogs();
+              }
+              Error.prepareStackTrace = previousPrepareStackTrace;
+            }
+            var name = fn ? fn.displayName || fn.name : "";
+            var syntheticFrame = name ? describeBuiltInComponentFrame(name) : "";
+            {
+              if (typeof fn === "function") {
+                componentFrameCache.set(fn, syntheticFrame);
+              }
+            }
+            return syntheticFrame;
+          }
+          function describeFunctionComponentFrame(fn, source, ownerFn) {
+            {
+              return describeNativeComponentFrame(fn, false);
+            }
+          }
+          function shouldConstruct(Component) {
+            var prototype = Component.prototype;
+            return !!(prototype && prototype.isReactComponent);
+          }
+          function describeUnknownElementTypeFrameInDEV(type, source, ownerFn) {
+            if (type == null) {
+              return "";
+            }
+            if (typeof type === "function") {
+              {
+                return describeNativeComponentFrame(type, shouldConstruct(type));
+              }
+            }
+            if (typeof type === "string") {
+              return describeBuiltInComponentFrame(type);
+            }
+            switch (type) {
+              case REACT_SUSPENSE_TYPE:
+                return describeBuiltInComponentFrame("Suspense");
+              case REACT_SUSPENSE_LIST_TYPE:
+                return describeBuiltInComponentFrame("SuspenseList");
+            }
+            if (typeof type === "object") {
+              switch (type.$$typeof) {
+                case REACT_FORWARD_REF_TYPE:
+                  return describeFunctionComponentFrame(type.render);
+                case REACT_MEMO_TYPE:
+                  return describeUnknownElementTypeFrameInDEV(type.type, source, ownerFn);
+                case REACT_LAZY_TYPE: {
+                  var lazyComponent = type;
+                  var payload = lazyComponent._payload;
+                  var init = lazyComponent._init;
+                  try {
+                    return describeUnknownElementTypeFrameInDEV(init(payload), source, ownerFn);
+                  } catch (x) {
+                  }
+                }
+              }
+            }
+            return "";
+          }
+          var hasOwnProperty = Object.prototype.hasOwnProperty;
+          var loggedTypeFailures = {};
+          var ReactDebugCurrentFrame = ReactSharedInternals.ReactDebugCurrentFrame;
+          function setCurrentlyValidatingElement(element) {
+            {
+              if (element) {
+                var owner = element._owner;
+                var stack = describeUnknownElementTypeFrameInDEV(element.type, element._source, owner ? owner.type : null);
+                ReactDebugCurrentFrame.setExtraStackFrame(stack);
+              } else {
+                ReactDebugCurrentFrame.setExtraStackFrame(null);
+              }
+            }
+          }
+          function checkPropTypes(typeSpecs, values, location, componentName, element) {
+            {
+              var has = Function.call.bind(hasOwnProperty);
+              for (var typeSpecName in typeSpecs) {
+                if (has(typeSpecs, typeSpecName)) {
+                  var error$1 = void 0;
+                  try {
+                    if (typeof typeSpecs[typeSpecName] !== "function") {
+                      var err = Error((componentName || "React class") + ": " + location + " type `" + typeSpecName + "` is invalid; it must be a function, usually from the `prop-types` package, but received `" + typeof typeSpecs[typeSpecName] + "`.This often happens because of typos such as `PropTypes.function` instead of `PropTypes.func`.");
+                      err.name = "Invariant Violation";
+                      throw err;
+                    }
+                    error$1 = typeSpecs[typeSpecName](values, typeSpecName, componentName, location, null, "SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED");
+                  } catch (ex) {
+                    error$1 = ex;
+                  }
+                  if (error$1 && !(error$1 instanceof Error)) {
+                    setCurrentlyValidatingElement(element);
+                    error("%s: type specification of %s `%s` is invalid; the type checker function must return `null` or an `Error` but returned a %s. You may have forgotten to pass an argument to the type checker creator (arrayOf, instanceOf, objectOf, oneOf, oneOfType, and shape all require an argument).", componentName || "React class", location, typeSpecName, typeof error$1);
+                    setCurrentlyValidatingElement(null);
+                  }
+                  if (error$1 instanceof Error && !(error$1.message in loggedTypeFailures)) {
+                    loggedTypeFailures[error$1.message] = true;
+                    setCurrentlyValidatingElement(element);
+                    error("Failed %s type: %s", location, error$1.message);
+                    setCurrentlyValidatingElement(null);
+                  }
+                }
+              }
+            }
+          }
+          var isArrayImpl = Array.isArray;
+          function isArray(a) {
+            return isArrayImpl(a);
+          }
+          function typeName(value) {
+            {
+              var hasToStringTag = typeof Symbol === "function" && Symbol.toStringTag;
+              var type = hasToStringTag && value[Symbol.toStringTag] || value.constructor.name || "Object";
+              return type;
+            }
+          }
+          function willCoercionThrow(value) {
+            {
+              try {
+                testStringCoercion(value);
+                return false;
+              } catch (e) {
+                return true;
+              }
+            }
+          }
+          function testStringCoercion(value) {
+            return "" + value;
+          }
+          function checkKeyStringCoercion(value) {
+            {
+              if (willCoercionThrow(value)) {
+                error("The provided key is an unsupported type %s. This value must be coerced to a string before before using it here.", typeName(value));
+                return testStringCoercion(value);
+              }
+            }
+          }
+          var ReactCurrentOwner = ReactSharedInternals.ReactCurrentOwner;
+          var RESERVED_PROPS = {
+            key: true,
+            ref: true,
+            __self: true,
+            __source: true
+          };
+          var specialPropKeyWarningShown;
+          var specialPropRefWarningShown;
+          var didWarnAboutStringRefs;
+          {
+            didWarnAboutStringRefs = {};
+          }
+          function hasValidRef(config) {
+            {
+              if (hasOwnProperty.call(config, "ref")) {
+                var getter = Object.getOwnPropertyDescriptor(config, "ref").get;
+                if (getter && getter.isReactWarning) {
+                  return false;
+                }
+              }
+            }
+            return config.ref !== void 0;
+          }
+          function hasValidKey(config) {
+            {
+              if (hasOwnProperty.call(config, "key")) {
+                var getter = Object.getOwnPropertyDescriptor(config, "key").get;
+                if (getter && getter.isReactWarning) {
+                  return false;
+                }
+              }
+            }
+            return config.key !== void 0;
+          }
+          function warnIfStringRefCannotBeAutoConverted(config, self) {
+            {
+              if (typeof config.ref === "string" && ReactCurrentOwner.current && self && ReactCurrentOwner.current.stateNode !== self) {
+                var componentName = getComponentNameFromType(ReactCurrentOwner.current.type);
+                if (!didWarnAboutStringRefs[componentName]) {
+                  error('Component "%s" contains the string ref "%s". Support for string refs will be removed in a future major release. This case cannot be automatically converted to an arrow function. We ask you to manually fix this case by using useRef() or createRef() instead. Learn more about using refs safely here: https://reactjs.org/link/strict-mode-string-ref', getComponentNameFromType(ReactCurrentOwner.current.type), config.ref);
+                  didWarnAboutStringRefs[componentName] = true;
+                }
+              }
+            }
+          }
+          function defineKeyPropWarningGetter(props, displayName) {
+            {
+              var warnAboutAccessingKey = function() {
+                if (!specialPropKeyWarningShown) {
+                  specialPropKeyWarningShown = true;
+                  error("%s: `key` is not a prop. Trying to access it will result in `undefined` being returned. If you need to access the same value within the child component, you should pass it as a different prop. (https://reactjs.org/link/special-props)", displayName);
+                }
+              };
+              warnAboutAccessingKey.isReactWarning = true;
+              Object.defineProperty(props, "key", {
+                get: warnAboutAccessingKey,
+                configurable: true
+              });
+            }
+          }
+          function defineRefPropWarningGetter(props, displayName) {
+            {
+              var warnAboutAccessingRef = function() {
+                if (!specialPropRefWarningShown) {
+                  specialPropRefWarningShown = true;
+                  error("%s: `ref` is not a prop. Trying to access it will result in `undefined` being returned. If you need to access the same value within the child component, you should pass it as a different prop. (https://reactjs.org/link/special-props)", displayName);
+                }
+              };
+              warnAboutAccessingRef.isReactWarning = true;
+              Object.defineProperty(props, "ref", {
+                get: warnAboutAccessingRef,
+                configurable: true
+              });
+            }
+          }
+          var ReactElement = function(type, key, ref, self, source, owner, props) {
+            var element = {
+              // This tag allows us to uniquely identify this as a React Element
+              $$typeof: REACT_ELEMENT_TYPE,
+              // Built-in properties that belong on the element
+              type,
+              key,
+              ref,
+              props,
+              // Record the component responsible for creating this element.
+              _owner: owner
+            };
+            {
+              element._store = {};
+              Object.defineProperty(element._store, "validated", {
+                configurable: false,
+                enumerable: false,
+                writable: true,
+                value: false
+              });
+              Object.defineProperty(element, "_self", {
+                configurable: false,
+                enumerable: false,
+                writable: false,
+                value: self
+              });
+              Object.defineProperty(element, "_source", {
+                configurable: false,
+                enumerable: false,
+                writable: false,
+                value: source
+              });
+              if (Object.freeze) {
+                Object.freeze(element.props);
+                Object.freeze(element);
+              }
+            }
+            return element;
+          };
+          function jsxDEV(type, config, maybeKey, source, self) {
+            {
+              var propName;
+              var props = {};
+              var key = null;
+              var ref = null;
+              if (maybeKey !== void 0) {
+                {
+                  checkKeyStringCoercion(maybeKey);
+                }
+                key = "" + maybeKey;
+              }
+              if (hasValidKey(config)) {
+                {
+                  checkKeyStringCoercion(config.key);
+                }
+                key = "" + config.key;
+              }
+              if (hasValidRef(config)) {
+                ref = config.ref;
+                warnIfStringRefCannotBeAutoConverted(config, self);
+              }
+              for (propName in config) {
+                if (hasOwnProperty.call(config, propName) && !RESERVED_PROPS.hasOwnProperty(propName)) {
+                  props[propName] = config[propName];
+                }
+              }
+              if (type && type.defaultProps) {
+                var defaultProps = type.defaultProps;
+                for (propName in defaultProps) {
+                  if (props[propName] === void 0) {
+                    props[propName] = defaultProps[propName];
+                  }
+                }
+              }
+              if (key || ref) {
+                var displayName = typeof type === "function" ? type.displayName || type.name || "Unknown" : type;
+                if (key) {
+                  defineKeyPropWarningGetter(props, displayName);
+                }
+                if (ref) {
+                  defineRefPropWarningGetter(props, displayName);
+                }
+              }
+              return ReactElement(type, key, ref, self, source, ReactCurrentOwner.current, props);
+            }
+          }
+          var ReactCurrentOwner$1 = ReactSharedInternals.ReactCurrentOwner;
+          var ReactDebugCurrentFrame$1 = ReactSharedInternals.ReactDebugCurrentFrame;
+          function setCurrentlyValidatingElement$1(element) {
+            {
+              if (element) {
+                var owner = element._owner;
+                var stack = describeUnknownElementTypeFrameInDEV(element.type, element._source, owner ? owner.type : null);
+                ReactDebugCurrentFrame$1.setExtraStackFrame(stack);
+              } else {
+                ReactDebugCurrentFrame$1.setExtraStackFrame(null);
+              }
+            }
+          }
+          var propTypesMisspellWarningShown;
+          {
+            propTypesMisspellWarningShown = false;
+          }
+          function isValidElement(object) {
+            {
+              return typeof object === "object" && object !== null && object.$$typeof === REACT_ELEMENT_TYPE;
+            }
+          }
+          function getDeclarationErrorAddendum() {
+            {
+              if (ReactCurrentOwner$1.current) {
+                var name = getComponentNameFromType(ReactCurrentOwner$1.current.type);
+                if (name) {
+                  return "\n\nCheck the render method of `" + name + "`.";
+                }
+              }
+              return "";
+            }
+          }
+          function getSourceInfoErrorAddendum(source) {
+            {
+              if (source !== void 0) {
+                var fileName = source.fileName.replace(/^.*[\\\/]/, "");
+                var lineNumber = source.lineNumber;
+                return "\n\nCheck your code at " + fileName + ":" + lineNumber + ".";
+              }
+              return "";
+            }
+          }
+          var ownerHasKeyUseWarning = {};
+          function getCurrentComponentErrorInfo(parentType) {
+            {
+              var info = getDeclarationErrorAddendum();
+              if (!info) {
+                var parentName = typeof parentType === "string" ? parentType : parentType.displayName || parentType.name;
+                if (parentName) {
+                  info = "\n\nCheck the top-level render call using <" + parentName + ">.";
+                }
+              }
+              return info;
+            }
+          }
+          function validateExplicitKey(element, parentType) {
+            {
+              if (!element._store || element._store.validated || element.key != null) {
+                return;
+              }
+              element._store.validated = true;
+              var currentComponentErrorInfo = getCurrentComponentErrorInfo(parentType);
+              if (ownerHasKeyUseWarning[currentComponentErrorInfo]) {
+                return;
+              }
+              ownerHasKeyUseWarning[currentComponentErrorInfo] = true;
+              var childOwner = "";
+              if (element && element._owner && element._owner !== ReactCurrentOwner$1.current) {
+                childOwner = " It was passed a child from " + getComponentNameFromType(element._owner.type) + ".";
+              }
+              setCurrentlyValidatingElement$1(element);
+              error('Each child in a list should have a unique "key" prop.%s%s See https://reactjs.org/link/warning-keys for more information.', currentComponentErrorInfo, childOwner);
+              setCurrentlyValidatingElement$1(null);
+            }
+          }
+          function validateChildKeys(node, parentType) {
+            {
+              if (typeof node !== "object") {
+                return;
+              }
+              if (isArray(node)) {
+                for (var i = 0; i < node.length; i++) {
+                  var child = node[i];
+                  if (isValidElement(child)) {
+                    validateExplicitKey(child, parentType);
+                  }
+                }
+              } else if (isValidElement(node)) {
+                if (node._store) {
+                  node._store.validated = true;
+                }
+              } else if (node) {
+                var iteratorFn = getIteratorFn(node);
+                if (typeof iteratorFn === "function") {
+                  if (iteratorFn !== node.entries) {
+                    var iterator = iteratorFn.call(node);
+                    var step;
+                    while (!(step = iterator.next()).done) {
+                      if (isValidElement(step.value)) {
+                        validateExplicitKey(step.value, parentType);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          function validatePropTypes(element) {
+            {
+              var type = element.type;
+              if (type === null || type === void 0 || typeof type === "string") {
+                return;
+              }
+              var propTypes;
+              if (typeof type === "function") {
+                propTypes = type.propTypes;
+              } else if (typeof type === "object" && (type.$$typeof === REACT_FORWARD_REF_TYPE || // Note: Memo only checks outer props here.
+              // Inner props are checked in the reconciler.
+              type.$$typeof === REACT_MEMO_TYPE)) {
+                propTypes = type.propTypes;
+              } else {
+                return;
+              }
+              if (propTypes) {
+                var name = getComponentNameFromType(type);
+                checkPropTypes(propTypes, element.props, "prop", name, element);
+              } else if (type.PropTypes !== void 0 && !propTypesMisspellWarningShown) {
+                propTypesMisspellWarningShown = true;
+                var _name = getComponentNameFromType(type);
+                error("Component %s declared `PropTypes` instead of `propTypes`. Did you misspell the property assignment?", _name || "Unknown");
+              }
+              if (typeof type.getDefaultProps === "function" && !type.getDefaultProps.isReactClassApproved) {
+                error("getDefaultProps is only used on classic React.createClass definitions. Use a static property named `defaultProps` instead.");
+              }
+            }
+          }
+          function validateFragmentProps(fragment) {
+            {
+              var keys = Object.keys(fragment.props);
+              for (var i = 0; i < keys.length; i++) {
+                var key = keys[i];
+                if (key !== "children" && key !== "key") {
+                  setCurrentlyValidatingElement$1(fragment);
+                  error("Invalid prop `%s` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.", key);
+                  setCurrentlyValidatingElement$1(null);
+                  break;
+                }
+              }
+              if (fragment.ref !== null) {
+                setCurrentlyValidatingElement$1(fragment);
+                error("Invalid attribute `ref` supplied to `React.Fragment`.");
+                setCurrentlyValidatingElement$1(null);
+              }
+            }
+          }
+          var didWarnAboutKeySpread = {};
+          function jsxWithValidation(type, props, key, isStaticChildren, source, self) {
+            {
+              var validType = isValidElementType(type);
+              if (!validType) {
+                var info = "";
+                if (type === void 0 || typeof type === "object" && type !== null && Object.keys(type).length === 0) {
+                  info += " You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.";
+                }
+                var sourceInfo = getSourceInfoErrorAddendum(source);
+                if (sourceInfo) {
+                  info += sourceInfo;
+                } else {
+                  info += getDeclarationErrorAddendum();
+                }
+                var typeString;
+                if (type === null) {
+                  typeString = "null";
+                } else if (isArray(type)) {
+                  typeString = "array";
+                } else if (type !== void 0 && type.$$typeof === REACT_ELEMENT_TYPE) {
+                  typeString = "<" + (getComponentNameFromType(type.type) || "Unknown") + " />";
+                  info = " Did you accidentally export a JSX literal instead of a component?";
+                } else {
+                  typeString = typeof type;
+                }
+                error("React.jsx: type is invalid -- expected a string (for built-in components) or a class/function (for composite components) but got: %s.%s", typeString, info);
+              }
+              var element = jsxDEV(type, props, key, source, self);
+              if (element == null) {
+                return element;
+              }
+              if (validType) {
+                var children = props.children;
+                if (children !== void 0) {
+                  if (isStaticChildren) {
+                    if (isArray(children)) {
+                      for (var i = 0; i < children.length; i++) {
+                        validateChildKeys(children[i], type);
+                      }
+                      if (Object.freeze) {
+                        Object.freeze(children);
+                      }
+                    } else {
+                      error("React.jsx: Static children should always be an array. You are likely explicitly calling React.jsxs or React.jsxDEV. Use the Babel transform instead.");
+                    }
+                  } else {
+                    validateChildKeys(children, type);
+                  }
+                }
+              }
+              {
+                if (hasOwnProperty.call(props, "key")) {
+                  var componentName = getComponentNameFromType(type);
+                  var keys = Object.keys(props).filter(function(k) {
+                    return k !== "key";
+                  });
+                  var beforeExample = keys.length > 0 ? "{key: someKey, " + keys.join(": ..., ") + ": ...}" : "{key: someKey}";
+                  if (!didWarnAboutKeySpread[componentName + beforeExample]) {
+                    var afterExample = keys.length > 0 ? "{" + keys.join(": ..., ") + ": ...}" : "{}";
+                    error('A props object containing a "key" prop is being spread into JSX:\n  let props = %s;\n  <%s {...props} />\nReact keys must be passed directly to JSX without using spread:\n  let props = %s;\n  <%s key={someKey} {...props} />', beforeExample, componentName, afterExample, componentName);
+                    didWarnAboutKeySpread[componentName + beforeExample] = true;
+                  }
+                }
+              }
+              if (type === REACT_FRAGMENT_TYPE) {
+                validateFragmentProps(element);
+              } else {
+                validatePropTypes(element);
+              }
+              return element;
+            }
+          }
+          function jsxWithValidationStatic(type, props, key) {
+            {
+              return jsxWithValidation(type, props, key, true);
+            }
+          }
+          function jsxWithValidationDynamic(type, props, key) {
+            {
+              return jsxWithValidation(type, props, key, false);
+            }
+          }
+          var jsx2 = jsxWithValidationDynamic;
+          var jsxs2 = jsxWithValidationStatic;
+          exports.Fragment = REACT_FRAGMENT_TYPE;
+          exports.jsx = jsx2;
+          exports.jsxs = jsxs2;
+        })();
+      }
+    }
+  });
+
+  // node_modules/react/jsx-runtime.js
+  var require_jsx_runtime = __commonJS({
+    "node_modules/react/jsx-runtime.js"(exports, module) {
+      "use strict";
+      if (false) {
+        module.exports = null;
+      } else {
+        module.exports = require_react_jsx_runtime_development();
+      }
+    }
+  });
+
   // preview-entry.jsx
   var import_react2 = __toESM(require_react(), 1);
   var import_client = __toESM(require_client(), 1);
 
   // ut_app_basecode.jsx
   var import_react = __toESM(require_react(), 1);
+  var import_jsx_runtime = __toESM(require_jsx_runtime(), 1);
   var AuthContext = (0, import_react.createContext)(null);
   var useAuth = () => (0, import_react.useContext)(AuthContext);
   var SENIOR_ROLES = ["bn_cdr", "xo", "ops", "sel"];
@@ -24246,7 +25152,13 @@
   }
 `;
   function Modal({ title, onClose, children }) {
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-bg", onClick: onClose }, /* @__PURE__ */ React.createElement("div", { className: "modal", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "modal-header" }, /* @__PURE__ */ React.createElement("span", { className: "modal-title" }, title), /* @__PURE__ */ React.createElement("button", { className: "modal-close", onClick: onClose }, "\u2715")), children));
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "modal-bg", onClick: onClose, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal", onClick: (e) => e.stopPropagation(), children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal-header", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "modal-title", children: title }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "modal-close", onClick: onClose, children: "\u2715" })
+      ] }),
+      children
+    ] }) });
   }
   function AccountModal({ onClose, onPasswordChange }) {
     const { user } = useAuth();
@@ -24271,10 +25183,70 @@
       setNewPass("");
       setConfirm("");
     };
-    return /* @__PURE__ */ React.createElement(Modal, { title: "Account Information", onClose }, user.mustChangePassword && mode !== "change" && /* @__PURE__ */ React.createElement("div", { className: "first-login-banner" }, "\u26A0 ", /* @__PURE__ */ React.createElement("strong", null, "Action required:"), " Please set a new password before continuing.", /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange btn-sm", style: { marginLeft: "0.75rem" }, onClick: () => setMode("change") }, "Set Password")), success && /* @__PURE__ */ React.createElement("div", { className: "alert alert-green" }, success), mode === "view" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "acct-field" }, /* @__PURE__ */ React.createElement("span", { className: "acct-label" }, "Name"), /* @__PURE__ */ React.createElement("strong", null, user.name)), /* @__PURE__ */ React.createElement("div", { className: "acct-field" }, /* @__PURE__ */ React.createElement("span", { className: "acct-label" }, "Rank"), user.rank), /* @__PURE__ */ React.createElement("div", { className: "acct-field" }, /* @__PURE__ */ React.createElement("span", { className: "acct-label" }, "Role"), /* @__PURE__ */ React.createElement("span", { className: "badge badge-orange" }, user.role.replace("_", " ").toUpperCase())), /* @__PURE__ */ React.createElement("div", { className: "acct-field" }, /* @__PURE__ */ React.createElement("span", { className: "acct-label" }, "Company"), user.company), /* @__PURE__ */ React.createElement("div", { className: "acct-field" }, /* @__PURE__ */ React.createElement("span", { className: "acct-label" }, "Platoon"), user.platoon), /* @__PURE__ */ React.createElement("div", { className: "acct-field" }, /* @__PURE__ */ React.createElement("span", { className: "acct-label" }, "Email"), /* @__PURE__ */ React.createElement("a", { href: "mailto:" + user.email, style: { color: "#BF5700" } }, user.email)), /* @__PURE__ */ React.createElement("div", { className: "acct-field" }, /* @__PURE__ */ React.createElement("span", { className: "acct-label" }, "Phone"), user.phone || "\u2014"), /* @__PURE__ */ React.createElement("div", { style: { marginTop: "1.25rem", display: "flex", gap: "0.75rem", justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline", onClick: () => setMode("change") }, "Change Password"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange", onClick: onClose }, "Close"))), mode === "change" && /* @__PURE__ */ React.createElement(React.Fragment, null, err && /* @__PURE__ */ React.createElement("div", { style: { background: "rgba(192,57,43,0.1)", border: "1.5px solid #C0392B", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: "#C0392B", marginBottom: "0.9rem" } }, "\u26A0 ", err), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "New Password"), /* @__PURE__ */ React.createElement("input", { className: "input", type: "password", placeholder: "At least 8 characters", value: newPass, onChange: (e) => setNewPass(e.target.value) })), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Confirm New Password"), /* @__PURE__ */ React.createElement("input", { className: "input", type: "password", placeholder: "Re-enter password", value: confirm, onChange: (e) => setConfirm(e.target.value), onKeyDown: (e) => e.key === "Enter" && handleChange() })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "0.5rem" } }, !user.mustChangePassword && /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline", onClick: () => {
-      setMode("view");
-      setErr("");
-    } }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange", onClick: handleChange }, "Update Password"))));
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Account Information", onClose, children: [
+      user.mustChangePassword && mode !== "change" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "first-login-banner", children: [
+        "\u26A0 ",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Action required:" }),
+        " Please set a new password before continuing.",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", style: { marginLeft: "0.75rem" }, onClick: () => setMode("change"), children: "Set Password" })
+      ] }),
+      success && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "alert alert-green", children: success }),
+      mode === "view" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Name" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: user.name })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Rank" }),
+          user.rank
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Role" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-orange", children: user.role.replace("_", " ").toUpperCase() })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Company" }),
+          user.company
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Platoon" }),
+          user.platoon
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Email" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: "mailto:" + user.email, style: { color: "#BF5700" }, children: user.email })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Phone" }),
+          user.phone || "\u2014"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.25rem", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => setMode("change"), children: "Change Password" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: onClose, children: "Close" })
+        ] })
+      ] }),
+      mode === "change" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+        err && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(192,57,43,0.1)", border: "1.5px solid #C0392B", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: "#C0392B", marginBottom: "0.9rem" }, children: [
+          "\u26A0 ",
+          err
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "New Password" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "password", placeholder: "At least 8 characters", value: newPass, onChange: (e) => setNewPass(e.target.value) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Confirm New Password" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "password", placeholder: "Re-enter password", value: confirm, onChange: (e) => setConfirm(e.target.value), onKeyDown: (e) => e.key === "Enter" && handleChange() })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "0.5rem" }, children: [
+          !user.mustChangePassword && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => {
+            setMode("view");
+            setErr("");
+          }, children: "Cancel" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: handleChange, children: "Update Password" })
+        ] })
+      ] })
+    ] });
   }
   function FirstLoginGate({ onPasswordChange }) {
     const [newPass, setNewPass] = (0, import_react.useState)("");
@@ -24291,7 +25263,23 @@
       }
       onPasswordChange(newPass);
     };
-    return /* @__PURE__ */ React.createElement("div", { className: "modal-bg" }, /* @__PURE__ */ React.createElement("div", { className: "modal" }, /* @__PURE__ */ React.createElement("div", { className: "modal-header" }, /* @__PURE__ */ React.createElement("span", { className: "modal-title" }, "\u{1F510} Set Your Password")), /* @__PURE__ */ React.createElement("div", { className: "first-login-banner" }, "Your account was issued a temporary password. You must set a permanent password to continue."), err && /* @__PURE__ */ React.createElement("div", { style: { background: "rgba(192,57,43,0.1)", border: "1.5px solid #C0392B", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: "#C0392B", marginBottom: "0.9rem" } }, "\u26A0 ", err), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "New Password"), /* @__PURE__ */ React.createElement("input", { className: "input", type: "password", placeholder: "At least 8 characters", value: newPass, onChange: (e) => setNewPass(e.target.value) })), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Confirm Password"), /* @__PURE__ */ React.createElement("input", { className: "input", type: "password", placeholder: "Re-enter password", value: confirm, onChange: (e) => setConfirm(e.target.value), onKeyDown: (e) => e.key === "Enter" && handle() })), /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange", style: { width: "100%", justifyContent: "center" }, onClick: handle }, "Set Password & Continue \u2192")));
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "modal-bg", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "modal-header", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "modal-title", children: "\u{1F510} Set Your Password" }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "first-login-banner", children: "Your account was issued a temporary password. You must set a permanent password to continue." }),
+      err && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(192,57,43,0.1)", border: "1.5px solid #C0392B", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: "#C0392B", marginBottom: "0.9rem" }, children: [
+        "\u26A0 ",
+        err
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "New Password" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "password", placeholder: "At least 8 characters", value: newPass, onChange: (e) => setNewPass(e.target.value) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Confirm Password" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "password", placeholder: "Re-enter password", value: confirm, onChange: (e) => setConfirm(e.target.value), onKeyDown: (e) => e.key === "Enter" && handle() })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", style: { width: "100%", justifyContent: "center" }, onClick: handle, children: "Set Password & Continue \u2192" })
+    ] }) });
   }
   function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
     const [name, setName] = (0, import_react.useState)("");
@@ -24385,85 +25373,138 @@
         setErr("Network error. Check your connection.");
       });
     };
-    const banner = (msg, color) => /* @__PURE__ */ React.createElement("div", { style: { background: `rgba(${color},0.1)`, border: `1.5px solid rgb(${color})`, borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: `rgb(${color})`, marginBottom: "0.9rem" } }, msg);
-    return /* @__PURE__ */ React.createElement("div", { className: "login-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "login-card" }, /* @__PURE__ */ React.createElement("div", { className: "login-logo" }, /* @__PURE__ */ React.createElement("div", { className: "login-mark" }, "UT"), /* @__PURE__ */ React.createElement("div", { className: "login-title" }, "The ", /* @__PURE__ */ React.createElement("span", null, "Quarterdeck"))), !mfaStep ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "login-sub" }, "Sign in with your battalion credentials"), !sheetSynced && /* @__PURE__ */ React.createElement("div", { style: { background: "rgba(191,87,0,0.08)", border: "1.5px solid #BF5700", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#BF5700", marginBottom: "0.9rem", display: "flex", alignItems: "center", gap: "0.6rem" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: "1.1rem" } }, "\u23F3"), /* @__PURE__ */ React.createElement("span", null, "Syncing roster from Google Sheets\u2026 please wait.")), sheetSynced && sheetError && /* @__PURE__ */ React.createElement("div", { style: { background: "rgba(192,57,43,0.1)", border: "1.5px solid #C0392B", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#C0392B", marginBottom: "0.9rem" } }, "\u26A0 Could not reach Google Sheets. Check your connection and", " ", /* @__PURE__ */ React.createElement("button", { onClick: onRetry, style: { background: "none", border: "none", color: "#C0392B", fontWeight: 700, textDecoration: "underline", cursor: "pointer", fontSize: "inherit", padding: 0 } }, "retry"), "."), err && banner("\u26A0 " + err, "192,57,43"), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Last Name, Email, or EID"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        className: "input",
-        placeholder: locked ? "Waiting for roster sync\u2026" : "Last name, email, or EID",
-        value: name,
-        disabled: locked || mfaLoading,
-        style: locked || mfaLoading ? { opacity: 0.45, cursor: "not-allowed" } : {},
-        onChange: (e) => setName(e.target.value),
-        onKeyDown: (e) => e.key === "Enter" && go()
-      }
-    )), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Password"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        className: "input",
-        type: "password",
-        placeholder: locked ? "Waiting for roster sync\u2026" : "Your password",
-        value: pass,
-        disabled: locked || mfaLoading,
-        style: locked || mfaLoading ? { opacity: 0.45, cursor: "not-allowed" } : {},
-        onChange: (e) => setPass(e.target.value),
-        onKeyDown: (e) => e.key === "Enter" && go()
-      }
-    )), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        className: "btn btn-orange",
-        style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: locked || mfaLoading ? 0.45 : 1, cursor: locked || mfaLoading ? "not-allowed" : "pointer" },
-        disabled: locked || mfaLoading,
-        onClick: go
-      },
-      mfaLoading ? "\u23F3 Sending code\u2026" : locked ? "\u23F3 Syncing\u2026" : "Sign In \u2192"
-    ), /* @__PURE__ */ React.createElement("div", { className: "hint-box" }, /* @__PURE__ */ React.createElement("strong", null, "Username:"), " your last name, full email, or EID", /* @__PURE__ */ React.createElement("br", null), "Contact your S1 (ADJ) if you need a password reset.")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "login-sub" }, "Two-factor verification"), mfaInfo && /* @__PURE__ */ React.createElement("div", { style: { background: "rgba(39,174,96,0.1)", border: "1.5px solid #27AE60", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: "#1e8449", marginBottom: "0.9rem" } }, "\u2709 ", mfaInfo), err && banner("\u26A0 " + err, "192,57,43"), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Verification Code"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        className: "input",
-        type: "text",
-        inputMode: "numeric",
-        maxLength: 6,
-        placeholder: "Enter 6-digit code",
-        value: mfaCode,
-        disabled: mfaLoading,
-        style: mfaLoading ? { opacity: 0.45, cursor: "not-allowed" } : {},
-        onChange: (e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6)),
-        onKeyDown: (e) => e.key === "Enter" && verifyCode(),
-        autoFocus: true
-      }
-    )), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        className: "btn btn-orange",
-        style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: mfaLoading ? 0.45 : 1, cursor: mfaLoading ? "not-allowed" : "pointer" },
-        disabled: mfaLoading,
-        onClick: verifyCode
-      },
-      mfaLoading ? "\u23F3 Verifying\u2026" : "Verify & Sign In \u2192"
-    ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginTop: "0.75rem", fontSize: "0.83rem" } }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          setMfaStep(false);
-          setMfaUser(null);
-          setMfaCode("");
-          setErr("");
-          setMfaInfo("");
-        },
-        style: { background: "none", border: "none", color: "#666", cursor: "pointer", padding: 0, textDecoration: "underline" }
-      },
-      "\u2190 Back"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: resendCode,
-        disabled: mfaLoading,
-        style: { background: "none", border: "none", color: "#BF5700", cursor: mfaLoading ? "not-allowed" : "pointer", padding: 0, textDecoration: "underline", opacity: mfaLoading ? 0.45 : 1 }
-      },
-      "Resend code"
-    )))));
+    const banner = (msg, color) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: `rgba(${color},0.1)`, border: `1.5px solid rgb(${color})`, borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: `rgb(${color})`, marginBottom: "0.9rem" }, children: msg });
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-card", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-logo", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-mark", children: "UT" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-title", children: [
+          "The ",
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Quarterdeck" })
+        ] })
+      ] }),
+      !mfaStep ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-sub", children: "Sign in with your battalion credentials" }),
+        !sheetSynced && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(191,87,0,0.08)", border: "1.5px solid #BF5700", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#BF5700", marginBottom: "0.9rem", display: "flex", alignItems: "center", gap: "0.6rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "1.1rem" }, children: "\u23F3" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Syncing roster from Google Sheets\u2026 please wait." })
+        ] }),
+        sheetSynced && sheetError && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(192,57,43,0.1)", border: "1.5px solid #C0392B", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#C0392B", marginBottom: "0.9rem" }, children: [
+          "\u26A0 Could not reach Google Sheets. Check your connection and",
+          " ",
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: onRetry, style: { background: "none", border: "none", color: "#C0392B", fontWeight: 700, textDecoration: "underline", cursor: "pointer", fontSize: "inherit", padding: 0 }, children: "retry" }),
+          "."
+        ] }),
+        err && banner("\u26A0 " + err, "192,57,43"),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Last Name, Email, or EID" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "input",
+            {
+              className: "input",
+              placeholder: locked ? "Waiting for roster sync\u2026" : "Last name, email, or EID",
+              value: name,
+              disabled: locked || mfaLoading,
+              style: locked || mfaLoading ? { opacity: 0.45, cursor: "not-allowed" } : {},
+              onChange: (e) => setName(e.target.value),
+              onKeyDown: (e) => e.key === "Enter" && go()
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Password" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "input",
+            {
+              className: "input",
+              type: "password",
+              placeholder: locked ? "Waiting for roster sync\u2026" : "Your password",
+              value: pass,
+              disabled: locked || mfaLoading,
+              style: locked || mfaLoading ? { opacity: 0.45, cursor: "not-allowed" } : {},
+              onChange: (e) => setPass(e.target.value),
+              onKeyDown: (e) => e.key === "Enter" && go()
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "button",
+          {
+            className: "btn btn-orange",
+            style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: locked || mfaLoading ? 0.45 : 1, cursor: locked || mfaLoading ? "not-allowed" : "pointer" },
+            disabled: locked || mfaLoading,
+            onClick: go,
+            children: mfaLoading ? "\u23F3 Sending code\u2026" : locked ? "\u23F3 Syncing\u2026" : "Sign In \u2192"
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "hint-box", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Username:" }),
+          " your last name, full email, or EID",
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
+          "Contact your S1 (ADJ) if you need a password reset."
+        ] })
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-sub", children: "Two-factor verification" }),
+        mfaInfo && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(39,174,96,0.1)", border: "1.5px solid #27AE60", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: "#1e8449", marginBottom: "0.9rem" }, children: [
+          "\u2709 ",
+          mfaInfo
+        ] }),
+        err && banner("\u26A0 " + err, "192,57,43"),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Verification Code" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "input",
+            {
+              className: "input",
+              type: "text",
+              inputMode: "numeric",
+              maxLength: 6,
+              placeholder: "Enter 6-digit code",
+              value: mfaCode,
+              disabled: mfaLoading,
+              style: mfaLoading ? { opacity: 0.45, cursor: "not-allowed" } : {},
+              onChange: (e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6)),
+              onKeyDown: (e) => e.key === "Enter" && verifyCode(),
+              autoFocus: true
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "button",
+          {
+            className: "btn btn-orange",
+            style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: mfaLoading ? 0.45 : 1, cursor: mfaLoading ? "not-allowed" : "pointer" },
+            disabled: mfaLoading,
+            onClick: verifyCode,
+            children: mfaLoading ? "\u23F3 Verifying\u2026" : "Verify & Sign In \u2192"
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginTop: "0.75rem", fontSize: "0.83rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              onClick: () => {
+                setMfaStep(false);
+                setMfaUser(null);
+                setMfaCode("");
+                setErr("");
+                setMfaInfo("");
+              },
+              style: { background: "none", border: "none", color: "#666", cursor: "pointer", padding: 0, textDecoration: "underline" },
+              children: "\u2190 Back"
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              onClick: resendCode,
+              disabled: mfaLoading,
+              style: { background: "none", border: "none", color: "#BF5700", cursor: mfaLoading ? "not-allowed" : "pointer", padding: 0, textDecoration: "underline", opacity: mfaLoading ? 0.45 : 1 },
+              children: "Resend code"
+            }
+          )
+        ] })
+      ] })
+    ] }) });
   }
   function Dashboard({ onNav, userList, forms, reminder, setReminder }) {
     const { user } = useAuth();
@@ -24474,36 +25515,175 @@
       setReminder({ enabled: draftText.trim().length > 0, text: draftText.trim() });
       setEditingReminder(false);
     };
-    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "page-title" }, "BN ", /* @__PURE__ */ React.createElement("span", null, "Dashboard")), /* @__PURE__ */ React.createElement("div", { className: "page-sub" }, "Welcome, ", user.rank, " ", user.name, " \u2014 Spring 2026"), reminder.enabled && reminder.text && /* @__PURE__ */ React.createElement("div", { className: "alert" }, "\u{1F514} ", /* @__PURE__ */ React.createElement("strong", null, "Reminder:"), " ", reminder.text), canManageReminder && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: "1rem" } }, editingReminder ? /* @__PURE__ */ React.createElement("div", { className: "stage-action-box" }, /* @__PURE__ */ React.createElement("div", { className: "stage-action-label" }, "BN Reminder"), /* @__PURE__ */ React.createElement(
-      "textarea",
-      {
-        className: "input",
-        style: { minHeight: "60px", resize: "vertical", marginBottom: "0.5rem", fontSize: "0.85rem" },
-        placeholder: "Type reminder text\u2026 (leave blank to hide)",
-        value: draftText,
-        onChange: (e) => setDraftText(e.target.value)
-      }
-    ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-green btn-sm", onClick: saveReminder }, "Save"), reminder.enabled && /* @__PURE__ */ React.createElement("button", { className: "btn btn-red btn-sm", onClick: () => {
-      setReminder({ enabled: false, text: "" });
-      setDraftText("");
-      setEditingReminder(false);
-    } }, "Turn Off"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline btn-sm", onClick: () => {
-      setDraftText(reminder.text);
-      setEditingReminder(false);
-    } }, "Cancel"))) : /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline btn-sm", onClick: () => {
-      setDraftText(reminder.text);
-      setEditingReminder(true);
-    } }, reminder.enabled ? "\u270F Edit Reminder" : "+ Add Reminder")), /* @__PURE__ */ React.createElement("div", { className: "grid3", style: { marginBottom: "1rem" } }, /* @__PURE__ */ React.createElement("div", { className: "stat" }, /* @__PURE__ */ React.createElement("div", { className: "stat-n" }, userList.length), /* @__PURE__ */ React.createElement("div", { className: "stat-l" }, "BN Strength")), /* @__PURE__ */ React.createElement("div", { className: "stat", style: { borderLeftColor: "#0D1B2A" } }, /* @__PURE__ */ React.createElement("div", { className: "stat-n", style: { color: "#0D1B2A" } }, "3"), /* @__PURE__ */ React.createElement("div", { className: "stat-l" }, "Open CHITs")), /* @__PURE__ */ React.createElement("div", { className: "stat", style: { borderLeftColor: "#2A7D4F" } }, /* @__PURE__ */ React.createElement("div", { className: "stat-n", style: { color: "#2A7D4F" } }, "4"), /* @__PURE__ */ React.createElement("div", { className: "stat-l" }, "Active Forms"))), /* @__PURE__ */ React.createElement("div", { className: "grid2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "potw-card" }, (() => {
-      const mon = getCurrentWeekMonday();
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "potw-week" }, "\u{1F4D6} Week ", getWeekNumber(mon), " \u2014 ", SEMESTER_LABEL), /* @__PURE__ */ React.createElement("div", { className: "potw-title" }, "POTW: ", formatWeekRange(mon)));
-    })()), /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("div", { className: "card-header" }, /* @__PURE__ */ React.createElement("span", { className: "card-title" }, "\u{1F4C5} Upcoming Events"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline btn-sm", onClick: () => onNav("calendar") }, "View All")), POTW.operations.slice(0, 4).map((e, i) => /* @__PURE__ */ React.createElement("div", { className: "event-row", key: i }, /* @__PURE__ */ React.createElement("div", { className: "event-date" }, /* @__PURE__ */ React.createElement("div", { className: "event-day" }, e.date.split(" ")[0]), /* @__PURE__ */ React.createElement("div", { className: "event-mo" }, e.date.split(" ")[1] || "")), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { className: "event-title" }, e.title), /* @__PURE__ */ React.createElement("div", { className: "event-sub" }, e.time, e.location ? ` \xB7 ${e.location}` : "")), /* @__PURE__ */ React.createElement("span", { className: "badge badge-navy" }, e.type))))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("div", { className: "card-header" }, /* @__PURE__ */ React.createElement("span", { className: "card-title" }, "\u{1F4CB} My CHITs"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline btn-sm", onClick: () => onNav("chits") }, "Open")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.83rem", color: "#666" } }, "\u{1F512} Private \u2014 only visible to you and your chain of command.")), /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("div", { className: "card-header" }, /* @__PURE__ */ React.createElement("span", { className: "card-title" }, "\u2753 Academic Board"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline btn-sm", onClick: () => onNav("academic") }, "Open")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.88rem" } }, "Questions needing answers: ", /* @__PURE__ */ React.createElement("strong", { style: { color: "#BF5700" } }, "1"))), /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("div", { className: "card-header" }, /* @__PURE__ */ React.createElement("span", { className: "card-title" }, "\u{1F4DD} Open Forms"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline btn-sm", onClick: () => onNav("forms") }, "View")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.88rem" } }, forms.length, " form", forms.length !== 1 ? "s" : "", " posted for your response.")))));
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-title", children: [
+        "BN ",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Dashboard" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-sub", children: [
+        "Welcome, ",
+        user.rank,
+        " ",
+        user.name,
+        " \u2014 Spring 2026"
+      ] }),
+      reminder.enabled && reminder.text && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "alert", children: [
+        "\u{1F514} ",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Reminder:" }),
+        " ",
+        reminder.text
+      ] }),
+      canManageReminder && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginBottom: "1rem" }, children: editingReminder ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-action-label", children: "BN Reminder" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "textarea",
+          {
+            className: "input",
+            style: { minHeight: "60px", resize: "vertical", marginBottom: "0.5rem", fontSize: "0.85rem" },
+            placeholder: "Type reminder text\u2026 (leave blank to hide)",
+            value: draftText,
+            onChange: (e) => setDraftText(e.target.value)
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: saveReminder, children: "Save" }),
+          reminder.enabled && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => {
+            setReminder({ enabled: false, text: "" });
+            setDraftText("");
+            setEditingReminder(false);
+          }, children: "Turn Off" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
+            setDraftText(reminder.text);
+            setEditingReminder(false);
+          }, children: "Cancel" })
+        ] })
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
+        setDraftText(reminder.text);
+        setEditingReminder(true);
+      }, children: reminder.enabled ? "\u270F Edit Reminder" : "+ Add Reminder" }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "grid3", style: { marginBottom: "1rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", children: userList.length }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "BN Strength" })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#0D1B2A" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#0D1B2A" }, children: "3" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "Open CHITs" })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#2A7D4F" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#2A7D4F" }, children: "4" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "Active Forms" })
+        ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "grid2", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-card", children: (() => {
+            const mon = getCurrentWeekMonday();
+            return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "potw-week", children: [
+                "\u{1F4D6} Week ",
+                getWeekNumber(mon),
+                " \u2014 ",
+                SEMESTER_LABEL
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "potw-title", children: [
+                "POTW: ",
+                formatWeekRange(mon)
+              ] })
+            ] });
+          })() }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card-header", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "card-title", children: "\u{1F4C5} Upcoming Events" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => onNav("calendar"), children: "View All" })
+            ] }),
+            POTW.operations.slice(0, 4).map((e, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "event-row", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "event-date", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "event-day", children: e.date.split(" ")[0] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "event-mo", children: e.date.split(" ")[1] || "" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { flex: 1 }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "event-title", children: e.title }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "event-sub", children: [
+                  e.time,
+                  e.location ? ` \xB7 ${e.location}` : ""
+                ] })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-navy", children: e.type })
+            ] }, i))
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card-header", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "card-title", children: "\u{1F4CB} My CHITs" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => onNav("chits"), children: "Open" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.83rem", color: "#666" }, children: "\u{1F512} Private \u2014 only visible to you and your chain of command." })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card-header", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "card-title", children: "\u2753 Academic Board" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => onNav("academic"), children: "Open" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.88rem" }, children: [
+              "Questions needing answers: ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { style: { color: "#BF5700" }, children: "1" })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card-header", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "card-title", children: "\u{1F4DD} Open Forms" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => onNav("forms"), children: "View" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.88rem" }, children: [
+              forms.length,
+              " form",
+              forms.length !== 1 ? "s" : "",
+              " posted for your response."
+            ] })
+          ] })
+        ] })
+      ] })
+    ] });
   }
   function CalendarPage() {
     const mon = getCurrentWeekMonday();
     const weekNum = getWeekNumber(mon);
     const weekRange = formatWeekRange(mon);
     const weekLabel = `Week ${weekNum} \u2014 ${SEMESTER_LABEL}`;
-    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "page-title" }, /* @__PURE__ */ React.createElement("span", null, "POTW")), /* @__PURE__ */ React.createElement("div", { className: "potw-card" }, /* @__PURE__ */ React.createElement("div", { className: "potw-week" }, "\u{1F4D6} ", weekLabel), /* @__PURE__ */ React.createElement("div", { className: "potw-title" }, weekRange)), /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("div", { className: "card-header" }, /* @__PURE__ */ React.createElement("span", { className: "card-title" }, "\u{1F4C5} ", weekRange)), POTW.operations.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.88rem", color: "#666", padding: "0.5rem 0" } }, "No events scheduled for this week."), POTW.operations.map((e, i) => /* @__PURE__ */ React.createElement("div", { className: "event-row", key: i }, /* @__PURE__ */ React.createElement("div", { className: "event-date" }, /* @__PURE__ */ React.createElement("div", { className: "event-day" }, e.date.split(" ")[0]), /* @__PURE__ */ React.createElement("div", { className: "event-mo" }, e.date.split(" ")[1] || "")), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { className: "event-title" }, e.title), /* @__PURE__ */ React.createElement("div", { className: "event-sub" }, "\u{1F550} ", e.time, e.location ? ` \xB7 \u{1F4CD} ${e.location}` : "")), /* @__PURE__ */ React.createElement("span", { className: "badge badge-navy" }, e.type)))));
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-title", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "POTW" }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "potw-card", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "potw-week", children: [
+          "\u{1F4D6} ",
+          weekLabel
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-title", children: weekRange })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "card-header", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "card-title", children: [
+          "\u{1F4C5} ",
+          weekRange
+        ] }) }),
+        POTW.operations.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.88rem", color: "#666", padding: "0.5rem 0" }, children: "No events scheduled for this week." }),
+        POTW.operations.map((e, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "event-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "event-date", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "event-day", children: e.date.split(" ")[0] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "event-mo", children: e.date.split(" ")[1] || "" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { flex: 1 }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "event-title", children: e.title }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "event-sub", children: [
+              "\u{1F550} ",
+              e.time,
+              e.location ? ` \xB7 \u{1F4CD} ${e.location}` : ""
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-navy", children: e.type })
+        ] }, i))
+      ] })
+    ] });
   }
   function StructurePage({ userList }) {
     const [open, setOpen] = (0, import_react.useState)({});
@@ -24536,12 +25716,74 @@
       return { ...def, co, sel: sel2, platoons, total: members.length };
     });
     const grandTotal = userList.length;
-    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "page-title" }, "BN ", /* @__PURE__ */ React.createElement("span", null, "Structure")), /* @__PURE__ */ React.createElement("div", { className: "page-sub" }, "The Quarterdeck \u2014 ", grandTotal, " Personnel"), /* @__PURE__ */ React.createElement("div", { className: "card", style: { padding: "1rem 1.2rem", marginBottom: "1rem" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "#888", marginBottom: "0.6rem", fontWeight: 600 } }, "Battalion Leadership"), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" } }, [
-      { label: "BNCO", user: bnco },
-      { label: "BNXO", user: bnxo },
-      { label: "OPS", user: ops },
-      { label: "SEL", user: sel }
-    ].map(({ label, user: u }) => /* @__PURE__ */ React.createElement("div", { key: label, style: { background: "#f8f8f8", borderRadius: "8px", padding: "0.6rem 0.8rem", borderLeft: "3px solid #BF5700" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "1px", color: "#BF5700", fontWeight: 700 } }, label), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.88rem", fontWeight: 600, marginTop: "0.15rem" } }, u ? fmt(u) : "\u2014"))))), /* @__PURE__ */ React.createElement("div", { className: "grid3", style: { marginBottom: "1rem" } }, companies.map((co, i) => /* @__PURE__ */ React.createElement("div", { className: "stat", key: i, style: { borderLeftColor: co.color } }, /* @__PURE__ */ React.createElement("div", { className: "stat-n", style: { color: co.color } }, co.total), /* @__PURE__ */ React.createElement("div", { className: "stat-l" }, co.name)))), /* @__PURE__ */ React.createElement("div", { className: "company-block" }, /* @__PURE__ */ React.createElement("div", { className: "company-header", style: { background: "#333" }, onClick: () => setBilletsOpen((s) => !s) }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "company-name" }, "Billet Holders"), /* @__PURE__ */ React.createElement("div", { className: "company-co" }, billetHolders.length, " billets assigned")), /* @__PURE__ */ React.createElement("span", null, billetsOpen ? "\u25B2" : "\u25BC")), billetsOpen && /* @__PURE__ */ React.createElement("div", { style: { padding: "0.75rem 1rem" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.5rem" } }, billetHolders.map((u, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.45rem 0.7rem", background: "#f8f8f8", borderRadius: "6px", fontSize: "0.82rem" } }, /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 600 } }, fmt(u)), /* @__PURE__ */ React.createElement("span", { className: "badge badge-orange", style: { fontSize: "0.68rem" } }, getBilletLabel(u))))))), companies.map((co, ci) => /* @__PURE__ */ React.createElement("div", { className: "company-block", key: ci }, /* @__PURE__ */ React.createElement("div", { className: "company-header", style: { background: co.color }, onClick: () => setOpen((s) => ({ ...s, [ci]: !s[ci] })) }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "company-name" }, co.name), /* @__PURE__ */ React.createElement("div", { className: "company-co" }, "CO: ", co.co ? fmt(co.co) : "\u2014", co.sel ? ` \xB7 SEL: ${fmt(co.sel)}` : "")), /* @__PURE__ */ React.createElement("span", null, open[ci] ? "\u25B2" : "\u25BC")), open[ci] && /* @__PURE__ */ React.createElement("div", { className: "platoon-grid" }, co.platoons.map((p, pi) => /* @__PURE__ */ React.createElement("div", { className: "platoon-card", key: pi }, /* @__PURE__ */ React.createElement("div", { className: "platoon-name" }, p.name), /* @__PURE__ */ React.createElement("div", { className: "platoon-detail" }, "PC: ", p.pc ? fmt(p.pc) : "\u2014"), /* @__PURE__ */ React.createElement("div", { style: { marginTop: "0.4rem" } }, /* @__PURE__ */ React.createElement("span", { className: "badge badge-orange" }, p.total, " Member", p.total !== 1 ? "s" : ""))))))));
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-title", children: [
+        "BN ",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Structure" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-sub", children: [
+        "The Quarterdeck \u2014 ",
+        grandTotal,
+        " Personnel"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", style: { padding: "1rem 1.2rem", marginBottom: "1rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "#888", marginBottom: "0.6rem", fontWeight: 600 }, children: "Battalion Leadership" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }, children: [
+          { label: "BNCO", user: bnco },
+          { label: "BNXO", user: bnxo },
+          { label: "OPS", user: ops },
+          { label: "SEL", user: sel }
+        ].map(({ label, user: u }) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "#f8f8f8", borderRadius: "8px", padding: "0.6rem 0.8rem", borderLeft: "3px solid #BF5700" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "1px", color: "#BF5700", fontWeight: 700 }, children: label }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.88rem", fontWeight: 600, marginTop: "0.15rem" }, children: u ? fmt(u) : "\u2014" })
+        ] }, label)) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "grid3", style: { marginBottom: "1rem" }, children: companies.map((co, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: co.color }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: co.color }, children: co.total }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: co.name })
+      ] }, i)) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-block", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-header", style: { background: "#333" }, onClick: () => setBilletsOpen((s) => !s), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-name", children: "Billet Holders" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-co", children: [
+              billetHolders.length,
+              " billets assigned"
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: billetsOpen ? "\u25B2" : "\u25BC" })
+        ] }),
+        billetsOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "0.75rem 1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.5rem" }, children: billetHolders.map((u, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.45rem 0.7rem", background: "#f8f8f8", borderRadius: "6px", fontSize: "0.82rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontWeight: 600 }, children: fmt(u) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-orange", style: { fontSize: "0.68rem" }, children: getBilletLabel(u) })
+        ] }, i)) }) })
+      ] }),
+      companies.map((co, ci) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-block", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-header", style: { background: co.color }, onClick: () => setOpen((s) => ({ ...s, [ci]: !s[ci] })), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-name", children: co.name }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-co", children: [
+              "CO: ",
+              co.co ? fmt(co.co) : "\u2014",
+              co.sel ? ` \xB7 SEL: ${fmt(co.sel)}` : ""
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: open[ci] ? "\u25B2" : "\u25BC" })
+        ] }),
+        open[ci] && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "platoon-grid", children: co.platoons.map((p, pi) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "platoon-card", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "platoon-name", children: p.name }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "platoon-detail", children: [
+            "PC: ",
+            p.pc ? fmt(p.pc) : "\u2014"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.4rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "badge badge-orange", children: [
+            p.total,
+            " Member",
+            p.total !== 1 ? "s" : ""
+          ] }) })
+        ] }, pi)) })
+      ] }, ci))
+    ] });
   }
   function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
     const { user } = useAuth();
@@ -24597,65 +25839,179 @@
       setLlSessions((prev) => prev.filter((s) => s.id !== id));
       fire("Session removed.");
     };
-    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "page-title" }, "Training ", /* @__PURE__ */ React.createElement("span", null, "Plans")), /* @__PURE__ */ React.createElement("div", { className: "page-sub" }, "Weekly PT schedules and Leadership Lab notes"), toast && /* @__PURE__ */ React.createElement("div", { className: "alert alert-green" }, toast), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", borderBottom: "2px solid #eee", marginBottom: "1.25rem" } }, [["pt", "PT Plan"], ["leadlab", "LL"]].map(([t, label]) => /* @__PURE__ */ React.createElement("button", { key: t, onClick: () => setTab(t), style: {
-      padding: "0.5rem 1.2rem",
-      fontFamily: "Oswald",
-      fontSize: "0.8rem",
-      letterSpacing: "1.5px",
-      textTransform: "uppercase",
-      cursor: "pointer",
-      background: "none",
-      border: "none",
-      borderBottom: tab === t ? "2px solid #BF5700" : "2px solid transparent",
-      color: tab === t ? "#BF5700" : "#888",
-      marginBottom: "-2px"
-    } }, label))), tab === "pt" && /* @__PURE__ */ React.createElement("div", null, canUploadPT && /* @__PURE__ */ React.createElement("div", { className: "alert" }, "\u270F ", /* @__PURE__ */ React.createElement("strong", null, "OPS / PTO \u2014 Upload Mode:"), " Use the buttons below to post this week's PT plan PDFs."), PT_SESSIONS.map((s) => {
-      const plan = ptPlans[s.key];
-      const inputId = `pt-file-${s.key}`;
-      return /* @__PURE__ */ React.createElement("div", { key: s.key, style: { background: "white", borderRadius: "10px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", border: "1px solid rgba(191,87,0,0.1)", borderTop: `4px solid ${s.color}`, padding: "1.25rem", marginBottom: "1.25rem" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.9rem" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald", fontSize: "1.05rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px" } }, s.day, " \u2014 ", /* @__PURE__ */ React.createElement("span", { style: { color: s.color } }, s.type)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.78rem", color: "#888", marginTop: "2px" } }, s.desc)), canUploadPT && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" } }, /* @__PURE__ */ React.createElement("label", { htmlFor: inputId, className: "btn btn-orange btn-sm", style: { cursor: "pointer" } }, "\u2191 ", plan ? "Replace PDF" : "Upload PDF"), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          id: inputId,
-          type: "file",
-          accept: ".pdf,application/pdf",
-          style: { display: "none" },
-          onChange: (e) => {
-            handlePTUpload(s.key, e.target.files[0]);
-            e.target.value = "";
-          }
-        }
-      ), plan && /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline btn-sm", onClick: () => removePTPlan(s.key) }, "\u2715 Remove"))), plan ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.65rem", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 } }, "\u{1F4C4} ", plan.fileName), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "0.72rem", color: "#aaa" } }, "Uploaded by ", plan.uploadedBy, " \xB7 ", plan.uploadedAt), /* @__PURE__ */ React.createElement("a", { href: plan.dataUrl, download: plan.fileName, className: "btn btn-outline btn-sm" }, "\u2B07 Download")), /* @__PURE__ */ React.createElement(
-        "iframe",
-        {
-          src: plan.dataUrl,
-          title: `${s.day} ${s.type} Plan`,
-          style: { width: "100%", height: "620px", border: "1px solid #eee", borderRadius: "6px", display: "block" }
-        }
-      )) : /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "2.5rem 1rem", background: "#faf8f5", borderRadius: "8px", border: "2px dashed #e0d8d0" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "2.2rem", marginBottom: "0.4rem" } }, "\u{1F4CB}"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald", fontSize: "0.82rem", letterSpacing: "1px", textTransform: "uppercase", color: "#bbb" } }, "No plan uploaded for this week"), canUploadPT && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.78rem", color: "#BF5700", marginTop: "0.4rem" } }, "Use the Upload PDF button above.")));
-    })), tab === "leadlab" && /* @__PURE__ */ React.createElement("div", null, canEditLL && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#BF5700" } }, "\u270F TRAINO \u2014 you can add and edit sessions"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange btn-sm", onClick: () => setShowAddLL(true) }, "+ Add Session")), llSessions.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "empty" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "2rem" } }, "\u{1F5FA}"), /* @__PURE__ */ React.createElement("div", { style: { marginTop: "0.5rem" } }, "No Leadership Lab sessions scheduled yet.")), llSessions.map((ll) => /* @__PURE__ */ React.createElement("div", { className: "card", key: ll.id, style: { marginBottom: "1rem" } }, editingLL === ll.id ? (
-      /* ── Edit mode (TRAINO only) ── */
-      /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#BF5700", marginBottom: "0.75rem" } }, "\u270F Editing Session"), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Title"), /* @__PURE__ */ React.createElement("input", { className: "input", value: llDraft.title, onChange: (e) => setLlDraft((d) => ({ ...d, title: e.target.value })) })), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Date"), /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", value: llDraft.date, onChange: (e) => setLlDraft((d) => ({ ...d, date: e.target.value })) })), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Notes"), /* @__PURE__ */ React.createElement(
-        "textarea",
-        {
-          className: "input",
-          style: { minHeight: "100px", resize: "vertical" },
-          value: llDraft.notes,
-          onChange: (e) => setLlDraft((d) => ({ ...d, notes: e.target.value }))
-        }
-      )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline btn-sm", onClick: () => setEditingLL(null) }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange btn-sm", onClick: saveEditLL }, "Save")))
-    ) : (
-      /* ── View mode ── */
-      /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: ll.notes ? "0.75rem" : 0 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald", fontSize: "1rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase" } }, ll.title), /* @__PURE__ */ React.createElement("span", { className: "badge badge-orange", style: { marginTop: "0.3rem" } }, ll.date)), canEditLL && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.4rem" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline btn-sm", onClick: () => startEditLL(ll) }, "\u270F Edit"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-sm", style: { background: "transparent", border: "1.5px solid #C0392B", color: "#C0392B" }, onClick: () => deleteLLSession(ll.id) }, "\u{1F5D1}"))), ll.notes ? /* @__PURE__ */ React.createElement("div", { style: { background: "#f5f2ee", borderRadius: "6px", padding: "0.65rem 0.85rem", fontSize: "0.85rem", color: "#555", lineHeight: 1.6 } }, ll.notes) : canEditLL && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.78rem", color: "#aaa", fontStyle: "italic" } }, "No notes yet \u2014 click Edit to add."))
-    ))), showAddLL && /* @__PURE__ */ React.createElement(Modal, { title: "Add Leadership Lab Session", onClose: () => setShowAddLL(false) }, /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Title"), /* @__PURE__ */ React.createElement("input", { className: "input", placeholder: "e.g. Land Navigation", value: newLL.title, onChange: (e) => setNewLL((s) => ({ ...s, title: e.target.value })) })), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Date"), /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", value: newLL.date, onChange: (e) => setNewLL((s) => ({ ...s, date: e.target.value })) })), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Notes"), /* @__PURE__ */ React.createElement(
-      "textarea",
-      {
-        className: "input",
-        style: { minHeight: "90px", resize: "vertical" },
-        placeholder: "Equipment, uniform, location, objectives\u2026",
-        value: newLL.notes,
-        onChange: (e) => setNewLL((s) => ({ ...s, notes: e.target.value }))
-      }
-    )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline", onClick: () => setShowAddLL(false) }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange", onClick: addLLSession }, "Add Session")))));
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-title", children: [
+        "Training ",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Plans" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-sub", children: "Weekly PT schedules and Leadership Lab notes" }),
+      toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "alert alert-green", children: toast }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", borderBottom: "2px solid #eee", marginBottom: "1.25rem" }, children: [["pt", "PT Plan"], ["leadlab", "LL"]].map(([t, label]) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => setTab(t), style: {
+        padding: "0.5rem 1.2rem",
+        fontFamily: "Oswald",
+        fontSize: "0.8rem",
+        letterSpacing: "1.5px",
+        textTransform: "uppercase",
+        cursor: "pointer",
+        background: "none",
+        border: "none",
+        borderBottom: tab === t ? "2px solid #BF5700" : "2px solid transparent",
+        color: tab === t ? "#BF5700" : "#888",
+        marginBottom: "-2px"
+      }, children: label }, t)) }),
+      tab === "pt" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+        canUploadPT && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "alert", children: [
+          "\u270F ",
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "OPS / PTO \u2014 Upload Mode:" }),
+          " Use the buttons below to post this week's PT plan PDFs."
+        ] }),
+        PT_SESSIONS.map((s) => {
+          const plan = ptPlans[s.key];
+          const inputId = `pt-file-${s.key}`;
+          return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "white", borderRadius: "10px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", border: "1px solid rgba(191,87,0,0.1)", borderTop: `4px solid ${s.color}`, padding: "1.25rem", marginBottom: "1.25rem" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.9rem" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontFamily: "Oswald", fontSize: "1.05rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px" }, children: [
+                  s.day,
+                  " \u2014 ",
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: s.color }, children: s.type })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#888", marginTop: "2px" }, children: s.desc })
+              ] }),
+              canUploadPT && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { htmlFor: inputId, className: "btn btn-orange btn-sm", style: { cursor: "pointer" }, children: [
+                  "\u2191 ",
+                  plan ? "Replace PDF" : "Upload PDF"
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                  "input",
+                  {
+                    id: inputId,
+                    type: "file",
+                    accept: ".pdf,application/pdf",
+                    style: { display: "none" },
+                    onChange: (e) => {
+                      handlePTUpload(s.key, e.target.files[0]);
+                      e.target.value = "";
+                    }
+                  }
+                ),
+                plan && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => removePTPlan(s.key), children: "\u2715 Remove" })
+              ] })
+            ] }),
+            plan ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.65rem", flexWrap: "wrap" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
+                  "\u{1F4C4} ",
+                  plan.fileName
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.72rem", color: "#aaa" }, children: [
+                  "Uploaded by ",
+                  plan.uploadedBy,
+                  " \xB7 ",
+                  plan.uploadedAt
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: plan.dataUrl, download: plan.fileName, className: "btn btn-outline btn-sm", children: "\u2B07 Download" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "iframe",
+                {
+                  src: plan.dataUrl,
+                  title: `${s.day} ${s.type} Plan`,
+                  style: { width: "100%", height: "620px", border: "1px solid #eee", borderRadius: "6px", display: "block" }
+                }
+              )
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { textAlign: "center", padding: "2.5rem 1rem", background: "#faf8f5", borderRadius: "8px", border: "2px dashed #e0d8d0" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2.2rem", marginBottom: "0.4rem" }, children: "\u{1F4CB}" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "Oswald", fontSize: "0.82rem", letterSpacing: "1px", textTransform: "uppercase", color: "#bbb" }, children: "No plan uploaded for this week" }),
+              canUploadPT && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#BF5700", marginTop: "0.4rem" }, children: "Use the Upload PDF button above." })
+            ] })
+          ] }, s.key);
+        })
+      ] }),
+      tab === "leadlab" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+        canEditLL && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "Oswald", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#BF5700" }, children: "\u270F TRAINO \u2014 you can add and edit sessions" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => setShowAddLL(true), children: "+ Add Session" })
+        ] }),
+        llSessions.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2rem" }, children: "\u{1F5FA}" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: "No Leadership Lab sessions scheduled yet." })
+        ] }),
+        llSessions.map((ll) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "card", style: { marginBottom: "1rem" }, children: editingLL === ll.id ? (
+          /* ── Edit mode (TRAINO only) ── */
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "Oswald", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#BF5700", marginBottom: "0.75rem" }, children: "\u270F Editing Session" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Title" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", value: llDraft.title, onChange: (e) => setLlDraft((d) => ({ ...d, title: e.target.value })) })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Date" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "date", value: llDraft.date, onChange: (e) => setLlDraft((d) => ({ ...d, date: e.target.value })) })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Notes" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "textarea",
+                {
+                  className: "input",
+                  style: { minHeight: "100px", resize: "vertical" },
+                  value: llDraft.notes,
+                  onChange: (e) => setLlDraft((d) => ({ ...d, notes: e.target.value }))
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", justifyContent: "flex-end" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => setEditingLL(null), children: "Cancel" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: saveEditLL, children: "Save" })
+            ] })
+          ] })
+        ) : (
+          /* ── View mode ── */
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: ll.notes ? "0.75rem" : 0 }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "Oswald", fontSize: "1rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase" }, children: ll.title }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-orange", style: { marginTop: "0.3rem" }, children: ll.date })
+              ] }),
+              canEditLL && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.4rem" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => startEditLL(ll), children: "\u270F Edit" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-sm", style: { background: "transparent", border: "1.5px solid #C0392B", color: "#C0392B" }, onClick: () => deleteLLSession(ll.id), children: "\u{1F5D1}" })
+              ] })
+            ] }),
+            ll.notes ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: "#f5f2ee", borderRadius: "6px", padding: "0.65rem 0.85rem", fontSize: "0.85rem", color: "#555", lineHeight: 1.6 }, children: ll.notes }) : canEditLL && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#aaa", fontStyle: "italic" }, children: "No notes yet \u2014 click Edit to add." })
+          ] })
+        ) }, ll.id)),
+        showAddLL && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Add Leadership Lab Session", onClose: () => setShowAddLL(false), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Title" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", placeholder: "e.g. Land Navigation", value: newLL.title, onChange: (e) => setNewLL((s) => ({ ...s, title: e.target.value })) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Date" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "date", value: newLL.date, onChange: (e) => setNewLL((s) => ({ ...s, date: e.target.value })) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Notes" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+              "textarea",
+              {
+                className: "input",
+                style: { minHeight: "90px", resize: "vertical" },
+                placeholder: "Equipment, uniform, location, objectives\u2026",
+                value: newLL.notes,
+                onChange: (e) => setNewLL((s) => ({ ...s, notes: e.target.value }))
+              }
+            )
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => setShowAddLL(false), children: "Cancel" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: addLLSession, children: "Add Session" })
+          ] })
+        ] })
+      ] })
+    ] });
   }
   function ChitsPage({ chits, setChits, userList }) {
     const { user } = useAuth();
@@ -24752,56 +26108,206 @@
       setCommentText("");
       fire("CHIT updated.");
     };
-    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "page-title" }, /* @__PURE__ */ React.createElement("span", null, "CHITs")), /* @__PURE__ */ React.createElement("div", { className: "page-sub" }, "Submit and track absence requests"), toast && /* @__PURE__ */ React.createElement("div", { className: "alert alert-green" }, toast), /* @__PURE__ */ React.createElement("div", { className: "privacy-note" }, "\u{1F512} ", /* @__PURE__ */ React.createElement("strong", null, "Private."), " Only you and your chain of command can see your CHITs."), canSubmit && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "1rem" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange", onClick: () => setShowModal(true) }, "+ Submit New CHIT")), visible.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "empty" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "2rem" } }, "\u{1F4CB}"), /* @__PURE__ */ React.createElement("div", { style: { marginTop: "0.5rem" } }, "No CHITs on file.")), visible.map((c, i) => {
-      const canAct = canActOnChit(user, c);
-      const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
-      const currentStageName = c.stages?.[c.currentStage]?.name || "";
-      return /* @__PURE__ */ React.createElement("div", { className: "chit-card", key: i }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.3rem" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, c.id), /* @__PURE__ */ React.createElement("span", { style: { color: "#888", fontSize: "0.82rem", marginLeft: "0.75rem" } }, c.name, " \xB7 ", formatCompanyCoLabel(c.company), ", ", formatPlatoonLabel(c.platoon))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { className: `badge ${c.status === "Approved" ? "badge-green" : c.status === "Denied" || c.status === "Returned" ? "badge-red" : "badge-orange"}` }, c.status), canAct && !isDone && /* @__PURE__ */ React.createElement("span", { className: "badge", style: { background: "rgba(42,125,79,0.15)", color: "#2A7D4F" } }, "\u25CF Your Action"))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.82rem", color: "#666" } }, c.reason, " \xB7 Absent: ", c.date), c.notes && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.8rem", color: "#888", fontStyle: "italic", marginTop: "0.2rem" } }, c.notes), c.docs && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.55rem" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" } }, "Docs:"), c.docs.routingSheet && /* @__PURE__ */ React.createElement("a", { href: c.docs.routingSheet.dataUrl, download: c.docs.routingSheet.fileName, className: "btn btn-outline btn-sm" }, "\u{1F4C4} Routing Sheet"), c.docs.chitDoc && /* @__PURE__ */ React.createElement("a", { href: c.docs.chitDoc.dataUrl, download: c.docs.chitDoc.fileName, className: "btn btn-outline btn-sm" }, "\u{1F4C4} CHIT Document")), c.stages && /* @__PURE__ */ React.createElement("div", { className: "stage-track", style: { marginTop: "0.75rem" } }, c.stages.map((s, j) => {
-        const done = j < c.currentStage;
-        const returned = j === c.currentStage && c.status === "Returned";
-        const active = j === c.currentStage && !isDone;
-        return /* @__PURE__ */ React.createElement("div", { key: j, className: `stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}` }, /* @__PURE__ */ React.createElement("div", { className: `stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}` }, done ? "\u2713" : returned ? "\u21A9" : s.icon), /* @__PURE__ */ React.createElement("div", { className: `stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}` }, s.name), active && canAct && /* @__PURE__ */ React.createElement("div", { className: "stage-approver active" }, "\u25CF You"));
-      })), c.stages?.some((s) => s.completedBy && s.comment) && /* @__PURE__ */ React.createElement("div", { style: { marginTop: "0.5rem" } }, c.stages.map((s, j) => s.completedBy && s.comment ? /* @__PURE__ */ React.createElement("div", { className: "stage-comment", key: j }, /* @__PURE__ */ React.createElement("div", { className: "stage-comment-by" }, s.name, " \xB7 ", s.completedBy, " \xB7 ", s.completedAt), s.comment) : null)), canAct && !isDone && /* @__PURE__ */ React.createElement("div", { className: "stage-action-box", style: { marginTop: "0.75rem" } }, /* @__PURE__ */ React.createElement("div", { className: "stage-action-label" }, "\u2B50 Your Review \u2014 ", currentStageName), activeComment === c.id ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-        "textarea",
-        {
-          className: "input",
-          style: { minHeight: "70px", resize: "vertical", marginBottom: "0.65rem", fontSize: "0.85rem" },
-          placeholder: "Add comments (optional)\u2026",
-          value: commentText,
-          onChange: (e) => setCommentText(e.target.value)
-        }
-      ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "approved") }, "\u2713 Approve"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "returned") }, "\u21A9 Return to Originator"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline btn-sm", onClick: () => {
-        setActiveComment(null);
-        setCommentText("");
-      } }, "Cancel"))) : /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange btn-sm", onClick: () => {
-        setActiveComment(c.id);
-        setCommentText("");
-      } }, "\u270F Review CHIT")));
-    }), showModal && /* @__PURE__ */ React.createElement(Modal, { title: "Submit CHIT", onClose: () => setShowModal(false) }, /* @__PURE__ */ React.createElement("div", { className: "privacy-note" }, "\u{1F512} Private \u2014 only you and your CoC will see this."), needsRouteSelect && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Your Company"), /* @__PURE__ */ React.createElement("select", { className: "input", value: form.routeCompany, onChange: (e) => setForm((s) => ({ ...s, routeCompany: e.target.value, routePlatoon: "" })) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Select company\u2026"), ["Alpha", "Bravo", "Charlie"].map((co) => /* @__PURE__ */ React.createElement("option", { key: co, value: co }, co)))), form.routeCompany && /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Your Platoon"), /* @__PURE__ */ React.createElement("select", { className: "input", value: form.routePlatoon, onChange: (e) => setForm((s) => ({ ...s, routePlatoon: e.target.value })) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Select platoon\u2026"), getPlatoons(form.routeCompany).map((p) => /* @__PURE__ */ React.createElement("option", { key: p, value: p }, formatPlatoonLabel(p)))))), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Date of Absence"), /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", value: form.date, onChange: (e) => setForm((s) => ({ ...s, date: e.target.value })) })), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Reason"), /* @__PURE__ */ React.createElement("select", { className: "input", value: form.reason, onChange: (e) => setForm((s) => ({ ...s, reason: e.target.value })) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Select reason\u2026"), /* @__PURE__ */ React.createElement("option", null, "Medical Appointment"), /* @__PURE__ */ React.createElement("option", null, "Academic Conflict \u2014 Exam"), /* @__PURE__ */ React.createElement("option", null, "Academic Conflict \u2014 Lab"), /* @__PURE__ */ React.createElement("option", null, "Family Emergency"), /* @__PURE__ */ React.createElement("option", null, "Personal Emergency"), /* @__PURE__ */ React.createElement("option", null, "Other"))), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Notes (optional)"), /* @__PURE__ */ React.createElement("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, value: form.notes, onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })) })), /* @__PURE__ */ React.createElement("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.65rem" } }, "Required Documents"), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Routing Sheet ", /* @__PURE__ */ React.createElement("span", { style: { color: "#C0392B" } }, "*")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { htmlFor: "chit-routing-sheet", className: "btn btn-outline btn-sm", style: { cursor: "pointer" } }, form.routingSheet ? "\u2191 Replace PDF" : "\u2191 Upload PDF"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "chit-routing-sheet",
-        type: "file",
-        accept: ".pdf,application/pdf",
-        style: { display: "none" },
-        onChange: (e) => {
-          loadChitPDF("routingSheet", e.target.files[0]);
-          e.target.value = "";
-        }
-      }
-    ), form.routingSheet ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 } }, "\u{1F4C4} ", form.routingSheet.fileName) : /* @__PURE__ */ React.createElement("span", { style: { fontSize: "0.75rem", color: "#C0392B" } }, "Required"))), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "CHIT Document ", /* @__PURE__ */ React.createElement("span", { style: { color: "#C0392B" } }, "*")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { htmlFor: "chit-doc", className: "btn btn-outline btn-sm", style: { cursor: "pointer" } }, form.chitDoc ? "\u2191 Replace PDF" : "\u2191 Upload PDF"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "chit-doc",
-        type: "file",
-        accept: ".pdf,application/pdf",
-        style: { display: "none" },
-        onChange: (e) => {
-          loadChitPDF("chitDoc", e.target.files[0]);
-          e.target.value = "";
-        }
-      }
-    ), form.chitDoc ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 } }, "\u{1F4C4} ", form.chitDoc.fileName) : /* @__PURE__ */ React.createElement("span", { style: { fontSize: "0.75rem", color: "#C0392B" } }, "Required")))), /* @__PURE__ */ React.createElement("div", { style: { background: "#f5f2ee", borderRadius: "8px", padding: "0.65rem", fontSize: "0.8rem", color: "#666", marginBottom: "1rem" } }, "Your CHIT routes to: ", /* @__PURE__ */ React.createElement("strong", null, routeHint())), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline", onClick: () => setShowModal(false) }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange", onClick: submit }, "Submit CHIT"))));
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-title", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "CHITs" }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-sub", children: "Submit and track absence requests" }),
+      toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "alert alert-green", children: toast }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "privacy-note", children: [
+        "\u{1F512} ",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Private." }),
+        " Only you and your chain of command can see your CHITs."
+      ] }),
+      canSubmit && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: "+ Submit New CHIT" }) }),
+      visible.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2rem" }, children: "\u{1F4CB}" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: "No CHITs on file." })
+      ] }),
+      visible.map((c, i) => {
+        const canAct = canActOnChit(user, c);
+        const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
+        const currentStageName = c.stages?.[c.currentStage]?.name || "";
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chit-card", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.3rem" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: c.id }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { color: "#888", fontSize: "0.82rem", marginLeft: "0.75rem" }, children: [
+                c.name,
+                " \xB7 ",
+                formatCompanyCoLabel(c.company),
+                ", ",
+                formatPlatoonLabel(c.platoon)
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `badge ${c.status === "Approved" ? "badge-green" : c.status === "Denied" || c.status === "Returned" ? "badge-red" : "badge-orange"}`, children: c.status }),
+              canAct && !isDone && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { background: "rgba(42,125,79,0.15)", color: "#2A7D4F" }, children: "\u25CF Your Action" })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.82rem", color: "#666" }, children: [
+            c.reason,
+            " \xB7 Absent: ",
+            c.date
+          ] }),
+          c.notes && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#888", fontStyle: "italic", marginTop: "0.2rem" }, children: c.notes }),
+          c.docs && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.55rem" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "Oswald", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
+            c.docs.routingSheet && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.routingSheet.dataUrl, download: c.docs.routingSheet.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} Routing Sheet" }),
+            c.docs.chitDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.chitDoc.dataUrl, download: c.docs.chitDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} CHIT Document" })
+          ] }),
+          c.stages && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-track", style: { marginTop: "0.75rem" }, children: c.stages.map((s, j) => {
+            const done = j < c.currentStage;
+            const returned = j === c.currentStage && c.status === "Returned";
+            const active = j === c.currentStage && !isDone;
+            return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`, children: done ? "\u2713" : returned ? "\u21A9" : s.icon }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: s.name }),
+              active && canAct && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-approver active", children: "\u25CF You" })
+            ] }, j);
+          }) }),
+          c.stages?.some((s) => s.completedBy && s.comment) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: c.stages.map((s, j) => s.completedBy && s.comment ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment-by", children: [
+              s.name,
+              " \xB7 ",
+              s.completedBy,
+              " \xB7 ",
+              s.completedAt
+            ] }),
+            s.comment
+          ] }, j) : null) }),
+          canAct && !isDone && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", style: { marginTop: "0.75rem" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-label", children: [
+              "\u2B50 Your Review \u2014 ",
+              currentStageName
+            ] }),
+            activeComment === c.id ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "textarea",
+                {
+                  className: "input",
+                  style: { minHeight: "70px", resize: "vertical", marginBottom: "0.65rem", fontSize: "0.85rem" },
+                  placeholder: "Add comments (optional)\u2026",
+                  value: commentText,
+                  onChange: (e) => setCommentText(e.target.value)
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "approved"), children: "\u2713 Approve" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "returned"), children: "\u21A9 Return to Originator" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
+                  setActiveComment(null);
+                  setCommentText("");
+                }, children: "Cancel" })
+              ] })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => {
+              setActiveComment(c.id);
+              setCommentText("");
+            }, children: "\u270F Review CHIT" })
+          ] })
+        ] }, i);
+      }),
+      showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Submit CHIT", onClose: () => setShowModal(false), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "privacy-note", children: "\u{1F512} Private \u2014 only you and your CoC will see this." }),
+        needsRouteSelect && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Your Company" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.routeCompany, onChange: (e) => setForm((s) => ({ ...s, routeCompany: e.target.value, routePlatoon: "" })), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select company\u2026" }),
+              ["Alpha", "Bravo", "Charlie"].map((co) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: co, children: co }, co))
+            ] })
+          ] }),
+          form.routeCompany && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Your Platoon" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.routePlatoon, onChange: (e) => setForm((s) => ({ ...s, routePlatoon: e.target.value })), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select platoon\u2026" }),
+              getPlatoons(form.routeCompany).map((p) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: p, children: formatPlatoonLabel(p) }, p))
+            ] })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Date of Absence" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "date", value: form.date, onChange: (e) => setForm((s) => ({ ...s, date: e.target.value })) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Reason" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.reason, onChange: (e) => setForm((s) => ({ ...s, reason: e.target.value })), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select reason\u2026" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Medical Appointment" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Academic Conflict \u2014 Exam" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Academic Conflict \u2014 Lab" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Family Emergency" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Personal Emergency" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Other" })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Notes (optional)" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, value: form.notes, onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "Oswald", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.65rem" }, children: "Required Documents" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+              "Routing Sheet ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "chit-routing-sheet", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: form.routingSheet ? "\u2191 Replace PDF" : "\u2191 Upload PDF" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  id: "chit-routing-sheet",
+                  type: "file",
+                  accept: ".pdf,application/pdf",
+                  style: { display: "none" },
+                  onChange: (e) => {
+                    loadChitPDF("routingSheet", e.target.files[0]);
+                    e.target.value = "";
+                  }
+                }
+              ),
+              form.routingSheet ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
+                "\u{1F4C4} ",
+                form.routingSheet.fileName
+              ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#C0392B" }, children: "Required" })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+              "CHIT Document ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "chit-doc", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: form.chitDoc ? "\u2191 Replace PDF" : "\u2191 Upload PDF" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  id: "chit-doc",
+                  type: "file",
+                  accept: ".pdf,application/pdf",
+                  style: { display: "none" },
+                  onChange: (e) => {
+                    loadChitPDF("chitDoc", e.target.files[0]);
+                    e.target.value = "";
+                  }
+                }
+              ),
+              form.chitDoc ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
+                "\u{1F4C4} ",
+                form.chitDoc.fileName
+              ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#C0392B" }, children: "Required" })
+            ] })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "#f5f2ee", borderRadius: "8px", padding: "0.65rem", fontSize: "0.8rem", color: "#666", marginBottom: "1rem" }, children: [
+          "Your CHIT routes to: ",
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: routeHint() })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => setShowModal(false), children: "Cancel" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: submit, children: "Submit CHIT" })
+        ] })
+      ] })
+    ] });
   }
   function RosterPage({ userList }) {
     const [q, setQ] = (0, import_react.useState)("");
@@ -24809,7 +26315,54 @@
     const fil = userList.filter(
       (p) => (!q || p.name.toLowerCase().includes(q.toLowerCase()) || p.rank.toLowerCase().includes(q.toLowerCase())) && (!co || normalizeCompany(p.company) === co)
     );
-    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "page-title" }, "Recall ", /* @__PURE__ */ React.createElement("span", null, "Roster")), /* @__PURE__ */ React.createElement("div", { className: "page-sub" }, "BN contact directory \u2014 sourced live from Google Sheets"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { position: "relative", flex: 1, minWidth: "180px" } }, /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", left: "0.7rem", top: "50%", transform: "translateY(-50%)", color: "#aaa" } }, "\u{1F50D}"), /* @__PURE__ */ React.createElement("input", { className: "input", style: { paddingLeft: "2.1rem" }, placeholder: "Search name or rank\u2026", value: q, onChange: (e) => setQ(e.target.value) })), /* @__PURE__ */ React.createElement("select", { className: "input", style: { maxWidth: "170px" }, value: co, onChange: (e) => setCo(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "All Companies"), /* @__PURE__ */ React.createElement("option", { value: "BN" }, "BN"), /* @__PURE__ */ React.createElement("option", { value: "Alpha" }, "Alpha"), /* @__PURE__ */ React.createElement("option", { value: "Bravo" }, "Bravo"), /* @__PURE__ */ React.createElement("option", { value: "Charlie" }, "Charlie"))), /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.78rem", color: "#888", marginBottom: "0.75rem" } }, fil.length, " result", fil.length !== 1 ? "s" : ""), fil.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "empty" }, "No results found."), fil.map((p, i) => /* @__PURE__ */ React.createElement("div", { className: "roster-row", key: i }, /* @__PURE__ */ React.createElement("div", { className: "avatar" }, p.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 600, fontSize: "0.9rem" } }, p.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.78rem", color: "#BF5700", fontWeight: 600 } }, p.rank), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.78rem", color: "#888" } }, formatCompanyCoLabel(p.company), " \xB7 ", p.platoon, " Plt")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginLeft: "auto" } }, p.phone && /* @__PURE__ */ React.createElement("a", { href: "tel:" + p.phone }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline btn-sm" }, "\u{1F4DE} ", p.phone)), p.email && /* @__PURE__ */ React.createElement("a", { href: "mailto:" + p.email }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-navy btn-sm" }, "\u2709 Email")))))));
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-title", children: [
+        "Recall ",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Roster" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-sub", children: "BN contact directory \u2014 sourced live from Google Sheets" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { position: "relative", flex: 1, minWidth: "180px" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { position: "absolute", left: "0.7rem", top: "50%", transform: "translateY(-50%)", color: "#aaa" }, children: "\u{1F50D}" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", style: { paddingLeft: "2.1rem" }, placeholder: "Search name or rank\u2026", value: q, onChange: (e) => setQ(e.target.value) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", style: { maxWidth: "170px" }, value: co, onChange: (e) => setCo(e.target.value), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "All Companies" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "BN", children: "BN" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "Alpha", children: "Alpha" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "Bravo", children: "Bravo" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "Charlie", children: "Charlie" })
+        ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.78rem", color: "#888", marginBottom: "0.75rem" }, children: [
+          fil.length,
+          " result",
+          fil.length !== 1 ? "s" : ""
+        ] }),
+        fil.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "empty", children: "No results found." }),
+        fil.map((p, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "roster-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "avatar", children: p.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { flex: 1 }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontWeight: 600, fontSize: "0.9rem" }, children: p.name }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#BF5700", fontWeight: 600 }, children: p.rank }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.78rem", color: "#888" }, children: [
+              formatCompanyCoLabel(p.company),
+              " \xB7 ",
+              p.platoon,
+              " Plt"
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginLeft: "auto" }, children: [
+            p.phone && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: "tel:" + p.phone, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "btn btn-outline btn-sm", children: [
+              "\u{1F4DE} ",
+              p.phone
+            ] }) }),
+            p.email && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: "mailto:" + p.email, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-navy btn-sm", children: "\u2709 Email" }) })
+          ] })
+        ] }, i))
+      ] })
+    ] });
   }
   function FormsPage({ forms, setForms }) {
     const { user } = useAuth();
@@ -24853,43 +26406,113 @@
       ));
       window.open(f.url, "_blank", "noopener,noreferrer");
     };
-    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "page-title" }, "Forms & ", /* @__PURE__ */ React.createElement("span", null, "Links")), /* @__PURE__ */ React.createElement("div", { className: "page-sub" }, "Click a link to open the form \u2014 your status updates automatically"), toast && /* @__PURE__ */ React.createElement("div", { className: "alert alert-green" }, toast), canManage && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "1rem" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange", onClick: () => setShowModal(true) }, "+ Add Form")), forms.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "empty" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "2rem" } }, "\u{1F4DD}"), /* @__PURE__ */ React.createElement("div", { style: { marginTop: "0.5rem" } }, "No forms posted yet."), canManage && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.8rem", color: "#BF5700", marginTop: "0.3rem" } }, "Use the Add Form button to share a link with the battalion.")), forms.map((f) => {
-      const opened = !!f.clicks[user.id];
-      return /* @__PURE__ */ React.createElement("div", { className: "form-row", key: f.id, style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 600, marginBottom: "0.2rem" } }, f.title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.78rem", color: "#888" } }, /* @__PURE__ */ React.createElement("span", { className: "tag" }, f.category), f.deadline && /* @__PURE__ */ React.createElement("span", null, " \xB7 Due: ", f.deadline), /* @__PURE__ */ React.createElement("span", null, " \xB7 Added by ", f.addedBy, " \xB7 ", f.addedAt))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" } }, opened ? /* @__PURE__ */ React.createElement("span", { className: "badge badge-green" }, "\u2713 Opened") : /* @__PURE__ */ React.createElement("span", { className: "badge", style: { background: "#f5f2ee", color: "#bbb" } }, "Not opened"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange btn-sm", onClick: () => handleFillOut(f.id) }, "Fill Out \u2197"), canManage && /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          className: "btn btn-sm",
-          style: { background: "transparent", border: "1.5px solid #C0392B", color: "#C0392B" },
-          onClick: () => deleteForm(f.id)
-        },
-        "\u{1F5D1}"
-      )));
-    }), showModal && /* @__PURE__ */ React.createElement(Modal, { title: "Add Form", onClose: () => setShowModal(false) }, /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Title ", /* @__PURE__ */ React.createElement("span", { style: { color: "#C0392B" } }, "*")), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        className: "input",
-        placeholder: "e.g. ACFT Readiness Survey",
-        value: draft.title,
-        onChange: (e) => setDraft((s) => ({ ...s, title: e.target.value }))
-      }
-    )), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "URL ", /* @__PURE__ */ React.createElement("span", { style: { color: "#C0392B" } }, "*")), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        className: "input",
-        type: "url",
-        placeholder: "https://forms.google.com/\u2026",
-        value: draft.url,
-        onChange: (e) => setDraft((s) => ({ ...s, url: e.target.value }))
-      }
-    )), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Category"), /* @__PURE__ */ React.createElement("select", { className: "input", value: draft.category, onChange: (e) => setDraft((s) => ({ ...s, category: e.target.value })) }, /* @__PURE__ */ React.createElement("option", null, "Admin"), /* @__PURE__ */ React.createElement("option", null, "PT"), /* @__PURE__ */ React.createElement("option", null, "Training"), /* @__PURE__ */ React.createElement("option", null, "Event"), /* @__PURE__ */ React.createElement("option", null, "Other"))), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Deadline (optional)"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        className: "input",
-        type: "date",
-        value: draft.deadline,
-        onChange: (e) => setDraft((s) => ({ ...s, deadline: e.target.value }))
-      }
-    )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline", onClick: () => setShowModal(false) }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange", onClick: addForm }, "Add Form"))));
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-title", children: [
+        "Forms & ",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Links" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-sub", children: "Click a link to open the form \u2014 your status updates automatically" }),
+      toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "alert alert-green", children: toast }),
+      canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: "+ Add Form" }) }),
+      forms.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2rem" }, children: "\u{1F4DD}" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: "No forms posted yet." }),
+        canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#BF5700", marginTop: "0.3rem" }, children: "Use the Add Form button to share a link with the battalion." })
+      ] }),
+      forms.map((f) => {
+        const opened = !!f.clicks[user.id];
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-row", style: { alignItems: "center" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { flex: 1 }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontWeight: 600, marginBottom: "0.2rem" }, children: f.title }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.78rem", color: "#888" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tag", children: f.category }),
+              f.deadline && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                " \xB7 Due: ",
+                f.deadline
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                " \xB7 Added by ",
+                f.addedBy,
+                " \xB7 ",
+                f.addedAt
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
+            opened ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-green", children: "\u2713 Opened" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { background: "#f5f2ee", color: "#bbb" }, children: "Not opened" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => handleFillOut(f.id), children: "Fill Out \u2197" }),
+            canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+              "button",
+              {
+                className: "btn btn-sm",
+                style: { background: "transparent", border: "1.5px solid #C0392B", color: "#C0392B" },
+                onClick: () => deleteForm(f.id),
+                children: "\u{1F5D1}"
+              }
+            )
+          ] })
+        ] }, f.id);
+      }),
+      showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Add Form", onClose: () => setShowModal(false), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+            "Title ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "input",
+            {
+              className: "input",
+              placeholder: "e.g. ACFT Readiness Survey",
+              value: draft.title,
+              onChange: (e) => setDraft((s) => ({ ...s, title: e.target.value }))
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+            "URL ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "input",
+            {
+              className: "input",
+              type: "url",
+              placeholder: "https://forms.google.com/\u2026",
+              value: draft.url,
+              onChange: (e) => setDraft((s) => ({ ...s, url: e.target.value }))
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Category" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: draft.category, onChange: (e) => setDraft((s) => ({ ...s, category: e.target.value })), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Admin" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "PT" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Training" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Event" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Other" })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Deadline (optional)" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "input",
+            {
+              className: "input",
+              type: "date",
+              value: draft.deadline,
+              onChange: (e) => setDraft((s) => ({ ...s, deadline: e.target.value }))
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => setShowModal(false), children: "Cancel" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: addForm, children: "Add Form" })
+        ] })
+      ] })
+    ] });
   }
   function AcademicPage() {
     const { user } = useAuth();
@@ -24927,25 +26550,103 @@
       setAnsFor(null);
       setAnsText("");
     };
-    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "page-title" }, "Academic ", /* @__PURE__ */ React.createElement("span", null, "Help Board")), /* @__PURE__ */ React.createElement("div", { className: "page-sub" }, "Post questions \xB7 Get answers from upperclassmen"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.75rem", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement("select", { className: "input", style: { maxWidth: "200px" }, value: filter, onChange: (e) => setFilter(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "All Subjects"), subjects.map((s) => /* @__PURE__ */ React.createElement("option", { key: s }, s))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "0.82rem", color: "#888", flex: 1 } }, qs.filter((q) => !q.answered).length, " question", qs.filter((q) => !q.answered).length !== 1 ? "s" : "", " need answers"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange", onClick: () => setShowModal(true) }, "+ Ask a Question")), visible.map((q, i) => /* @__PURE__ */ React.createElement("div", { className: "q-card", key: i }, /* @__PURE__ */ React.createElement("div", { className: "q-meta" }, /* @__PURE__ */ React.createElement("div", { className: "avatar", style: { width: 32, height: 32, fontSize: "0.72rem" } }, q.author.split(",")[0]?.[0], q.author.split(",")[1]?.trim()?.[0]), /* @__PURE__ */ React.createElement("strong", { style: { fontSize: "0.85rem" } }, q.author), /* @__PURE__ */ React.createElement("span", { className: "badge badge-navy" }, q.rank), /* @__PURE__ */ React.createElement("span", { className: "tag" }, q.subject), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "0.75rem", color: "#aaa" } }, q.time), /* @__PURE__ */ React.createElement("span", { className: `badge ${q.answered ? "badge-green" : "badge-orange"}`, style: { marginLeft: "auto" } }, q.answered ? "Answered" : "Needs Answer")), /* @__PURE__ */ React.createElement("div", { className: "q-text" }, q.text), q.answers.length > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald", fontSize: "0.7rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.5rem" } }, "Answers (", q.answers.length, ")"), q.answers.map((a, j) => /* @__PURE__ */ React.createElement("div", { className: "answer-block", key: j }, /* @__PURE__ */ React.createElement("div", { className: "answer-author" }, a.author, " \xB7 ", a.rank), a.text))), /* @__PURE__ */ React.createElement("div", { style: { marginTop: "0.75rem" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline btn-sm", onClick: () => setAnsFor(ansFor === q.id ? null : q.id) }, ansFor === q.id ? "Cancel" : "\u270F Add Answer")), ansFor === q.id && /* @__PURE__ */ React.createElement("div", { style: { marginTop: "0.75rem" } }, /* @__PURE__ */ React.createElement(
-      "textarea",
-      {
-        className: "input",
-        style: { minHeight: "80px", resize: "vertical", marginBottom: "0.5rem" },
-        placeholder: "Write your answer\u2026",
-        value: ansText,
-        onChange: (e) => setAnsText(e.target.value)
-      }
-    ), /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange btn-sm", onClick: () => postAns(q.id) }, "Post Answer")))), showModal && /* @__PURE__ */ React.createElement(Modal, { title: "Ask a Question", onClose: () => setShowModal(false) }, /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Subject"), /* @__PURE__ */ React.createElement("select", { className: "input", value: newQ.subject, onChange: (e) => setNewQ((s) => ({ ...s, subject: e.target.value })) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Select subject\u2026"), /* @__PURE__ */ React.createElement("option", null, "Calculus I"), /* @__PURE__ */ React.createElement("option", null, "Calculus II"), /* @__PURE__ */ React.createElement("option", null, "Calculus III"), /* @__PURE__ */ React.createElement("option", null, "Physics I"), /* @__PURE__ */ React.createElement("option", null, "Physics II"), /* @__PURE__ */ React.createElement("option", null, "Chemistry"), /* @__PURE__ */ React.createElement("option", null, "Statics"), /* @__PURE__ */ React.createElement("option", null, "Naval Science"), /* @__PURE__ */ React.createElement("option", null, "Other"))), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Your Question"), /* @__PURE__ */ React.createElement(
-      "textarea",
-      {
-        className: "input",
-        style: { minHeight: "100px", resize: "vertical" },
-        placeholder: "Be specific \u2014 include what you have already tried\u2026",
-        value: newQ.text,
-        onChange: (e) => setNewQ((s) => ({ ...s, text: e.target.value }))
-      }
-    )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline", onClick: () => setShowModal(false) }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange", onClick: postQ }, "Post Question"))));
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-title", children: [
+        "Academic ",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Help Board" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-sub", children: "Post questions \xB7 Get answers from upperclassmen" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", style: { maxWidth: "200px" }, value: filter, onChange: (e) => setFilter(e.target.value), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "All Subjects" }),
+          subjects.map((s) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: s }, s))
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.82rem", color: "#888", flex: 1 }, children: [
+          qs.filter((q) => !q.answered).length,
+          " question",
+          qs.filter((q) => !q.answered).length !== 1 ? "s" : "",
+          " need answers"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: "+ Ask a Question" })
+      ] }),
+      visible.map((q, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "q-card", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "q-meta", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "avatar", style: { width: 32, height: 32, fontSize: "0.72rem" }, children: [
+            q.author.split(",")[0]?.[0],
+            q.author.split(",")[1]?.trim()?.[0]
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { style: { fontSize: "0.85rem" }, children: q.author }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-navy", children: q.rank }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tag", children: q.subject }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#aaa" }, children: q.time }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `badge ${q.answered ? "badge-green" : "badge-orange"}`, style: { marginLeft: "auto" }, children: q.answered ? "Answered" : "Needs Answer" })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "q-text", children: q.text }),
+        q.answers.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontFamily: "Oswald", fontSize: "0.7rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.5rem" }, children: [
+            "Answers (",
+            q.answers.length,
+            ")"
+          ] }),
+          q.answers.map((a, j) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "answer-block", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "answer-author", children: [
+              a.author,
+              " \xB7 ",
+              a.rank
+            ] }),
+            a.text
+          ] }, j))
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.75rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => setAnsFor(ansFor === q.id ? null : q.id), children: ansFor === q.id ? "Cancel" : "\u270F Add Answer" }) }),
+        ansFor === q.id && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.75rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "textarea",
+            {
+              className: "input",
+              style: { minHeight: "80px", resize: "vertical", marginBottom: "0.5rem" },
+              placeholder: "Write your answer\u2026",
+              value: ansText,
+              onChange: (e) => setAnsText(e.target.value)
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => postAns(q.id), children: "Post Answer" })
+        ] })
+      ] }, i)),
+      showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Ask a Question", onClose: () => setShowModal(false), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Subject" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: newQ.subject, onChange: (e) => setNewQ((s) => ({ ...s, subject: e.target.value })), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select subject\u2026" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Calculus I" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Calculus II" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Calculus III" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Physics I" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Physics II" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Chemistry" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Statics" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Naval Science" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Other" })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Your Question" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "textarea",
+            {
+              className: "input",
+              style: { minHeight: "100px", resize: "vertical" },
+              placeholder: "Be specific \u2014 include what you have already tried\u2026",
+              value: newQ.text,
+              onChange: (e) => setNewQ((s) => ({ ...s, text: e.target.value }))
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => setShowModal(false), children: "Cancel" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: postQ, children: "Post Question" })
+        ] })
+      ] })
+    ] });
   }
   function FitrepsPage({ fitrebs, setFitrebs, userList }) {
     const { user } = useAuth();
@@ -25038,56 +26739,237 @@
       fire(action === "returned" ? "FITREP returned to originator." : "\u2705 FITREP advanced. Stage comments saved.");
     };
     const companies = [...new Set(visible.map((f) => normalizeCompany(f.company)))];
-    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "page-title" }, "FITREP ", /* @__PURE__ */ React.createElement("span", null, "Tracker")), /* @__PURE__ */ React.createElement("div", { className: "page-sub" }, "Fitness Report pipeline \u2014 ", visible.length, " report", visible.length !== 1 ? "s" : "", " visible to you"), toast && /* @__PURE__ */ React.createElement("div", { className: "alert alert-green" }, toast), /* @__PURE__ */ React.createElement("div", { className: "privacy-note" }, "\u{1F512} ", /* @__PURE__ */ React.createElement("strong", null, "Private."), " Only you and your chain of command can see your FITREPs."), /* @__PURE__ */ React.createElement("div", { className: "grid3", style: { marginBottom: "1rem" } }, /* @__PURE__ */ React.createElement("div", { className: "stat" }, /* @__PURE__ */ React.createElement("div", { className: "stat-n" }, visible.filter((f) => f.currentStage > 0 && f.currentStage < f.stages.length - 1).length), /* @__PURE__ */ React.createElement("div", { className: "stat-l" }, "In Progress")), /* @__PURE__ */ React.createElement("div", { className: "stat", style: { borderLeftColor: "#2A7D4F" } }, /* @__PURE__ */ React.createElement("div", { className: "stat-n", style: { color: "#2A7D4F" } }, visible.filter((f) => f.currentStage === f.stages.length - 1).length), /* @__PURE__ */ React.createElement("div", { className: "stat-l" }, "Complete")), /* @__PURE__ */ React.createElement("div", { className: "stat", style: { borderLeftColor: "#0D1B2A" } }, /* @__PURE__ */ React.createElement("div", { className: "stat-n", style: { color: "#0D1B2A" } }, visible.filter((f) => f.currentStage === 1).length), /* @__PURE__ */ React.createElement("div", { className: "stat-l" }, "Awaiting PC"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap", alignItems: "center" } }, companies.length > 1 && /* @__PURE__ */ React.createElement("select", { className: "input", style: { maxWidth: "200px" }, value: filter, onChange: (e) => setFilter(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "All Companies"), companies.map((c) => /* @__PURE__ */ React.createElement("option", { key: c, value: c }, getCompanyShortName(c)))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "0.82rem", color: "#888", flex: 1 } }, filtered.length, " report", filtered.length !== 1 ? "s" : "", " shown"), canSubmit && /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange", onClick: () => setShowModal(true) }, "+ Submit FITREP")), filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "empty" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "2rem" } }, "\u{1F4CA}"), /* @__PURE__ */ React.createElement("div", { style: { marginTop: "0.5rem" } }, "No FITREPs on file.")), filtered.map((f) => {
-      const canAct = canActOnFitrep(user, f);
-      const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
-      const currentStageName = isDone ? f.status === "Returned" ? "Returned" : "Complete" : f.stages?.[f.currentStage]?.name || "";
-      return /* @__PURE__ */ React.createElement("div", { className: "fitrep-card", key: f.id }, /* @__PURE__ */ React.createElement("div", { className: "fitrep-header" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", { style: { fontSize: "0.95rem" } }, f.subjectRank, " ", f.subjectName), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "0.78rem", color: "#888", marginTop: "1px" } }, formatCompanyCoLabel(f.company), " \xB7 ", formatPlatoonLabel(f.platoon), " \xB7 ", f.period)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { className: "badge badge-navy" }, f.id), f.status === "Returned" ? /* @__PURE__ */ React.createElement("span", { className: "badge badge-red" }, "Returned") : isDone ? /* @__PURE__ */ React.createElement("span", { className: "badge badge-green" }, "Complete") : /* @__PURE__ */ React.createElement("span", { className: "badge badge-orange" }, currentStageName), canAct && !isDone && /* @__PURE__ */ React.createElement("span", { className: "badge", style: { background: "rgba(42,125,79,0.15)", color: "#2A7D4F" } }, "\u25CF Your Action"))), /* @__PURE__ */ React.createElement("div", { className: "fitrep-body" }, f.docs && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.75rem" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" } }, "Docs:"), f.docs.fitrepDoc && /* @__PURE__ */ React.createElement("a", { href: f.docs.fitrepDoc.dataUrl, download: f.docs.fitrepDoc.fileName, className: "btn btn-outline btn-sm" }, "\u{1F4C4} FITREP Document"), f.docs.routingSheet && /* @__PURE__ */ React.createElement("a", { href: f.docs.routingSheet.dataUrl, download: f.docs.routingSheet.fileName, className: "btn btn-outline btn-sm" }, "\u{1F4C4} Routing Sheet")), /* @__PURE__ */ React.createElement("div", { className: "stage-track" }, f.stages.map((s, i) => {
-        const done = i < f.currentStage;
-        const returned = i === f.currentStage && f.status === "Returned";
-        const active = i === f.currentStage && !isDone;
-        return /* @__PURE__ */ React.createElement("div", { key: i, className: `stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}` }, /* @__PURE__ */ React.createElement("div", { className: `stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}` }, done ? "\u2713" : returned ? "\u21A9" : s.icon), /* @__PURE__ */ React.createElement("div", { className: `stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}` }, s.name), active && canAct && /* @__PURE__ */ React.createElement("div", { className: "stage-approver active" }, "\u25CF You"));
-      })), f.stages.some((s) => s.completedBy && s.comment) && /* @__PURE__ */ React.createElement("div", { style: { marginTop: "0.75rem" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald", fontSize: "0.7rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.5rem" } }, "Stage Comments"), f.stages.map((s, i) => s.completedBy && s.comment ? /* @__PURE__ */ React.createElement("div", { className: "stage-comment", key: i }, /* @__PURE__ */ React.createElement("div", { className: "stage-comment-by" }, s.name, " \xB7 ", s.completedBy, " \xB7 ", s.completedAt), s.comment) : null)), canAct && !isDone && /* @__PURE__ */ React.createElement("div", { className: "stage-action-box" }, /* @__PURE__ */ React.createElement("div", { className: "stage-action-label" }, "\u2B50 Your Review \u2014 ", currentStageName), activeComment === f.id ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-        "textarea",
-        {
-          className: "input",
-          style: { minHeight: "80px", resize: "vertical", marginBottom: "0.65rem", fontSize: "0.85rem" },
-          placeholder: "Add your comments (optional \u2014 describe performance, concerns, or recommendations)\u2026",
-          value: commentText,
-          onChange: (e) => setCommentText(e.target.value)
-        }
-      ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(f.id, "approved") }, "\u2713 Approve & Advance"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(f.id, "returned") }, "\u21A9 Return to Originator"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline btn-sm", onClick: () => {
-        setActiveComment(null);
-        setCommentText("");
-      } }, "Cancel"))) : /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange btn-sm", onClick: () => {
-        setActiveComment(f.id);
-        setCommentText("");
-      } }, "\u270F Review & Add Comments"))));
-    }), showModal && /* @__PURE__ */ React.createElement(Modal, { title: "Submit FITREP", onClose: () => setShowModal(false) }, /* @__PURE__ */ React.createElement("div", { className: "privacy-note" }, "\u{1F512} Private \u2014 only you and your CoC will see this."), needsRouteSelect && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Your Company"), /* @__PURE__ */ React.createElement("select", { className: "input", value: submitForm.routeCompany, onChange: (e) => setSubmitForm((s) => ({ ...s, routeCompany: e.target.value, routePlatoon: "" })) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Select company\u2026"), ["Alpha", "Bravo", "Charlie"].map((co) => /* @__PURE__ */ React.createElement("option", { key: co, value: co }, co)))), submitForm.routeCompany && /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Your Platoon"), /* @__PURE__ */ React.createElement("select", { className: "input", value: submitForm.routePlatoon, onChange: (e) => setSubmitForm((s) => ({ ...s, routePlatoon: e.target.value })) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Select platoon\u2026"), getPlatoons(submitForm.routeCompany).map((p) => /* @__PURE__ */ React.createElement("option", { key: p, value: p }, formatPlatoonLabel(p)))))), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Period"), /* @__PURE__ */ React.createElement("select", { className: "input", value: submitForm.period, onChange: (e) => setSubmitForm((s) => ({ ...s, period: e.target.value })) }, /* @__PURE__ */ React.createElement("option", null, "Spring 2026"), /* @__PURE__ */ React.createElement("option", null, "Fall 2025"), /* @__PURE__ */ React.createElement("option", null, "Spring 2025"))), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Notes (optional)"), /* @__PURE__ */ React.createElement("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, value: submitForm.notes, onChange: (e) => setSubmitForm((s) => ({ ...s, notes: e.target.value })) })), /* @__PURE__ */ React.createElement("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.65rem" } }, "Required Documents"), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "FITREP Document ", /* @__PURE__ */ React.createElement("span", { style: { color: "#C0392B" } }, "*")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { htmlFor: "fitrep-doc", className: "btn btn-outline btn-sm", style: { cursor: "pointer" } }, submitForm.fitrepDoc ? "\u2191 Replace PDF" : "\u2191 Upload PDF"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "fitrep-doc",
-        type: "file",
-        accept: ".pdf,application/pdf",
-        style: { display: "none" },
-        onChange: (e) => {
-          loadFitrepPDF("fitrepDoc", e.target.files[0]);
-          e.target.value = "";
-        }
-      }
-    ), submitForm.fitrepDoc ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 } }, "\u{1F4C4} ", submitForm.fitrepDoc.fileName) : /* @__PURE__ */ React.createElement("span", { style: { fontSize: "0.75rem", color: "#C0392B" } }, "Required"))), /* @__PURE__ */ React.createElement("div", { className: "input-group" }, /* @__PURE__ */ React.createElement("label", { className: "input-label" }, "Routing Sheet ", /* @__PURE__ */ React.createElement("span", { style: { color: "#C0392B" } }, "*")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { htmlFor: "fitrep-routing-sheet", className: "btn btn-outline btn-sm", style: { cursor: "pointer" } }, submitForm.routingSheet ? "\u2191 Replace PDF" : "\u2191 Upload PDF"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        id: "fitrep-routing-sheet",
-        type: "file",
-        accept: ".pdf,application/pdf",
-        style: { display: "none" },
-        onChange: (e) => {
-          loadFitrepPDF("routingSheet", e.target.files[0]);
-          e.target.value = "";
-        }
-      }
-    ), submitForm.routingSheet ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 } }, "\u{1F4C4} ", submitForm.routingSheet.fileName) : /* @__PURE__ */ React.createElement("span", { style: { fontSize: "0.75rem", color: "#C0392B" } }, "Required")))), /* @__PURE__ */ React.createElement("div", { style: { background: "#f5f2ee", borderRadius: "8px", padding: "0.65rem", fontSize: "0.8rem", color: "#666", marginBottom: "1rem" } }, "Your FITREP routes to: ", /* @__PURE__ */ React.createElement("strong", null, routeHint())), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-outline", onClick: () => setShowModal(false) }, "Cancel"), /* @__PURE__ */ React.createElement("button", { className: "btn btn-orange", onClick: handleSubmit }, "Submit FITREP"))));
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-title", children: [
+        "FITREP ",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Tracker" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-sub", children: [
+        "Fitness Report pipeline \u2014 ",
+        visible.length,
+        " report",
+        visible.length !== 1 ? "s" : "",
+        " visible to you"
+      ] }),
+      toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "alert alert-green", children: toast }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "privacy-note", children: [
+        "\u{1F512} ",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Private." }),
+        " Only you and your chain of command can see your FITREPs."
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "grid3", style: { marginBottom: "1rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", children: visible.filter((f) => f.currentStage > 0 && f.currentStage < f.stages.length - 1).length }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "In Progress" })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#2A7D4F" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#2A7D4F" }, children: visible.filter((f) => f.currentStage === f.stages.length - 1).length }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "Complete" })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#0D1B2A" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#0D1B2A" }, children: visible.filter((f) => f.currentStage === 1).length }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "Awaiting PC" })
+        ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap", alignItems: "center" }, children: [
+        companies.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", style: { maxWidth: "200px" }, value: filter, onChange: (e) => setFilter(e.target.value), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "All Companies" }),
+          companies.map((c) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: c, children: getCompanyShortName(c) }, c))
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.82rem", color: "#888", flex: 1 }, children: [
+          filtered.length,
+          " report",
+          filtered.length !== 1 ? "s" : "",
+          " shown"
+        ] }),
+        canSubmit && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: "+ Submit FITREP" })
+      ] }),
+      filtered.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2rem" }, children: "\u{1F4CA}" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: "No FITREPs on file." })
+      ] }),
+      filtered.map((f) => {
+        const canAct = canActOnFitrep(user, f);
+        const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
+        const currentStageName = isDone ? f.status === "Returned" ? "Returned" : "Complete" : f.stages?.[f.currentStage]?.name || "";
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-card", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-header", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("strong", { style: { fontSize: "0.95rem" }, children: [
+                f.subjectRank,
+                " ",
+                f.subjectName
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.78rem", color: "#888", marginTop: "1px" }, children: [
+                formatCompanyCoLabel(f.company),
+                " \xB7 ",
+                formatPlatoonLabel(f.platoon),
+                " \xB7 ",
+                f.period
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-navy", children: f.id }),
+              f.status === "Returned" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-red", children: "Returned" }) : isDone ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-green", children: "Complete" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-orange", children: currentStageName }),
+              canAct && !isDone && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { background: "rgba(42,125,79,0.15)", color: "#2A7D4F" }, children: "\u25CF Your Action" })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-body", children: [
+            f.docs && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.75rem" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "Oswald", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
+              f.docs.fitrepDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: f.docs.fitrepDoc.dataUrl, download: f.docs.fitrepDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} FITREP Document" }),
+              f.docs.routingSheet && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: f.docs.routingSheet.dataUrl, download: f.docs.routingSheet.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} Routing Sheet" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-track", children: f.stages.map((s, i) => {
+              const done = i < f.currentStage;
+              const returned = i === f.currentStage && f.status === "Returned";
+              const active = i === f.currentStage && !isDone;
+              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`, children: done ? "\u2713" : returned ? "\u21A9" : s.icon }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: s.name }),
+                active && canAct && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-approver active", children: "\u25CF You" })
+              ] }, i);
+            }) }),
+            f.stages.some((s) => s.completedBy && s.comment) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.75rem" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "Oswald", fontSize: "0.7rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.5rem" }, children: "Stage Comments" }),
+              f.stages.map((s, i) => s.completedBy && s.comment ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment-by", children: [
+                  s.name,
+                  " \xB7 ",
+                  s.completedBy,
+                  " \xB7 ",
+                  s.completedAt
+                ] }),
+                s.comment
+              ] }, i) : null)
+            ] }),
+            canAct && !isDone && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-label", children: [
+                "\u2B50 Your Review \u2014 ",
+                currentStageName
+              ] }),
+              activeComment === f.id ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                  "textarea",
+                  {
+                    className: "input",
+                    style: { minHeight: "80px", resize: "vertical", marginBottom: "0.65rem", fontSize: "0.85rem" },
+                    placeholder: "Add your comments (optional \u2014 describe performance, concerns, or recommendations)\u2026",
+                    value: commentText,
+                    onChange: (e) => setCommentText(e.target.value)
+                  }
+                ),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(f.id, "approved"), children: "\u2713 Approve & Advance" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(f.id, "returned"), children: "\u21A9 Return to Originator" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
+                    setActiveComment(null);
+                    setCommentText("");
+                  }, children: "Cancel" })
+                ] })
+              ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => {
+                setActiveComment(f.id);
+                setCommentText("");
+              }, children: "\u270F Review & Add Comments" })
+            ] })
+          ] })
+        ] }, f.id);
+      }),
+      showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Submit FITREP", onClose: () => setShowModal(false), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "privacy-note", children: "\u{1F512} Private \u2014 only you and your CoC will see this." }),
+        needsRouteSelect && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Your Company" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: submitForm.routeCompany, onChange: (e) => setSubmitForm((s) => ({ ...s, routeCompany: e.target.value, routePlatoon: "" })), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select company\u2026" }),
+              ["Alpha", "Bravo", "Charlie"].map((co) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: co, children: co }, co))
+            ] })
+          ] }),
+          submitForm.routeCompany && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Your Platoon" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: submitForm.routePlatoon, onChange: (e) => setSubmitForm((s) => ({ ...s, routePlatoon: e.target.value })), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select platoon\u2026" }),
+              getPlatoons(submitForm.routeCompany).map((p) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: p, children: formatPlatoonLabel(p) }, p))
+            ] })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Period" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: submitForm.period, onChange: (e) => setSubmitForm((s) => ({ ...s, period: e.target.value })), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Spring 2026" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Fall 2025" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Spring 2025" })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Notes (optional)" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, value: submitForm.notes, onChange: (e) => setSubmitForm((s) => ({ ...s, notes: e.target.value })) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "Oswald", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.65rem" }, children: "Required Documents" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+              "FITREP Document ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "fitrep-doc", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: submitForm.fitrepDoc ? "\u2191 Replace PDF" : "\u2191 Upload PDF" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  id: "fitrep-doc",
+                  type: "file",
+                  accept: ".pdf,application/pdf",
+                  style: { display: "none" },
+                  onChange: (e) => {
+                    loadFitrepPDF("fitrepDoc", e.target.files[0]);
+                    e.target.value = "";
+                  }
+                }
+              ),
+              submitForm.fitrepDoc ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
+                "\u{1F4C4} ",
+                submitForm.fitrepDoc.fileName
+              ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#C0392B" }, children: "Required" })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+              "Routing Sheet ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "fitrep-routing-sheet", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: submitForm.routingSheet ? "\u2191 Replace PDF" : "\u2191 Upload PDF" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  id: "fitrep-routing-sheet",
+                  type: "file",
+                  accept: ".pdf,application/pdf",
+                  style: { display: "none" },
+                  onChange: (e) => {
+                    loadFitrepPDF("routingSheet", e.target.files[0]);
+                    e.target.value = "";
+                  }
+                }
+              ),
+              submitForm.routingSheet ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
+                "\u{1F4C4} ",
+                submitForm.routingSheet.fileName
+              ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#C0392B" }, children: "Required" })
+            ] })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "#f5f2ee", borderRadius: "8px", padding: "0.65rem", fontSize: "0.8rem", color: "#666", marginBottom: "1rem" }, children: [
+          "Your FITREP routes to: ",
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: routeHint() })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => setShowModal(false), children: "Cancel" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: handleSubmit, children: "Submit FITREP" })
+        ] })
+      ] })
+    ] });
   }
   var NAV = [
     { id: "dashboard", label: "Dashboard", icon: "\u{1F3E0}" },
@@ -25150,43 +27032,95 @@
       setUserList((prev) => prev.map((u) => u.id === user.id ? { ...u, password: newPassword, mustChangePassword: false } : u));
     };
     if (!user) {
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("style", null, CSS), /* @__PURE__ */ React.createElement(LoginPage, { onLogin: handleLogin, userList, sheetSynced, sheetError, onRetry: fetchRoster }));
+      return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", { children: CSS }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(LoginPage, { onLogin: handleLogin, userList, sheetSynced, sheetError, onRetry: fetchRoster })
+      ] });
     }
     if (user.mustChangePassword) {
-      return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("style", null, CSS), /* @__PURE__ */ React.createElement(FirstLoginGate, { onPasswordChange: handlePasswordChange }));
+      return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", { children: CSS }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FirstLoginGate, { onPasswordChange: handlePasswordChange })
+      ] });
     }
     const renderPage = () => {
-      if (page === "dashboard") return /* @__PURE__ */ React.createElement(Dashboard, { onNav: setPage, userList, forms, reminder, setReminder });
-      if (page === "calendar") return /* @__PURE__ */ React.createElement(CalendarPage, null);
-      if (page === "structure") return /* @__PURE__ */ React.createElement(StructurePage, { userList });
-      if (page === "training") return /* @__PURE__ */ React.createElement(TrainingPage, { ptPlans, setPtPlans, llSessions, setLlSessions });
-      if (page === "chits") return /* @__PURE__ */ React.createElement(ChitsPage, { chits, setChits, userList });
-      if (page === "fitreps") return /* @__PURE__ */ React.createElement(FitrepsPage, { fitrebs, setFitrebs, userList });
-      if (page === "roster") return /* @__PURE__ */ React.createElement(RosterPage, { userList });
-      if (page === "forms") return /* @__PURE__ */ React.createElement(FormsPage, { forms, setForms });
-      if (page === "academic") return /* @__PURE__ */ React.createElement(AcademicPage, null);
-      return /* @__PURE__ */ React.createElement(Dashboard, { onNav: setPage });
+      if (page === "dashboard") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dashboard, { onNav: setPage, userList, forms, reminder, setReminder });
+      if (page === "calendar") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CalendarPage, {});
+      if (page === "structure") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StructurePage, { userList });
+      if (page === "training") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TrainingPage, { ptPlans, setPtPlans, llSessions, setLlSessions });
+      if (page === "chits") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChitsPage, { chits, setChits, userList });
+      if (page === "fitreps") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FitrepsPage, { fitrebs, setFitrebs, userList });
+      if (page === "roster") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(RosterPage, { userList });
+      if (page === "forms") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FormsPage, { forms, setForms });
+      if (page === "academic") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AcademicPage, {});
+      return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dashboard, { onNav: setPage });
     };
-    return /* @__PURE__ */ React.createElement(AuthContext.Provider, { value: { user, setUser } }, /* @__PURE__ */ React.createElement("style", null, CSS), showAccount && /* @__PURE__ */ React.createElement(
-      AccountModal,
-      {
-        onClose: () => setShowAccount(false),
-        onPasswordChange: handlePasswordChange
-      }
-    ), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("header", { className: "topbar" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { className: "topbar-logo" }, "UT"), /* @__PURE__ */ React.createElement("div", { className: "topbar-title" }, "The ", /* @__PURE__ */ React.createElement("span", null, "Quarterdeck"))), /* @__PURE__ */ React.createElement("div", { className: "topbar-right" }, /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        style: { display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" },
-        onClick: () => setShowAccount(true),
-        title: "Account Info"
-      },
-      /* @__PURE__ */ React.createElement("span", { className: "rank-pill" }, user.rank.split(" ")[0] || user.rank),
-      /* @__PURE__ */ React.createElement("span", { style: { color: "#ccc", fontSize: "0.85rem" } }, user.name.split(",")[0]),
-      isCoC(user) && /* @__PURE__ */ React.createElement("span", { className: "role-pill" }, user.role.replace("_", " "))
-    ), /* @__PURE__ */ React.createElement("button", { className: "btn-logout", onClick: () => {
-      setUser(null);
-      setPage("dashboard");
-    } }, "Sign Out"))), /* @__PURE__ */ React.createElement("div", { className: "layout" }, /* @__PURE__ */ React.createElement("nav", { className: "sidebar" }, /* @__PURE__ */ React.createElement("div", { className: "sidebar-group" }, /* @__PURE__ */ React.createElement("div", { className: "sidebar-label" }, "Navigation"), NAV.map((item) => /* @__PURE__ */ React.createElement("button", { key: item.id, className: `nav-btn ${page === item.id ? "active" : ""}`, onClick: () => setPage(item.id) }, /* @__PURE__ */ React.createElement("span", null, item.icon), " ", item.label))), /* @__PURE__ */ React.createElement("div", { className: "sidebar-footer" }, /* @__PURE__ */ React.createElement("strong", { style: { color: "#9ab0c4", cursor: "pointer" }, onClick: () => setShowAccount(true) }, user.name), /* @__PURE__ */ React.createElement("br", null), formatCompanyCoLabel(user.company), " \xB7 ", user.platoon, /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { color: "#F7941D" } }, user.role.replace("_", " ").toUpperCase()))), /* @__PURE__ */ React.createElement("main", { className: "content" }, renderPage())), /* @__PURE__ */ React.createElement("nav", { className: "mobile-nav" }, /* @__PURE__ */ React.createElement("div", { className: "mobile-nav-inner" }, MNAV.map((item) => /* @__PURE__ */ React.createElement("button", { key: item.id, className: `mobile-btn ${page === item.id ? "active" : ""}`, onClick: () => setPage(item.id) }, /* @__PURE__ */ React.createElement("span", { className: "mobile-icon" }, item.icon), item.label))))));
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(AuthContext.Provider, { value: { user, setUser }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", { children: CSS }),
+      showAccount && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        AccountModal,
+        {
+          onClose: () => setShowAccount(false),
+          onPasswordChange: handlePasswordChange
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "topbar", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "topbar-logo", children: "UT" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "topbar-title", children: [
+              "The ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Quarterdeck" })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "topbar-right", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+              "div",
+              {
+                style: { display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" },
+                onClick: () => setShowAccount(true),
+                title: "Account Info",
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "rank-pill", children: user.rank.split(" ")[0] || user.rank }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#ccc", fontSize: "0.85rem" }, children: user.name.split(",")[0] }),
+                  isCoC(user) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "role-pill", children: user.role.replace("_", " ") })
+                ]
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn-logout", onClick: () => {
+              setUser(null);
+              setPage("dashboard");
+            }, children: "Sign Out" })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "layout", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("nav", { className: "sidebar", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sidebar-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "sidebar-label", children: "Navigation" }),
+              NAV.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: `nav-btn ${page === item.id ? "active" : ""}`, onClick: () => setPage(item.id), children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: item.icon }),
+                " ",
+                item.label
+              ] }, item.id))
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sidebar-footer", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { style: { color: "#9ab0c4", cursor: "pointer" }, onClick: () => setShowAccount(true), children: user.name }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
+              formatCompanyCoLabel(user.company),
+              " \xB7 ",
+              user.platoon,
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#F7941D" }, children: user.role.replace("_", " ").toUpperCase() })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("main", { className: "content", children: renderPage() })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", { className: "mobile-nav", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "mobile-nav-inner", children: MNAV.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: `mobile-btn ${page === item.id ? "active" : ""}`, onClick: () => setPage(item.id), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "mobile-icon", children: item.icon }),
+          item.label
+        ] }, item.id)) }) })
+      ] })
+    ] });
   }
 
   // preview-entry.jsx
@@ -25238,5 +27172,16 @@ react-dom/cjs/react-dom.development.js:
    * @return {boolean} True if the event is supported.
    * @internal
    * @license Modernizr 3.0.0pre (Custom Build) | MIT
+   *)
+
+react/cjs/react-jsx-runtime.development.js:
+  (**
+   * @license React
+   * react-jsx-runtime.development.js
+   *
+   * Copyright (c) Facebook, Inc. and its affiliates.
+   *
+   * This source code is licensed under the MIT license found in the
+   * LICENSE file in the root directory of this source tree.
    *)
 */
