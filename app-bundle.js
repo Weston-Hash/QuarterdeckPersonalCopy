@@ -3722,7 +3722,7 @@
           " your last name, full email, or EID.",
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Password:" }),
-          " use your provided password if first time logging in.",
+          " use your provided password on first login.",
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
           "Contact ADJ if you need a password reset."
         ] })
