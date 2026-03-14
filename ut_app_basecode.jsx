@@ -1095,7 +1095,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
     <div className="login-wrap">
       <div className="login-card">
         <div className="login-logo">
-          <div className="login-mark">⚓</div>
+          <div className="login-mark">{"⚓\uFE0E"}</div>
           <div className="login-title">The <span>Quarterdeck</span></div>
         </div>
 
@@ -2859,7 +2859,7 @@ export default function App() {
       <div>
         <header className="topbar">
           <div style={{ display:"flex", alignItems:"center" }}>
-            <div className="topbar-logo">⚓</div>
+            <div className="topbar-logo">{"⚓\uFE0E"}</div>
             <div className="topbar-title">The <span>Quarterdeck</span></div>
           </div>
           <div className="topbar-right">

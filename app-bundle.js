@@ -3647,7 +3647,7 @@
     const banner = (msg, color) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: `rgba(${color},0.1)`, border: `1.5px solid rgb(${color})`, borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: `rgb(${color})`, marginBottom: "0.9rem" }, children: msg });
     return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-card", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-logo", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-mark", children: "\u2693" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-mark", children: "\u2693\uFE0E" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-title", children: [
           "The ",
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Quarterdeck" })
@@ -5362,7 +5362,7 @@
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "topbar", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "topbar-logo", children: "\u2693" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "topbar-logo", children: "\u2693\uFE0E" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "topbar-title", children: [
               "The ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Quarterdeck" })
