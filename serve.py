@@ -2,10 +2,15 @@
 """Simple HTTP server for serving the live preview from project root."""
 import http.server
 import os
+import socketserver
+import sys
+import urllib.error
+import urllib.request
 from urllib.parse import unquote, urlparse
 
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+PORT = 8000
 
 
 class PreviewHandler(http.server.SimpleHTTPRequestHandler):
@@ -50,5 +55,24 @@ class PreviewHandler(http.server.SimpleHTTPRequestHandler):
         return os.path.join(ROOT, *clean_parts)
 
 
-print("Serving project preview at http://localhost:8000")
-http.server.HTTPServer(("", 8000), PreviewHandler).serve_forever()
+class PreviewServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+
+def existing_server_is_healthy(port):
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2) as response:
+            return response.status == 200
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return False
+
+
+print(f"Serving project preview at http://localhost:{PORT}")
+try:
+    PreviewServer(("", PORT), PreviewHandler).serve_forever()
+except OSError as err:
+    if err.errno == 98 and existing_server_is_healthy(PORT):
+        print(f"Preview server is already running at http://localhost:{PORT}")
+        sys.exit(0)
+    raise
