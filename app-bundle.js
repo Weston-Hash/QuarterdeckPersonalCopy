@@ -2383,9 +2383,9 @@
           if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ !== "undefined" && typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart === "function") {
             __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(new Error());
           }
-          var React3 = require_react();
+          var React2 = require_react();
           var Scheduler = require_scheduler();
-          var ReactSharedInternals = React3.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
+          var ReactSharedInternals = React2.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
           var suppressWarning = false;
           function setSuppressWarning(newSuppressWarning) {
             {
@@ -3992,7 +3992,7 @@
             {
               if (props.value == null) {
                 if (typeof props.children === "object" && props.children !== null) {
-                  React3.Children.forEach(props.children, function(child) {
+                  React2.Children.forEach(props.children, function(child) {
                     if (child == null) {
                       return;
                     }
@@ -23588,7 +23588,7 @@
       if (true) {
         (function() {
           "use strict";
-          var React3 = require_react();
+          var React2 = require_react();
           var REACT_ELEMENT_TYPE = Symbol.for("react.element");
           var REACT_PORTAL_TYPE = Symbol.for("react.portal");
           var REACT_FRAGMENT_TYPE = Symbol.for("react.fragment");
@@ -23614,7 +23614,7 @@
             }
             return null;
           }
-          var ReactSharedInternals = React3.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
+          var ReactSharedInternals = React2.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
           function error(format) {
             {
               {
@@ -24464,10 +24464,10 @@
               return jsxWithValidation(type, props, key, false);
             }
           }
-          var jsx2 = jsxWithValidationDynamic;
+          var jsx3 = jsxWithValidationDynamic;
           var jsxs2 = jsxWithValidationStatic;
           exports.Fragment = REACT_FRAGMENT_TYPE;
-          exports.jsx = jsx2;
+          exports.jsx = jsx3;
           exports.jsxs = jsxs2;
         })();
       }
@@ -24486,7 +24486,7 @@
     }
   });
 
-  // preview-entry.jsx
+  // src/main.jsx
   var import_react2 = __toESM(require_react(), 1);
   var import_client = __toESM(require_client(), 1);
 
@@ -25322,11 +25322,11 @@
         return;
       }
       if (user.password !== pass.trim()) {
-        setErr("Incorrect password. Contact your S1 if you need a reset.");
+        setErr("Incorrect password. Contact ADJ if you need a reset.");
         return;
       }
       if (!user.email) {
-        setErr("No email on file. Contact your S1 to add your email before logging in.");
+        setErr("No email on file. Contact ADJ to add your email before logging in.");
         return;
       }
       setErr("");
@@ -25463,7 +25463,7 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Username:" }),
           " your last name, full email, or EID",
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
-          "Contact your S1 (ADJ) if you need a password reset."
+          "Contact ADJ if you need a password reset."
         ] })
       ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-sub", children: "Two-factor verification" }),
@@ -27166,8 +27166,11 @@
     ] });
   }
 
-  // preview-entry.jsx
-  (0, import_client.createRoot)(document.getElementById("root")).render(import_react2.default.createElement(App));
+  // src/main.jsx
+  var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
+  (0, import_client.createRoot)(document.getElementById("root")).render(
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_react2.StrictMode, { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(App, {}) })
+  );
 })();
 /*! Bundled license information:
 

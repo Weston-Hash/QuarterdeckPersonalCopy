@@ -1053,8 +1053,8 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
       (u.eid && u.eid.toLowerCase() === q)
     );
     if (!user) { setErr("Name not found. Try your last name, email, or EID."); return; }
-    if (user.password !== pass.trim()) { setErr("Incorrect password. Contact your S1 if you need a reset."); return; }
-    if (!user.email) { setErr("No email on file. Contact your S1 to add your email before logging in."); return; }
+    if (user.password !== pass.trim()) { setErr("Incorrect password. Contact ADJ if you need a reset."); return; }
+    if (!user.email) { setErr("No email on file. Contact ADJ to add your email before logging in."); return; }
 
     setErr("");
     setMfaLoading(true);
@@ -1206,7 +1206,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
 
             <div className="hint-box">
               <strong>Username:</strong> your last name, full email, or EID<br />
-              Contact your S1 (ADJ) if you need a password reset.
+              Contact ADJ if you need a password reset.
             </div>
           </>
         ) : (
