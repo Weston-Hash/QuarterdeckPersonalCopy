@@ -3778,7 +3778,7 @@
           "button",
           {
             className: "btn btn-orange",
-            style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: locked || mfaLoading ? 0.45 : 1, cursor: locked || mfaLoading ? "not-allowed" : "pointer" },
+            style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: locked || mfaLoading ? 0.45 : 1, cursor: locked || mfaLoading ? "not-allowed" : "pointer", fontFamily: "'Barlow', 'Segoe UI', sans-serif", letterSpacing: "normal", textTransform: "none" },
             disabled: locked || mfaLoading,
             onClick: go,
             children: mfaLoading ? "\u23F3 Sending code\u2026" : locked ? "\u23F3 Syncing\u2026" : "Sign In \u2192"
@@ -5368,7 +5368,8 @@
       }, hasCachedRoster ? 2500 : 5e3);
       function cleanup() {
         clearTimeout(timer);
-        delete window[cbName];
+        window[cbName] = () => {
+        };
         if (script.parentNode) script.parentNode.removeChild(script);
       }
       window[cbName] = (data) => {
