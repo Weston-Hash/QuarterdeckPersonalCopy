@@ -502,6 +502,28 @@ const INIT_QS = [
 //      In sheet-only mode, the app stays locked until this feed loads successfully.
 const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbwk8lmqWiujlDyRkz4typfRoD67F6vKOWMa__tIt5Ie-upx-mHs_dO105_Och1Jq6SL/exec";
 const SHEETS_API_TOKEN = "UT_NROTC";
+const ROSTER_CACHE_KEY = "quarterdeck_roster_cache_v1";
+
+function loadCachedRoster() {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return [];
+    const raw = window.localStorage.getItem(ROSTER_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function saveCachedRoster(users) {
+  try {
+    if (typeof window === "undefined" || !window.localStorage || !Array.isArray(users)) return;
+    window.localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify(users));
+  } catch (err) {
+    // Ignore cache write failures; live data still works.
+  }
+}
 const SHEET_ONLY_MODE  = true;
 
 // Sheet columns A→J: company, name, class, email, phone number, major, campus, eid, password, billet
@@ -1017,7 +1039,8 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaInfo, setMfaInfo]   = useState("");       // non-error info message
 
-  const locked = !sheetSynced;
+  const hasRoster = userList.length > 0;
+  const locked = !sheetSynced && !hasRoster;
 
   // ── Step 1: validate credentials → send MFA code ──────────────────────────
   const go = () => {
@@ -1127,15 +1150,20 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
           <>
             <div className="login-sub">Sign in with your battalion credentials</div>
 
-            {!sheetSynced && (
+            {!sheetSynced && !hasRoster && (
               <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem", display:"flex", alignItems:"center", gap:"0.6rem" }}>
                 <span style={{ fontSize:"1.1rem" }}>⏳</span>
                 <span>Syncing roster from Google Sheets… please wait.</span>
               </div>
             )}
+            {!sheetSynced && hasRoster && (
+              <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem" }}>
+                ⏳ Refreshing roster from Google Sheets in the background…
+              </div>
+            )}
             {sheetSynced && sheetError && (
               <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>
-                ⚠ Could not reach Google Sheets. Check your connection and{" "}
+                ⚠ Could not reach Google Sheets{hasRoster ? ". Using cached roster for now" : ""}. Check your connection and{" "}
                 <button onClick={onRetry} style={{ background:"none", border:"none", color:"#C0392B", fontWeight:700, textDecoration:"underline", cursor:"pointer", fontSize:"inherit", padding:0 }}>retry</button>.
               </div>
             )}
@@ -2771,6 +2799,7 @@ const MNAV = [
 ];
 
 export default function App() {
+  const cachedRoster = loadCachedRoster();
   const [user, setUser]           = useState(null);
   const [page, setPage]           = useState("dashboard");
   const [reminder, setReminder]   = useState({ enabled: false, text: "" });
@@ -2784,9 +2813,9 @@ export default function App() {
   // LL session list: TRAINO manages text notes; everyone reads.
   const [llSessions, setLlSessions] = useState(LEADLAB_INIT);
   // userList: populated from Google Sheet on mount; empty until fetch completes
-  const [userList, setUserList]   = useState([]);
+  const [userList, setUserList]   = useState(cachedRoster);
   // sheetSynced: true only after the Sheets fetch resolves OR rejects (never while in-flight)
-  const [sheetSynced, setSheetSynced] = useState(!SHEETS_API_URL); // skip wait if no URL
+  const [sheetSynced, setSheetSynced] = useState(!SHEETS_API_URL || cachedRoster.length > 0);
   const [sheetError,  setSheetError]  = useState(false);
 
   const fetchRoster = () => {
@@ -2795,9 +2824,10 @@ export default function App() {
     setSheetError(false);
     const cbName = "__qd_cb_" + Date.now();
     const script = document.createElement("script");
+    const hasCachedRoster = loadCachedRoster().length > 0;
     const timer = setTimeout(() => {
       cleanup(); setSheetError(true); setSheetSynced(true);
-    }, 10000);
+    }, hasCachedRoster ? 2500 : 5000);
     function cleanup() {
       clearTimeout(timer); delete window[cbName];
       if (script.parentNode) script.parentNode.removeChild(script);
@@ -2805,7 +2835,9 @@ export default function App() {
     window[cbName] = (data) => {
       cleanup();
       if (data.users && data.users.length > 0) {
-        setUserList(data.users.map((row, i) => sheetRowToUser(row, i)));
+        const nextUsers = data.users.map((row, i) => sheetRowToUser(row, i));
+        setUserList(nextUsers);
+        saveCachedRoster(nextUsers);
       } else {
         setSheetError(true);
       }

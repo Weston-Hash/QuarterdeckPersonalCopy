@@ -24801,6 +24801,25 @@
   ];
   var SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbwk8lmqWiujlDyRkz4typfRoD67F6vKOWMa__tIt5Ie-upx-mHs_dO105_Och1Jq6SL/exec";
   var SHEETS_API_TOKEN = "UT_NROTC";
+  var ROSTER_CACHE_KEY = "quarterdeck_roster_cache_v1";
+  function loadCachedRoster() {
+    try {
+      if (typeof window === "undefined" || !window.localStorage) return [];
+      const raw = window.localStorage.getItem(ROSTER_CACHE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+      return [];
+    }
+  }
+  function saveCachedRoster(users) {
+    try {
+      if (typeof window === "undefined" || !window.localStorage || !Array.isArray(users)) return;
+      window.localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify(users));
+    } catch (err) {
+    }
+  }
   var COMPANY_MAP = {
     "BN Staff": "BN",
     "A": "Alpha",
@@ -25290,7 +25309,8 @@
     const [mfaCode, setMfaCode] = (0, import_react.useState)("");
     const [mfaLoading, setMfaLoading] = (0, import_react.useState)(false);
     const [mfaInfo, setMfaInfo] = (0, import_react.useState)("");
-    const locked = !sheetSynced;
+    const hasRoster = userList.length > 0;
+    const locked = !sheetSynced && !hasRoster;
     const go = () => {
       if (locked) return;
       const q = name.trim().toLowerCase();
@@ -25384,12 +25404,15 @@
       ] }),
       !mfaStep ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-sub", children: "Sign in with your battalion credentials" }),
-        !sheetSynced && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(191,87,0,0.08)", border: "1.5px solid #BF5700", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#BF5700", marginBottom: "0.9rem", display: "flex", alignItems: "center", gap: "0.6rem" }, children: [
+        !sheetSynced && !hasRoster && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(191,87,0,0.08)", border: "1.5px solid #BF5700", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#BF5700", marginBottom: "0.9rem", display: "flex", alignItems: "center", gap: "0.6rem" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "1.1rem" }, children: "\u23F3" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Syncing roster from Google Sheets\u2026 please wait." })
         ] }),
+        !sheetSynced && hasRoster && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: "rgba(191,87,0,0.08)", border: "1.5px solid #BF5700", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#BF5700", marginBottom: "0.9rem" }, children: "\u23F3 Refreshing roster from Google Sheets in the background\u2026" }),
         sheetSynced && sheetError && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(192,57,43,0.1)", border: "1.5px solid #C0392B", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#C0392B", marginBottom: "0.9rem" }, children: [
-          "\u26A0 Could not reach Google Sheets. Check your connection and",
+          "\u26A0 Could not reach Google Sheets",
+          hasRoster ? ". Using cached roster for now" : "",
+          ". Check your connection and",
           " ",
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: onRetry, style: { background: "none", border: "none", color: "#C0392B", fontWeight: 700, textDecoration: "underline", cursor: "pointer", fontSize: "inherit", padding: 0 }, children: "retry" }),
           "."
@@ -26990,6 +27013,7 @@
     { id: "roster", label: "Roster", icon: "\u{1F4D2}" }
   ];
   function App() {
+    const cachedRoster = loadCachedRoster();
     const [user, setUser] = (0, import_react.useState)(null);
     const [page, setPage] = (0, import_react.useState)("dashboard");
     const [reminder, setReminder] = (0, import_react.useState)({ enabled: false, text: "" });
@@ -26999,8 +27023,8 @@
     const [forms, setForms] = (0, import_react.useState)([]);
     const [ptPlans, setPtPlans] = (0, import_react.useState)({ monday: null, wednesday: null, thursday: null });
     const [llSessions, setLlSessions] = (0, import_react.useState)(LEADLAB_INIT);
-    const [userList, setUserList] = (0, import_react.useState)([]);
-    const [sheetSynced, setSheetSynced] = (0, import_react.useState)(!SHEETS_API_URL);
+    const [userList, setUserList] = (0, import_react.useState)(cachedRoster);
+    const [sheetSynced, setSheetSynced] = (0, import_react.useState)(!SHEETS_API_URL || cachedRoster.length > 0);
     const [sheetError, setSheetError] = (0, import_react.useState)(false);
     const fetchRoster = () => {
       if (!SHEETS_API_URL) {
@@ -27011,11 +27035,12 @@
       setSheetError(false);
       const cbName = "__qd_cb_" + Date.now();
       const script = document.createElement("script");
+      const hasCachedRoster = loadCachedRoster().length > 0;
       const timer = setTimeout(() => {
         cleanup();
         setSheetError(true);
         setSheetSynced(true);
-      }, 1e4);
+      }, hasCachedRoster ? 2500 : 5e3);
       function cleanup() {
         clearTimeout(timer);
         delete window[cbName];
@@ -27024,7 +27049,9 @@
       window[cbName] = (data) => {
         cleanup();
         if (data.users && data.users.length > 0) {
-          setUserList(data.users.map((row, i) => sheetRowToUser(row, i)));
+          const nextUsers = data.users.map((row, i) => sheetRowToUser(row, i));
+          setUserList(nextUsers);
+          saveCachedRoster(nextUsers);
         } else {
           setSheetError(true);
         }
