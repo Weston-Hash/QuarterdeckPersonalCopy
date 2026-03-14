@@ -3383,8 +3383,8 @@
   .privacy-note { background: rgba(13,27,42,0.05); border: 1.5px solid rgba(13,27,42,0.15); border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.82rem; color: #0D1B2A; margin-bottom: 1rem; }
 
   .potw-card { background: linear-gradient(135deg, #1A1209 0%, #0D1B2A 100%); color: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
-  .potw-week { font-family: 'Rajdhani'; font-size: 0.68rem; letter-spacing: 3px; text-transform: uppercase; color: #F7941D; margin-bottom: 0.4rem; }
-  .potw-title { font-family: 'Rajdhani'; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.6rem; }
+  .potw-week { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.68rem; letter-spacing: 3px; text-transform: uppercase; color: #F7941D; margin-bottom: 0.4rem; }
+  .potw-title { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.6rem; }
   .potw-body { font-size: 0.88rem; line-height: 1.6; color: #CCC; margin-bottom: 0.75rem; }
 
   .event-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.7rem 0; border-bottom: 1px solid #f0ede8; }
