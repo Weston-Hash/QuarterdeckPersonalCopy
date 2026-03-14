@@ -3780,7 +3780,7 @@
       ] })
     ] }) });
   }
-  function Dashboard({ onNav, userList, forms, reminder, setReminder }) {
+  function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
     const { user } = useAuth();
     const canManageReminder = isBigFour(user);
     const [editingReminder, setEditingReminder] = React.useState(false);
@@ -3841,11 +3841,11 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "BN Strength" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#0D1B2A" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#0D1B2A" }, children: "3" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#0D1B2A" }, children: chits.filter((c) => c.status !== "Complete").length }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "Open CHITs" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#2A7D4F" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#2A7D4F" }, children: "4" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#2A7D4F" }, children: forms.length }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "Active Forms" })
         ] })
       ] }),
@@ -5339,7 +5339,7 @@
       ] });
     }
     const renderPage = () => {
-      if (page === "dashboard") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dashboard, { onNav: setPage, userList, forms, reminder, setReminder });
+      if (page === "dashboard") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dashboard, { onNav: setPage, userList, chits, forms, reminder, setReminder });
       if (page === "calendar") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CalendarPage, {});
       if (page === "structure") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StructurePage, { userList });
       if (page === "training") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TrainingPage, { ptPlans, setPtPlans, llSessions, setLlSessions });

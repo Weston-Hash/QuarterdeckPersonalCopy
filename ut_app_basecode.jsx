@@ -1220,7 +1220,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   );
 }
 
-function Dashboard({ onNav, userList, forms, reminder, setReminder }) {
+function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
   const { user } = useAuth();
   const canManageReminder = isBigFour(user);
   const [editingReminder, setEditingReminder] = React.useState(false);
@@ -1272,8 +1272,8 @@ function Dashboard({ onNav, userList, forms, reminder, setReminder }) {
 
       <div className="grid3" style={{ marginBottom:"1rem" }}>
         <div className="stat"><div className="stat-n">{userList.length}</div><div className="stat-l">BN Strength</div></div>
-        <div className="stat" style={{ borderLeftColor:"#0D1B2A" }}><div className="stat-n" style={{ color:"#0D1B2A" }}>3</div><div className="stat-l">Open CHITs</div></div>
-        <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}><div className="stat-n" style={{ color:"#2A7D4F" }}>4</div><div className="stat-l">Active Forms</div></div>
+        <div className="stat" style={{ borderLeftColor:"#0D1B2A" }}><div className="stat-n" style={{ color:"#0D1B2A" }}>{chits.filter(c => c.status !== "Complete").length}</div><div className="stat-l">Open CHITs</div></div>
+        <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}><div className="stat-n" style={{ color:"#2A7D4F" }}>{forms.length}</div><div className="stat-l">Active Forms</div></div>
       </div>
 
       <div className="grid2">
@@ -2835,7 +2835,7 @@ export default function App() {
   }
 
   const renderPage = () => {
-    if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} forms={forms} reminder={reminder} setReminder={setReminder} />;
+    if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} chits={chits} forms={forms} reminder={reminder} setReminder={setReminder} />;
     if (page === "calendar")   return <CalendarPage />;
     if (page === "structure")  return <StructurePage userList={userList} />;
     if (page === "training")   return <TrainingPage ptPlans={ptPlans} setPtPlans={setPtPlans} llSessions={llSessions} setLlSessions={setLlSessions} />;
