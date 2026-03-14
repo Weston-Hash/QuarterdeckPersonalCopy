@@ -3712,7 +3712,10 @@
         ),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "hint-box", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Username:" }),
-          " your last name, full email, or EID",
+          " your last name, full email, or EID.",
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Password:" }),
+          " use your provided password if first time logging in.",
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
           "Contact ADJ if you need a password reset."
         ] })

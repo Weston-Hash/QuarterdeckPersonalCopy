@@ -1158,7 +1158,8 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
             </button>
 
             <div className="hint-box">
-              <strong>Username:</strong> your last name, full email, or EID<br />
+              <strong>Username:</strong> your last name, full email, or EID.<br />
+              <strong>Password:</strong> use your provided password if first time logging in.<br />
               Contact ADJ if you need a password reset.
             </div>
           </>
