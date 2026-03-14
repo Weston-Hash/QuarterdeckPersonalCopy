@@ -25313,7 +25313,7 @@
       setMfaLoading(true);
       fetch(SHEETS_API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: user.email })
       }).then((r) => r.json()).then((data) => {
         setMfaLoading(false);
@@ -25338,7 +25338,7 @@
       setMfaLoading(true);
       fetch(SHEETS_API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "verifyMFA", email: mfaUser.email, code: mfaCode.trim() })
       }).then((r) => r.json()).then((data) => {
         setMfaLoading(false);
@@ -25359,7 +25359,7 @@
       setMfaLoading(true);
       fetch(SHEETS_API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: mfaUser.email })
       }).then((r) => r.json()).then((data) => {
         setMfaLoading(false);
