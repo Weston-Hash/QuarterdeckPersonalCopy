@@ -723,22 +723,22 @@ const INIT_FITREBS = [
 // ─── STYLES ─────────────────────────────────────────────────
 const CSS = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: "Trebuchet MS", "Segoe UI", sans-serif; background: #FFF8F0; color: #1A1209; }
+  body { font-family: 'Barlow', "Segoe UI", sans-serif; font-size: 1rem; background: #FFF8F0; color: #1A1209; }
 
   .topbar { background: #1A1209; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; height: 58px; border-bottom: 3px solid #BF5700; position: sticky; top: 0; z-index: 50; }
-  .topbar-logo { width: 36px; height: 36px; background: #BF5700; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-weight: 700; font-size: 1rem; color: white; margin-right: 0.6rem; }
-  .topbar-title { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-weight: 700; font-size: 1.15rem; letter-spacing: 2px; text-transform: uppercase; }
+  .topbar-logo { width: 40px; height: 40px; background: #BF5700; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: 'Rajdhani', Impact, sans-serif; font-weight: 700; font-size: 1.1rem; color: white; margin-right: 0.7rem; }
+  .topbar-title { font-family: 'Rajdhani', Impact, sans-serif; font-weight: 700; font-size: 1.35rem; letter-spacing: 3px; text-transform: uppercase; }
   .topbar-title span { color: #F7941D; }
   .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
-  .rank-pill { background: #BF5700; color: white; padding: 2px 8px; border-radius: 4px; font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; }
+  .rank-pill { background: #BF5700; color: white; padding: 2px 8px; border-radius: 4px; font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; }
   .role-pill { background: rgba(255,255,255,0.12); color: #ccc; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; text-transform: uppercase; }
-  .btn-logout { background: transparent; border: 1.5px solid rgba(255,255,255,0.25); color: #ccc; border-radius: 4px; padding: 3px 10px; font-size: 0.75rem; cursor: pointer; font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; letter-spacing: 1px; text-transform: uppercase; }
+  .btn-logout { background: transparent; border: 1.5px solid rgba(255,255,255,0.25); color: #ccc; border-radius: 4px; padding: 3px 10px; font-size: 0.75rem; cursor: pointer; font-family: 'Rajdhani', Impact, sans-serif; letter-spacing: 1px; text-transform: uppercase; }
   .btn-logout:hover { background: rgba(255,255,255,0.1); }
 
   .layout { display: flex; min-height: calc(100vh - 58px); }
   .sidebar { width: 210px; background: #0D1B2A; flex-shrink: 0; position: sticky; top: 58px; height: calc(100vh - 58px); overflow-y: auto; display: flex; flex-direction: column; }
   .sidebar-group { padding: 1rem 0 0.5rem; }
-  .sidebar-label { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-size: 0.62rem; letter-spacing: 3px; text-transform: uppercase; color: #7a8fa0; padding: 0 1rem; margin-bottom: 0.5rem; }
+  .sidebar-label { font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.62rem; letter-spacing: 3px; text-transform: uppercase; color: #7a8fa0; padding: 0 1rem; margin-bottom: 0.5rem; }
   .nav-btn { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; cursor: pointer; color: #9ab0c4; font-size: 0.88rem; border-left: 3px solid transparent; transition: all 0.15s; background: none; border-top: none; border-right: none; border-bottom: none; width: 100%; text-align: left; }
   .nav-btn:hover { background: rgba(255,255,255,0.05); color: white; }
   .nav-btn.active { background: rgba(191,87,0,0.2); color: #F7941D; border-left-color: #BF5700; font-weight: 600; }
@@ -746,22 +746,22 @@ const CSS = `
 
   .content { flex: 1; padding: 1.5rem; overflow-y: auto; min-width: 0; }
 
-  .page-title { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-size: 1.7rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 0.2rem; }
+  .page-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 2.1rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 0.2rem; }
   .page-title span { color: #BF5700; }
   .page-sub { font-size: 0.88rem; color: #6B6B6B; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 2px solid rgba(191,87,0,0.15); }
 
   .card { background: white; border-radius: 10px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid rgba(191,87,0,0.1); margin-bottom: 1rem; }
-  .card-title { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; color: #1A1209; }
+  .card-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; color: #1A1209; }
   .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
 
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
 
   .stat { background: white; border-radius: 10px; padding: 1rem 1.2rem; border-left: 4px solid #BF5700; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-  .stat-n { font-family: Oswald; font-size: 2rem; font-weight: 700; color: #BF5700; line-height: 1; }
+  .stat-n { font-family: 'Rajdhani', Impact, sans-serif; font-size: 2.4rem; font-weight: 700; color: #BF5700; line-height: 1; }
   .stat-l { font-size: 0.78rem; color: #6B6B6B; text-transform: uppercase; letter-spacing: 1px; margin-top: 0.2rem; }
 
-  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; border-radius: 6px; font-family: Oswald; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; border: none; font-weight: 500; transition: all 0.15s; }
+  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; border-radius: 6px; font-family: 'Rajdhani'; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; border: none; font-weight: 500; transition: all 0.15s; }
   .btn-orange { background: #BF5700; color: white; }
   .btn-orange:hover { background: #8B3D00; }
   .btn-outline { background: transparent; border: 2px solid #BF5700; color: #BF5700; }
@@ -778,7 +778,7 @@ const CSS = `
   .badge-navy   { background: rgba(13,27,42,0.1); color: #0D1B2A; }
   .badge-gray   { background: #eee; color: #666; }
 
-  .input { width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #ddd; border-radius: 6px; font-family: 'Source Sans 3', sans-serif; font-size: 0.9rem; color: #1A1209; background: white; }
+  .input { width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #ddd; border-radius: 6px; font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.9rem; color: #1A1209; background: white; }
   .input:focus { outline: none; border-color: #BF5700; }
   .input-group { margin-bottom: 0.9rem; }
   .input-label { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #6B6B6B; margin-bottom: 0.3rem; }
@@ -788,28 +788,28 @@ const CSS = `
   .privacy-note { background: rgba(13,27,42,0.05); border: 1.5px solid rgba(13,27,42,0.15); border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.82rem; color: #0D1B2A; margin-bottom: 1rem; }
 
   .potw-card { background: linear-gradient(135deg, #1A1209 0%, #0D1B2A 100%); color: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
-  .potw-week { font-family: Oswald; font-size: 0.68rem; letter-spacing: 3px; text-transform: uppercase; color: #F7941D; margin-bottom: 0.4rem; }
-  .potw-title { font-family: Oswald; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.6rem; }
+  .potw-week { font-family: 'Rajdhani'; font-size: 0.68rem; letter-spacing: 3px; text-transform: uppercase; color: #F7941D; margin-bottom: 0.4rem; }
+  .potw-title { font-family: 'Rajdhani'; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.6rem; }
   .potw-body { font-size: 0.88rem; line-height: 1.6; color: #CCC; margin-bottom: 0.75rem; }
 
   .event-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.7rem 0; border-bottom: 1px solid #f0ede8; }
   .event-date { min-width: 46px; text-align: center; background: #BF5700; color: white; border-radius: 7px; padding: 3px; }
-  .event-day { font-family: Oswald; font-size: 1.35rem; font-weight: 700; line-height: 1; }
+  .event-day { font-family: 'Rajdhani'; font-size: 1.35rem; font-weight: 700; line-height: 1; }
   .event-mo  { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; }
   .event-title { font-weight: 600; font-size: 0.88rem; }
   .event-sub   { font-size: 0.78rem; color: #6B6B6B; }
 
   .company-block { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 1rem; }
   .company-header { color: white; padding: 0.8rem 1.2rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
-  .company-name { font-family: Oswald; font-size: 1.05rem; letter-spacing: 2px; text-transform: uppercase; }
+  .company-name { font-family: 'Rajdhani'; font-size: 1.05rem; letter-spacing: 2px; text-transform: uppercase; }
   .company-co { font-size: 0.78rem; color: rgba(255,255,255,0.75); }
   .platoon-grid { padding: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0.75rem; }
   .platoon-card { border: 1.5px solid rgba(191,87,0,0.2); border-radius: 8px; padding: 0.75rem; }
-  .platoon-name { font-family: Oswald; font-size: 0.82rem; letter-spacing: 1.5px; color: #BF5700; margin-bottom: 0.35rem; }
+  .platoon-name { font-family: 'Rajdhani'; font-size: 0.82rem; letter-spacing: 1.5px; color: #BF5700; margin-bottom: 0.35rem; }
   .platoon-detail { font-size: 0.78rem; color: #6B6B6B; }
 
   .pt-block { background: white; border-radius: 8px; overflow: hidden; margin-bottom: 0.75rem; border: 1px solid #eee; }
-  .pt-header { background: #BF5700; color: white; padding: 0.55rem 1rem; display: flex; align-items: center; justify-content: space-between; font-family: Oswald; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; }
+  .pt-header { background: #BF5700; color: white; padding: 0.55rem 1rem; display: flex; align-items: center; justify-content: space-between; font-family: 'Rajdhani'; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; }
   .pt-row { display: flex; align-items: center; gap: 1rem; padding: 0.4rem 1rem; border-bottom: 1px solid #faf7f4; font-size: 0.85rem; }
   .pt-name { flex: 1; font-weight: 500; }
   .pt-sets { color: #BF5700; font-weight: 600; font-size: 0.82rem; min-width: 80px; }
@@ -824,7 +824,7 @@ const CSS = `
   .progress-fill { background: #BF5700; height: 100%; border-radius: 4px; }
 
   .roster-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0; border-bottom: 1px solid #f4f0eb; flex-wrap: wrap; }
-  .avatar { width: 36px; height: 36px; border-radius: 50%; background: #BF5700; color: white; display: flex; align-items: center; justify-content: center; font-family: Oswald; font-weight: 700; font-size: 0.82rem; flex-shrink: 0; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; background: #BF5700; color: white; display: flex; align-items: center; justify-content: center; font-family: 'Rajdhani'; font-weight: 700; font-size: 0.82rem; flex-shrink: 0; }
 
   .q-card { background: white; border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; border: 1.5px solid #eee; }
   .q-meta { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
@@ -835,7 +835,7 @@ const CSS = `
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
   .modal { background: white; border-radius: 12px; padding: 1.5rem; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
   .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
-  .modal-title { font-family: Oswald; font-size: 1.1rem; letter-spacing: 2px; text-transform: uppercase; }
+  .modal-title { font-family: 'Rajdhani'; font-size: 1.1rem; letter-spacing: 2px; text-transform: uppercase; }
   .modal-close { background: none; border: none; font-size: 1.4rem; color: #888; cursor: pointer; }
 
   .tag { display: inline-block; padding: 2px 8px; background: rgba(191,87,0,0.1); border-radius: 20px; font-size: 0.72rem; color: #8B3D00; }
@@ -843,8 +843,8 @@ const CSS = `
   .login-wrap { min-height: 100vh; background: #1A1209; display: flex; align-items: center; justify-content: center; padding: 1rem; }
   .login-card { background: white; border-radius: 14px; padding: 2.25rem 1.75rem; max-width: 380px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
   .login-logo { display: flex; align-items: center; gap: 0.75rem; justify-content: center; margin-bottom: 1.25rem; }
-  .login-mark { width: 48px; height: 48px; background: #BF5700; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: Oswald; font-weight: 700; font-size: 1.3rem; color: white; }
-  .login-title { font-family: Oswald; font-size: 1.3rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+  .login-mark { width: 56px; height: 56px; background: #BF5700; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Rajdhani', Impact, sans-serif; font-weight: 700; font-size: 1.5rem; color: white; }
+  .login-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 1.75rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; }
   .login-title span { color: #BF5700; }
   .login-sub { text-align: center; font-size: 0.88rem; color: #888; margin-bottom: 1.5rem; }
   .hint-box { margin-top: 1rem; background: #f5f2ee; border-radius: 8px; padding: 0.75rem; font-size: 0.75rem; color: #666; line-height: 1.6; }
