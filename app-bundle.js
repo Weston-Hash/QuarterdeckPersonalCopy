@@ -3282,7 +3282,7 @@
   .stat-n { font-family: 'Rajdhani', Impact, sans-serif; font-size: 2.4rem; font-weight: 700; color: #BF5700; line-height: 1; }
   .stat-l { font-size: 0.78rem; color: #6B6B6B; text-transform: uppercase; letter-spacing: 1px; margin-top: 0.2rem; }
 
-  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; border-radius: 6px; font-family: 'Rajdhani'; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; border: none; font-weight: 500; transition: all 0.15s; }
+  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; border-radius: 6px; font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.8rem; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; border: none; font-weight: 600; transition: all 0.15s; }
   .btn-orange { background: #BF5700; color: white; }
   .btn-orange:hover { background: #8B3D00; }
   .btn-outline { background: transparent; border: 2px solid #BF5700; color: #BF5700; }
@@ -3322,7 +3322,7 @@
 
   .company-block { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 1rem; }
   .company-header { color: white; padding: 0.8rem 1.2rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
-  .company-name { font-family: 'Rajdhani'; font-size: 1.05rem; letter-spacing: 2px; text-transform: uppercase; }
+  .company-name { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 1.05rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
   .company-co { font-size: 0.78rem; color: rgba(255,255,255,0.75); }
   .platoon-grid { padding: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0.75rem; }
   .platoon-card { border: 1.5px solid rgba(191,87,0,0.2); border-radius: 8px; padding: 0.75rem; }
@@ -3330,7 +3330,7 @@
   .platoon-detail { font-size: 0.78rem; color: #6B6B6B; }
 
   .pt-block { background: white; border-radius: 8px; overflow: hidden; margin-bottom: 0.75rem; border: 1px solid #eee; }
-  .pt-header { background: #BF5700; color: white; padding: 0.55rem 1rem; display: flex; align-items: center; justify-content: space-between; font-family: 'Rajdhani'; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; }
+  .pt-header { background: #BF5700; color: white; padding: 0.55rem 1rem; display: flex; align-items: center; justify-content: space-between; font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.9rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
   .pt-row { display: flex; align-items: center; gap: 1rem; padding: 0.4rem 1rem; border-bottom: 1px solid #faf7f4; font-size: 0.85rem; }
   .pt-name { flex: 1; font-weight: 500; }
   .pt-sets { color: #BF5700; font-weight: 600; font-size: 0.82rem; min-width: 80px; }
@@ -3392,7 +3392,7 @@
   .stage-dot.returned { border-color:#9b1c1c; background:#9b1c1c; color:white; }
   .stage-item.returned::after { background:#9b1c1c; }
   @keyframes pulse { 0%,100% { box-shadow:0 0 0 4px rgba(191,87,0,0.2); } 50% { box-shadow:0 0 0 8px rgba(191,87,0,0.08); } }
-  .stage-label { font-size:0.65rem; text-align:center; margin-top:0.35rem; text-transform:uppercase; letter-spacing:0.5px; line-height:1.3; color:#888; font-family:Oswald; }
+  .stage-label { font-size:0.65rem; text-align:center; margin-top:0.35rem; text-transform:uppercase; letter-spacing:0.5px; line-height:1.3; color:#888; font-family:'Barlow','Segoe UI',sans-serif; }
   .stage-label.active   { color:#BF5700; font-weight:700; }
   .stage-label.done     { color:#2A7D4F; }
   .stage-label.returned { color:#9b1c1c; font-weight:700; }
@@ -3403,10 +3403,10 @@
   .fitrep-header { padding:0.9rem 1.2rem; border-bottom:1px solid #f5f2ee; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; }
   .fitrep-body { padding:1rem 1.2rem; }
   .stage-comment { background:#f8f6f2; border-left:3px solid #2A7D4F; border-radius:0 6px 6px 0; padding:0.5rem 0.75rem; margin-top:0.4rem; font-size:0.82rem; }
-  .stage-comment-by { font-size:0.72rem; color:#2A7D4F; font-weight:600; margin-bottom:0.2rem; font-family:Oswald; letter-spacing:0.5px; text-transform:uppercase; }
+  .stage-comment-by { font-size:0.72rem; color:#2A7D4F; font-weight:600; margin-bottom:0.2rem; font-family:'Barlow','Segoe UI',sans-serif; letter-spacing:0.5px; text-transform:uppercase; }
   .active-stage-comment { background:#fff9f5; border-left:3px solid #BF5700; border-radius:0 6px 6px 0; padding:0.5rem 0.75rem; margin-top:0.4rem; font-size:0.82rem; }
   .stage-action-box { background:#fff9f5; border:1.5px solid rgba(191,87,0,0.2); border-radius:8px; padding:0.9rem; margin-top:0.75rem; }
-  .stage-action-label { font-family:Oswald; font-size:0.72rem; letter-spacing:1.5px; text-transform:uppercase; color:#BF5700; margin-bottom:0.5rem; }
+  .stage-action-label { font-family:'Barlow','Segoe UI',sans-serif; font-size:0.72rem; letter-spacing:1.5px; text-transform:uppercase; color:#BF5700; margin-bottom:0.5rem; }
 
   /* \u2500\u2500 ACCOUNT MODAL \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
   .acct-field { display:flex; align-items:center; gap:0.75rem; padding:0.55rem 0; border-bottom:1px solid #f5f2ee; font-size:0.88rem; }
@@ -4125,7 +4125,7 @@
       toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "alert alert-green", children: toast }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", borderBottom: "2px solid #eee", marginBottom: "1.25rem" }, children: [["pt", "PT Plan"], ["leadlab", "LL"]].map(([t, label]) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => setTab(t), style: {
         padding: "0.5rem 1.2rem",
-        fontFamily: "Oswald",
+        fontFamily: "'Barlow', 'Segoe UI', sans-serif",
         fontSize: "0.8rem",
         letterSpacing: "1.5px",
         textTransform: "uppercase",
@@ -4148,7 +4148,7 @@
           return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "white", borderRadius: "10px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", border: "1px solid rgba(191,87,0,0.1)", borderTop: `4px solid ${s.color}`, padding: "1.25rem", marginBottom: "1.25rem" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.9rem" }, children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontFamily: "Oswald", fontSize: "1.05rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "1.05rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px" }, children: [
                   s.day,
                   " \u2014 ",
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: s.color }, children: s.type })
@@ -4200,7 +4200,7 @@
               )
             ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { textAlign: "center", padding: "2.5rem 1rem", background: "#faf8f5", borderRadius: "8px", border: "2px dashed #e0d8d0" }, children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2.2rem", marginBottom: "0.4rem" }, children: "\u{1F4CB}" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "Oswald", fontSize: "0.82rem", letterSpacing: "1px", textTransform: "uppercase", color: "#bbb" }, children: "No plan uploaded for this week" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.82rem", letterSpacing: "1px", textTransform: "uppercase", color: "#bbb" }, children: "No plan uploaded for this week" }),
               canUploadPT && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#BF5700", marginTop: "0.4rem" }, children: "Use the Upload PDF button above." })
             ] })
           ] }, s.key);
@@ -4208,7 +4208,7 @@
       ] }),
       tab === "leadlab" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
         canEditLL && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "Oswald", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#BF5700" }, children: "\u270F TRAINO \u2014 you can add and edit sessions" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#BF5700" }, children: "\u270F TRAINO \u2014 you can add and edit sessions" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => setShowAddLL(true), children: "+ Add Session" })
         ] }),
         llSessions.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
@@ -4218,7 +4218,7 @@
         llSessions.map((ll) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "card", style: { marginBottom: "1rem" }, children: editingLL === ll.id ? (
           /* ── Edit mode (TRAINO only) ── */
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "Oswald", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#BF5700", marginBottom: "0.75rem" }, children: "\u270F Editing Session" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#BF5700", marginBottom: "0.75rem" }, children: "\u270F Editing Session" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Title" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", value: llDraft.title, onChange: (e) => setLlDraft((d) => ({ ...d, title: e.target.value })) })
@@ -4249,7 +4249,7 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: ll.notes ? "0.75rem" : 0 }, children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "Oswald", fontSize: "1rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase" }, children: ll.title }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "1rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase" }, children: ll.title }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-orange", style: { marginTop: "0.3rem" }, children: ll.date })
               ] }),
               canEditLL && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.4rem" }, children: [
@@ -4427,7 +4427,7 @@
           ] }),
           c.notes && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }, children: c.notes }),
           c.docs && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.55rem" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "Oswald", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
             c.docs.routingSheet && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.routingSheet.dataUrl, download: c.docs.routingSheet.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} Routing Sheet" }),
             c.docs.chitDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.chitDoc.dataUrl, download: c.docs.chitDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} CHIT Document" })
           ] }),
@@ -4521,7 +4521,7 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, value: form.notes, onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })) })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "Oswald", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.65rem" }, children: "Required Documents" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.65rem" }, children: "Required Documents" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
               "Routing Sheet ",
@@ -4860,7 +4860,7 @@
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "q-text", children: q.text }),
         q.answers.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontFamily: "Oswald", fontSize: "0.7rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.5rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.7rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.5rem" }, children: [
             "Answers (",
             q.answers.length,
             ")"
@@ -5093,7 +5093,7 @@
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-body", children: [
             f.docs && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.75rem" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "Oswald", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
               f.docs.fitrepDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: f.docs.fitrepDoc.dataUrl, download: f.docs.fitrepDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} FITREP Document" }),
               f.docs.routingSheet && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: f.docs.routingSheet.dataUrl, download: f.docs.routingSheet.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} Routing Sheet" })
             ] }),
@@ -5108,7 +5108,7 @@
               ] }, i);
             }) }),
             f.stages.some((s) => s.completedBy && s.comment) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.75rem" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "Oswald", fontSize: "0.7rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.5rem" }, children: "Stage Comments" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.7rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.5rem" }, children: "Stage Comments" }),
               f.stages.map((s, i) => s.completedBy && s.comment ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment-by", children: [
                   s.name,
@@ -5183,7 +5183,7 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, value: submitForm.notes, onChange: (e) => setSubmitForm((s) => ({ ...s, notes: e.target.value })) })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "Oswald", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.65rem" }, children: "Required Documents" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.65rem" }, children: "Required Documents" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
               "FITREP Document ",

@@ -715,7 +715,7 @@ const CSS = `
   .stat-n { font-family: 'Rajdhani', Impact, sans-serif; font-size: 2.4rem; font-weight: 700; color: #BF5700; line-height: 1; }
   .stat-l { font-size: 0.78rem; color: #6B6B6B; text-transform: uppercase; letter-spacing: 1px; margin-top: 0.2rem; }
 
-  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; border-radius: 6px; font-family: 'Rajdhani'; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; border: none; font-weight: 500; transition: all 0.15s; }
+  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; border-radius: 6px; font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.8rem; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; border: none; font-weight: 600; transition: all 0.15s; }
   .btn-orange { background: #BF5700; color: white; }
   .btn-orange:hover { background: #8B3D00; }
   .btn-outline { background: transparent; border: 2px solid #BF5700; color: #BF5700; }
@@ -755,7 +755,7 @@ const CSS = `
 
   .company-block { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 1rem; }
   .company-header { color: white; padding: 0.8rem 1.2rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
-  .company-name { font-family: 'Rajdhani'; font-size: 1.05rem; letter-spacing: 2px; text-transform: uppercase; }
+  .company-name { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 1.05rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
   .company-co { font-size: 0.78rem; color: rgba(255,255,255,0.75); }
   .platoon-grid { padding: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0.75rem; }
   .platoon-card { border: 1.5px solid rgba(191,87,0,0.2); border-radius: 8px; padding: 0.75rem; }
@@ -763,7 +763,7 @@ const CSS = `
   .platoon-detail { font-size: 0.78rem; color: #6B6B6B; }
 
   .pt-block { background: white; border-radius: 8px; overflow: hidden; margin-bottom: 0.75rem; border: 1px solid #eee; }
-  .pt-header { background: #BF5700; color: white; padding: 0.55rem 1rem; display: flex; align-items: center; justify-content: space-between; font-family: 'Rajdhani'; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; }
+  .pt-header { background: #BF5700; color: white; padding: 0.55rem 1rem; display: flex; align-items: center; justify-content: space-between; font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.9rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
   .pt-row { display: flex; align-items: center; gap: 1rem; padding: 0.4rem 1rem; border-bottom: 1px solid #faf7f4; font-size: 0.85rem; }
   .pt-name { flex: 1; font-weight: 500; }
   .pt-sets { color: #BF5700; font-weight: 600; font-size: 0.82rem; min-width: 80px; }
@@ -825,7 +825,7 @@ const CSS = `
   .stage-dot.returned { border-color:#9b1c1c; background:#9b1c1c; color:white; }
   .stage-item.returned::after { background:#9b1c1c; }
   @keyframes pulse { 0%,100% { box-shadow:0 0 0 4px rgba(191,87,0,0.2); } 50% { box-shadow:0 0 0 8px rgba(191,87,0,0.08); } }
-  .stage-label { font-size:0.65rem; text-align:center; margin-top:0.35rem; text-transform:uppercase; letter-spacing:0.5px; line-height:1.3; color:#888; font-family:Oswald; }
+  .stage-label { font-size:0.65rem; text-align:center; margin-top:0.35rem; text-transform:uppercase; letter-spacing:0.5px; line-height:1.3; color:#888; font-family:'Barlow','Segoe UI',sans-serif; }
   .stage-label.active   { color:#BF5700; font-weight:700; }
   .stage-label.done     { color:#2A7D4F; }
   .stage-label.returned { color:#9b1c1c; font-weight:700; }
@@ -836,10 +836,10 @@ const CSS = `
   .fitrep-header { padding:0.9rem 1.2rem; border-bottom:1px solid #f5f2ee; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; }
   .fitrep-body { padding:1rem 1.2rem; }
   .stage-comment { background:#f8f6f2; border-left:3px solid #2A7D4F; border-radius:0 6px 6px 0; padding:0.5rem 0.75rem; margin-top:0.4rem; font-size:0.82rem; }
-  .stage-comment-by { font-size:0.72rem; color:#2A7D4F; font-weight:600; margin-bottom:0.2rem; font-family:Oswald; letter-spacing:0.5px; text-transform:uppercase; }
+  .stage-comment-by { font-size:0.72rem; color:#2A7D4F; font-weight:600; margin-bottom:0.2rem; font-family:'Barlow','Segoe UI',sans-serif; letter-spacing:0.5px; text-transform:uppercase; }
   .active-stage-comment { background:#fff9f5; border-left:3px solid #BF5700; border-radius:0 6px 6px 0; padding:0.5rem 0.75rem; margin-top:0.4rem; font-size:0.82rem; }
   .stage-action-box { background:#fff9f5; border:1.5px solid rgba(191,87,0,0.2); border-radius:8px; padding:0.9rem; margin-top:0.75rem; }
-  .stage-action-label { font-family:Oswald; font-size:0.72rem; letter-spacing:1.5px; text-transform:uppercase; color:#BF5700; margin-bottom:0.5rem; }
+  .stage-action-label { font-family:'Barlow','Segoe UI',sans-serif; font-size:0.72rem; letter-spacing:1.5px; text-transform:uppercase; color:#BF5700; margin-bottom:0.5rem; }
 
   /* ── ACCOUNT MODAL ───────────────────────────────── */
   .acct-field { display:flex; align-items:center; gap:0.75rem; padding:0.55rem 0; border-bottom:1px solid #f5f2ee; font-size:0.88rem; }
@@ -1563,7 +1563,7 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
       <div style={{ display:"flex", borderBottom:"2px solid #eee", marginBottom:"1.25rem" }}>
         {[["pt","PT Plan"],["leadlab","LL"]].map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)} style={{
-            padding:"0.5rem 1.2rem", fontFamily:"Oswald", fontSize:"0.8rem", letterSpacing:"1.5px",
+            padding:"0.5rem 1.2rem", fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.8rem", letterSpacing:"1.5px",
             textTransform:"uppercase", cursor:"pointer", background:"none", border:"none",
             borderBottom: tab===t ? "2px solid #BF5700" : "2px solid transparent",
             color: tab===t ? "#BF5700" : "#888", marginBottom:"-2px",
@@ -1588,7 +1588,7 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
                 {/* Session header */}
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.9rem" }}>
                   <div>
-                    <div style={{ fontFamily:"Oswald", fontSize:"1.05rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"1.5px" }}>
+                    <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"1.05rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"1.5px" }}>
                       {s.day} — <span style={{ color: s.color }}>{s.type}</span>
                     </div>
                     <div style={{ fontSize:"0.78rem", color:"#888", marginTop:"2px" }}>{s.desc}</div>
@@ -1627,7 +1627,7 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
                 ) : (
                   <div style={{ textAlign:"center", padding:"2.5rem 1rem", background:"#faf8f5", borderRadius:"8px", border:"2px dashed #e0d8d0" }}>
                     <div style={{ fontSize:"2.2rem", marginBottom:"0.4rem" }}>📋</div>
-                    <div style={{ fontFamily:"Oswald", fontSize:"0.82rem", letterSpacing:"1px", textTransform:"uppercase", color:"#bbb" }}>
+                    <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.82rem", letterSpacing:"1px", textTransform:"uppercase", color:"#bbb" }}>
                       No plan uploaded for this week
                     </div>
                     {canUploadPT && (
@@ -1648,7 +1648,7 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
         <div>
           {canEditLL && (
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1rem", flexWrap:"wrap", gap:"0.5rem" }}>
-              <span style={{ fontFamily:"Oswald", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#BF5700" }}>
+              <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#BF5700" }}>
                 ✏ TRAINO — you can add and edit sessions
               </span>
               <button className="btn btn-orange btn-sm" onClick={() => setShowAddLL(true)}>+ Add Session</button>
@@ -1667,7 +1667,7 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
               {editingLL === ll.id ? (
                 /* ── Edit mode (TRAINO only) ── */
                 <div>
-                  <div style={{ fontFamily:"Oswald", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#BF5700", marginBottom:"0.75rem" }}>
+                  <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#BF5700", marginBottom:"0.75rem" }}>
                     ✏ Editing Session
                   </div>
                   <div className="input-group">
@@ -1696,7 +1696,7 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
                 <div>
                   <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom: ll.notes ? "0.75rem" : 0 }}>
                     <div>
-                      <div style={{ fontFamily:"Oswald", fontSize:"1rem", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase" }}>{ll.title}</div>
+                      <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"1rem", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase" }}>{ll.title}</div>
                       <span className="badge badge-orange" style={{ marginTop:"0.3rem" }}>{ll.date}</span>
                     </div>
                     {canEditLL && (
@@ -1897,7 +1897,7 @@ function ChitsPage({ chits, setChits, userList }) {
             {/* Attached documents */}
             {c.docs && (
               <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginTop:"0.55rem" }}>
-                <span style={{ fontFamily:"Oswald", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
+                <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
                 {c.docs.routingSheet && (
                   <a href={c.docs.routingSheet.dataUrl} download={c.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
                 )}
@@ -2015,7 +2015,7 @@ function ChitsPage({ chits, setChits, userList }) {
 
           {/* ── Required PDFs ── */}
           <div style={{ borderTop:"1px solid #eee", paddingTop:"0.85rem", marginTop:"0.25rem" }}>
-            <div style={{ fontFamily:"Oswald", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.65rem" }}>
+            <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.65rem" }}>
               Required Documents
             </div>
 
@@ -2322,7 +2322,7 @@ function AcademicPage() {
           <div className="q-text">{q.text}</div>
           {q.answers.length > 0 && (
             <div>
-              <div style={{ fontFamily:"Oswald", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>
+              <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>
                 Answers ({q.answers.length})
               </div>
               {q.answers.map((a, j) => (
@@ -2556,7 +2556,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
               {/* Attached documents */}
               {f.docs && (
                 <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginBottom:"0.75rem" }}>
-                  <span style={{ fontFamily:"Oswald", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
+                  <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
                   {f.docs.fitrepDoc && (
                     <a href={f.docs.fitrepDoc.dataUrl} download={f.docs.fitrepDoc.fileName} className="btn btn-outline btn-sm">📄 FITREP Document</a>
                   )}
@@ -2585,7 +2585,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
               {/* Completed stage comments */}
               {f.stages.some(s => s.completedBy && s.comment) && (
                 <div style={{ marginTop:"0.75rem" }}>
-                  <div style={{ fontFamily:"Oswald", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>Stage Comments</div>
+                  <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>Stage Comments</div>
                   {f.stages.map((s, i) => s.completedBy && s.comment ? (
                     <div className="stage-comment" key={i}>
                       <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
@@ -2671,7 +2671,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
 
           {/* ── Required PDFs ── */}
           <div style={{ borderTop:"1px solid #eee", paddingTop:"0.85rem", marginTop:"0.25rem" }}>
-            <div style={{ fontFamily:"Oswald", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.65rem" }}>
+            <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.65rem" }}>
               Required Documents
             </div>
 
