@@ -5372,13 +5372,13 @@
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "topbar", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "topbar-logo", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "white", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", style: { width: "68%", height: "68%", marginBottom: "2px" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "12", cy: "4", r: "2" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "3", y1: "7.5", x2: "21", y2: "7.5" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "12", y1: "6", x2: "12", y2: "19" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "6", y1: "19", x2: "18", y2: "19" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M6 19 Q3 21 4 23 Q6 24 7.5 22" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M18 19 Q21 21 20 23 Q18 24 16.5 22" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "topbar-logo", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { viewBox: "0 0 100 130", fill: "white", xmlns: "http://www.w3.org/2000/svg", style: { width: "80%", height: "80%" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "50", cy: "13", r: "9", fill: "none", stroke: "white", strokeWidth: "5.5" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "45", y: "20", width: "10", height: "88" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "3", y: "34", width: "94", height: "10", rx: "5" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M45 105 C39 103 14 97 4 112 C0 119 5 125 14 120 C23 114 39 108 45 107 Z" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M55 105 C61 103 86 97 96 112 C100 119 95 125 86 120 C77 114 61 108 55 107 Z" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M44 107 L50 120 L56 107 Z" })
             ] }) }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "topbar-title", children: [
               "The ",

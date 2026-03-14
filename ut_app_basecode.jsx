@@ -2860,7 +2860,7 @@ export default function App() {
       <div>
         <header className="topbar">
           <div style={{ display:"flex", alignItems:"center" }}>
-            <div className="topbar-logo"><svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{width:"68%",height:"68%",marginBottom:"2px"}}><circle cx="12" cy="4" r="2"/><line x1="3" y1="7.5" x2="21" y2="7.5"/><line x1="12" y1="6" x2="12" y2="19"/><line x1="6" y1="19" x2="18" y2="19"/><path d="M6 19 Q3 21 4 23 Q6 24 7.5 22"/><path d="M18 19 Q21 21 20 23 Q18 24 16.5 22"/></svg></div>
+            <div className="topbar-logo"><svg viewBox="0 0 100 130" fill="white" xmlns="http://www.w3.org/2000/svg" style={{width:"80%",height:"80%"}}><circle cx="50" cy="13" r="9" fill="none" stroke="white" strokeWidth="5.5"/><rect x="45" y="20" width="10" height="88"/><rect x="3" y="34" width="94" height="10" rx="5"/><path d="M45 105 C39 103 14 97 4 112 C0 119 5 125 14 120 C23 114 39 108 45 107 Z"/><path d="M55 105 C61 103 86 97 96 112 C100 119 95 125 86 120 C77 114 61 108 55 107 Z"/><path d="M44 107 L50 120 L56 107 Z"/></svg></div>
             <div className="topbar-title">The <span>Quarterdeck</span></div>
           </div>
           <div className="topbar-right">
