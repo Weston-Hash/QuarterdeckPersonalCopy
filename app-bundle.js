@@ -3247,7 +3247,7 @@
   body { font-family: 'Barlow', "Segoe UI", sans-serif; font-size: 1rem; background: #FFF8F0; color: #1A1209; }
 
   .topbar { background: #1A1209; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; height: 58px; border-bottom: 3px solid #BF5700; position: sticky; top: 0; z-index: 50; }
-  .topbar-logo { width: 40px; height: 40px; background: #BF5700; border-radius: 6px; display: grid; place-items: center; font-size: 1.6rem; line-height: 1; color: white; margin-right: 0.7rem; }
+  .topbar-logo { width: 40px; height: 40px; background: #BF5700; border-radius: 6px; display: grid; place-items: center; margin-right: 0.7rem; }
   .topbar-title { font-family: 'Rajdhani', Impact, sans-serif; font-weight: 600; font-size: 1.35rem; letter-spacing: 3px; text-transform: uppercase; }
   .topbar-title span { color: #F7941D; }
   .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
@@ -3364,7 +3364,7 @@
   .login-wrap { min-height: 100vh; background: #1A1209; display: flex; align-items: center; justify-content: center; padding: 1rem; }
   .login-card { background: white; border-radius: 14px; padding: 2.25rem 1.75rem; max-width: 380px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
   .login-logo { display: flex; align-items: center; gap: 0.75rem; justify-content: center; margin-bottom: 1.25rem; }
-  .login-mark { width: 56px; height: 56px; background: #BF5700; border-radius: 10px; display: grid; place-items: center; font-size: 2.2rem; line-height: 1; color: white; }
+  .login-mark { width: 56px; height: 56px; background: #BF5700; border-radius: 10px; display: grid; place-items: center; }
   .login-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 1.75rem; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; }
   .login-title span { color: #BF5700; }
   .login-sub { text-align: center; font-size: 0.88rem; color: #888; margin-bottom: 1.5rem; }
@@ -3647,7 +3647,14 @@
     const banner = (msg, color) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: `rgba(${color},0.1)`, border: `1.5px solid rgb(${color})`, borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: `rgb(${color})`, marginBottom: "0.9rem" }, children: msg });
     return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-card", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-logo", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-mark", children: "\u2693\uFE0E" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-mark", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "white", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", style: { width: "72%", height: "72%", marginBottom: "3px" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "12", cy: "4", r: "2" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "3", y1: "7.5", x2: "21", y2: "7.5" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "12", y1: "6", x2: "12", y2: "19" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "6", y1: "19", x2: "18", y2: "19" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M6 19 Q3 21 4 23 Q6 24 7.5 22" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M18 19 Q21 21 20 23 Q18 24 16.5 22" })
+        ] }) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-title", children: [
           "The ",
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Quarterdeck" })
@@ -5365,7 +5372,14 @@
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "topbar", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "topbar-logo", children: "\u2693\uFE0E" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "topbar-logo", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "white", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", style: { width: "68%", height: "68%", marginBottom: "2px" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "12", cy: "4", r: "2" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "3", y1: "7.5", x2: "21", y2: "7.5" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "12", y1: "6", x2: "12", y2: "19" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "6", y1: "19", x2: "18", y2: "19" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M6 19 Q3 21 4 23 Q6 24 7.5 22" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M18 19 Q21 21 20 23 Q18 24 16.5 22" })
+            ] }) }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "topbar-title", children: [
               "The ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Quarterdeck" })
