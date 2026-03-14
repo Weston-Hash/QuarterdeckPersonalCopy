@@ -3322,7 +3322,7 @@
 
   .topbar { background: #1A1209; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; height: 58px; border-bottom: 3px solid #BF5700; position: sticky; top: 0; z-index: 50; }
   .topbar-logo { width: 40px; height: 40px; background: #BF5700; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: 'Rajdhani', Impact, sans-serif; font-weight: 700; font-size: 1.1rem; color: white; margin-right: 0.7rem; }
-  .topbar-title { font-family: 'Rajdhani', Impact, sans-serif; font-weight: 700; font-size: 1.35rem; letter-spacing: 3px; text-transform: uppercase; }
+  .topbar-title { font-family: 'Rajdhani', Impact, sans-serif; font-weight: 600; font-size: 1.35rem; letter-spacing: 3px; text-transform: uppercase; }
   .topbar-title span { color: #F7941D; }
   .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
   .rank-pill { background: #BF5700; color: white; padding: 2px 8px; border-radius: 4px; font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; }
@@ -3408,7 +3408,7 @@
   .pt-row { display: flex; align-items: center; gap: 1rem; padding: 0.4rem 1rem; border-bottom: 1px solid #faf7f4; font-size: 0.85rem; }
   .pt-name { flex: 1; font-weight: 500; }
   .pt-sets { color: #BF5700; font-weight: 600; font-size: 0.82rem; min-width: 80px; }
-  .pt-notes { color: #888; font-size: 0.78rem; font-style: italic; }
+  .pt-notes { color: #888; font-size: 0.78rem; }
 
   .chit-card { border-left: 4px solid #BF5700; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 0.75rem; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
   .chit-route { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.78rem; }
@@ -3439,7 +3439,7 @@
   .login-card { background: white; border-radius: 14px; padding: 2.25rem 1.75rem; max-width: 380px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
   .login-logo { display: flex; align-items: center; gap: 0.75rem; justify-content: center; margin-bottom: 1.25rem; }
   .login-mark { width: 56px; height: 56px; background: #BF5700; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Rajdhani', Impact, sans-serif; font-weight: 700; font-size: 1.5rem; color: white; }
-  .login-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 1.75rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; }
+  .login-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 1.75rem; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; }
   .login-title span { color: #BF5700; }
   .login-sub { text-align: center; font-size: 0.88rem; color: #888; margin-bottom: 1.5rem; }
   .hint-box { margin-top: 1rem; background: #f5f2ee; border-radius: 8px; padding: 0.75rem; font-size: 0.75rem; color: #666; line-height: 1.6; }
@@ -4328,7 +4328,7 @@
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-sm", style: { background: "transparent", border: "1.5px solid #C0392B", color: "#C0392B" }, onClick: () => deleteLLSession(ll.id), children: "\u{1F5D1}" })
               ] })
             ] }),
-            ll.notes ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: "#f5f2ee", borderRadius: "6px", padding: "0.65rem 0.85rem", fontSize: "0.85rem", color: "#555", lineHeight: 1.6 }, children: ll.notes }) : canEditLL && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#aaa", fontStyle: "italic" }, children: "No notes yet \u2014 click Edit to add." })
+            ll.notes ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: "#f5f2ee", borderRadius: "6px", padding: "0.65rem 0.85rem", fontSize: "0.85rem", color: "#555", lineHeight: 1.6 }, children: ll.notes }) : canEditLL && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#aaa" }, children: "No notes yet \u2014 click Edit to add." })
           ] })
         ) }, ll.id)),
         showAddLL && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Add Leadership Lab Session", onClose: () => setShowAddLL(false), children: [
@@ -4496,7 +4496,7 @@
             " \xB7 Absent: ",
             c.date
           ] }),
-          c.notes && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#888", fontStyle: "italic", marginTop: "0.2rem" }, children: c.notes }),
+          c.notes && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }, children: c.notes }),
           c.docs && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.55rem" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "Oswald", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
             c.docs.routingSheet && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.routingSheet.dataUrl, download: c.docs.routingSheet.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} Routing Sheet" }),
