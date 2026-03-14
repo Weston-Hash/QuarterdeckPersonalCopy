@@ -27009,18 +27009,34 @@
       }
       setSheetSynced(false);
       setSheetError(false);
-      const url = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}`;
-      fetch(url).then((r) => r.json()).then((data) => {
+      const cbName = "__qd_cb_" + Date.now();
+      const script = document.createElement("script");
+      const timer = setTimeout(() => {
+        cleanup();
+        setSheetError(true);
+        setSheetSynced(true);
+      }, 1e4);
+      function cleanup() {
+        clearTimeout(timer);
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+      window[cbName] = (data) => {
+        cleanup();
         if (data.users && data.users.length > 0) {
           setUserList(data.users.map((row, i) => sheetRowToUser(row, i)));
         } else {
           setSheetError(true);
         }
         setSheetSynced(true);
-      }).catch(() => {
+      };
+      script.onerror = () => {
+        cleanup();
         setSheetError(true);
         setSheetSynced(true);
-      });
+      };
+      script.src = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}&callback=${cbName}`;
+      document.head.appendChild(script);
     };
     (0, import_react.useEffect)(fetchRoster, []);
     const handleLogin = (loggedInUser) => {
