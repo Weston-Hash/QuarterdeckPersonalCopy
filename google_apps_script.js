@@ -156,7 +156,7 @@ function doPost(e) {
       "Your one-time verification code is:\n\n" +
       "    " + code + "\n\n" +
       "This code expires in 5 minutes. Do not share it with anyone.\n\n" +
-      "If you did not attempt to log in, please contact your S1 immediately.\n\n" +
+      "If you did not attempt to log in, please contact ADJ immediately.\n\n" +
       "— UT NROTC Battalion";
     MailApp.sendEmail(email, subject, body);
 
