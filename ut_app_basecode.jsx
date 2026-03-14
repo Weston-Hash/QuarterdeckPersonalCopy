@@ -500,7 +500,7 @@ const INIT_QS = [
 //   6. Set the same token below
 //   7. Save — the app will pull live data on each page load.
 //      In sheet-only mode, the app stays locked until this feed loads successfully.
-const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbwebWM5eGyWeBWKubwd7Q_RkLUbeNtkoLWxdsm33v-1y0UrNoPqIqyRdCjvbQiyufC1/exec";
+const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbwk8lmqWiujlDyRkz4typfRoD67F6vKOWMa__tIt5Ie-upx-mHs_dO105_Och1Jq6SL/exec";
 const SHEETS_API_TOKEN = "UT_NROTC";
 const SHEET_ONLY_MODE  = true;
 
