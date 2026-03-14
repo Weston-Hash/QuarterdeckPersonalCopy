@@ -3820,7 +3820,7 @@
           "button",
           {
             className: "btn btn-orange",
-            style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: mfaLoading ? 0.45 : 1, cursor: mfaLoading ? "not-allowed" : "pointer" },
+            style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: mfaLoading ? 0.45 : 1, cursor: mfaLoading ? "not-allowed" : "pointer", fontFamily: "'Barlow', 'Segoe UI', sans-serif", letterSpacing: "normal", textTransform: "none" },
             disabled: mfaLoading,
             onClick: verifyCode,
             children: mfaLoading ? "\u23F3 Verifying\u2026" : "Verify & Sign In \u2192"

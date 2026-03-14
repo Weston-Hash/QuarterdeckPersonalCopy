@@ -1237,7 +1237,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
             </div>
             <button
               className="btn btn-orange"
-              style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:mfaLoading ? 0.45 : 1, cursor:mfaLoading ? "not-allowed" : "pointer" }}
+              style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:mfaLoading ? 0.45 : 1, cursor:mfaLoading ? "not-allowed" : "pointer", fontFamily:"'Barlow', 'Segoe UI', sans-serif", letterSpacing:"normal", textTransform:"none" }}
               disabled={mfaLoading}
               onClick={verifyCode}
             >
