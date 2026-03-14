@@ -3247,8 +3247,8 @@
   body { font-family: 'Barlow', "Segoe UI", sans-serif; font-size: 1rem; background: #FFF8F0; color: #1A1209; }
 
   .topbar { background: #1A1209; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; height: 58px; border-bottom: 3px solid #BF5700; position: sticky; top: 0; z-index: 50; }
-  .topbar-logo { width: 40px; height: 40px; background: #BF5700; border-radius: 6px; display: grid; place-items: center; margin-right: 0.7rem; }
-  .topbar-title { font-family: 'Barlow', 'Segoe UI', sans-serif; font-weight: 600; font-size: 1.35rem; letter-spacing: 3px; text-transform: uppercase; }
+  .topbar-logo { width: 40px; height: 40px; background: #BF5700; border-radius: 6px; display: grid; place-items: center; font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 1.1rem; color: white; margin-right: 0.7rem; }
+  .topbar-title { font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 1.35rem; letter-spacing: 3px; text-transform: uppercase; }
   .topbar-title span { color: #F7941D; }
   .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
   .rank-pill { background: #BF5700; color: white; padding: 2px 8px; border-radius: 4px; font-family: 'Rajdhani', sans-serif; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; }
@@ -3267,12 +3267,12 @@
 
   .content { flex: 1; padding: 1.5rem; overflow-y: auto; min-width: 0; }
 
-  .page-title { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 2.1rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 0.2rem; }
+  .page-title { font-family: 'Rajdhani', sans-serif; font-size: 2.1rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 0.2rem; }
   .page-title span { color: #BF5700; }
   .page-sub { font-size: 0.88rem; color: #6B6B6B; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 2px solid rgba(191,87,0,0.15); }
 
   .card { background: white; border-radius: 10px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid rgba(191,87,0,0.1); margin-bottom: 1rem; }
-  .card-title { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.9rem; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #1A1209; }
+  .card-title { font-family: 'Rajdhani', sans-serif; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; color: #1A1209; }
   .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
 
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -3364,8 +3364,8 @@
   .login-wrap { min-height: 100vh; background: #1A1209; display: flex; align-items: center; justify-content: center; padding: 1rem; }
   .login-card { background: white; border-radius: 14px; padding: 2.25rem 1.75rem; max-width: 380px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
   .login-logo { display: flex; align-items: center; gap: 0.75rem; justify-content: center; margin-bottom: 1.25rem; }
-  .login-mark { width: 56px; height: 56px; background: #BF5700; border-radius: 10px; display: grid; place-items: center; }
-  .login-title { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 1.75rem; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; }
+  .login-mark { width: 56px; height: 56px; background: #BF5700; border-radius: 10px; display: grid; place-items: center; font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 1.5rem; color: white; }
+  .login-title { font-family: 'Rajdhani', sans-serif; font-size: 1.75rem; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; }
   .login-title span { color: #BF5700; }
   .login-sub { text-align: center; font-size: 0.88rem; color: #888; margin-bottom: 1.5rem; }
   .hint-box { margin-top: 1rem; background: #f5f2ee; border-radius: 8px; padding: 0.75rem; font-size: 0.75rem; color: #666; line-height: 1.6; }
@@ -3647,14 +3647,7 @@
     const banner = (msg, color) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: `rgba(${color},0.1)`, border: `1.5px solid rgb(${color})`, borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: `rgb(${color})`, marginBottom: "0.9rem" }, children: msg });
     return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-card", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-logo", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-mark", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "white", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", style: { width: "72%", height: "72%", marginBottom: "3px" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "12", cy: "4", r: "2" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "3", y1: "7.5", x2: "21", y2: "7.5" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "12", y1: "6", x2: "12", y2: "19" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "6", y1: "19", x2: "18", y2: "19" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M6 19 Q3 21 4 23 Q6 24 7.5 22" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M18 19 Q21 21 20 23 Q18 24 16.5 22" })
-        ] }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-mark", children: "UT" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-title", children: [
           "The ",
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Quarterdeck" })
@@ -5372,14 +5365,7 @@
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "topbar", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "topbar-logo", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { viewBox: "0 0 100 130", fill: "white", xmlns: "http://www.w3.org/2000/svg", style: { width: "80%", height: "80%" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "50", cy: "13", r: "9", fill: "none", stroke: "white", strokeWidth: "5.5" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "45", y: "20", width: "10", height: "88" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "3", y: "34", width: "94", height: "10", rx: "5" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M45 105 C39 103 14 97 4 112 C0 119 5 125 14 120 C23 114 39 108 45 107 Z" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M55 105 C61 103 86 97 96 112 C100 119 95 125 86 120 C77 114 61 108 55 107 Z" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M44 107 L50 120 L56 107 Z" })
-            ] }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "topbar-logo", children: "UT" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "topbar-title", children: [
               "The ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Quarterdeck" })
