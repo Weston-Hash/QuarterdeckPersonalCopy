@@ -63,8 +63,15 @@ function doGet(e) {
     users.push(row);
   }
 
-  output = ContentService.createTextOutput(JSON.stringify({ users: users }));
-  output.setMimeType(ContentService.MimeType.JSON);
+  var result = JSON.stringify({ users: users });
+  var callback = e.parameter.callback;
+  if (callback) {
+    output = ContentService.createTextOutput(callback + "(" + result + ")");
+    output.setMimeType(ContentService.MimeType.JAVASCRIPT);
+  } else {
+    output = ContentService.createTextOutput(result);
+    output.setMimeType(ContentService.MimeType.JSON);
+  }
   return output;
 }
 
