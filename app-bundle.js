@@ -3345,7 +3345,7 @@
   .progress-fill { background: #BF5700; height: 100%; border-radius: 4px; }
 
   .roster-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0; border-bottom: 1px solid #f4f0eb; flex-wrap: wrap; }
-  .avatar { width: 36px; height: 36px; border-radius: 50%; background: #BF5700; color: white; display: flex; align-items: center; justify-content: center; font-family: 'Rajdhani'; font-weight: 700; font-size: 0.82rem; flex-shrink: 0; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; background: #BF5700; color: white; display: flex; align-items: center; justify-content: center; font-family: 'Barlow', 'Segoe UI', sans-serif; font-weight: 700; font-style: normal; font-size: 0.82rem; flex-shrink: 0; }
 
   .q-card { background: white; border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; border: 1.5px solid #eee; }
   .q-meta { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
@@ -4619,7 +4619,7 @@
         ] }),
         fil.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "empty", children: "No results found." }),
         fil.map((p, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "roster-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "avatar", children: p.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "avatar", style: { background: COMPANY_COLORS[normalizeCompany(p.company)] || "#BF5700" }, children: p.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { flex: 1 }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontWeight: 600, fontSize: "0.9rem" }, children: p.name }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#BF5700", fontWeight: 600 }, children: p.rank }),
