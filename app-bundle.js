@@ -3362,7 +3362,7 @@
   .tag { display: inline-block; padding: 2px 8px; background: rgba(191,87,0,0.1); border-radius: 20px; font-size: 0.72rem; color: #8B3D00; }
 
   .login-wrap { min-height: 100vh; background: #1A1209; display: flex; align-items: center; justify-content: center; padding: 1rem; }
-  .login-card { background: white; border-radius: 14px; padding: 2.25rem 1.75rem; max-width: 380px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+  .login-card { background: white; border-radius: 14px; padding: 2.75rem 2.5rem; max-width: 480px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
   .login-logo { display: flex; align-items: center; gap: 0.75rem; justify-content: center; margin-bottom: 1.25rem; }
   .login-mark { width: 56px; height: 56px; background: #BF5700; border-radius: 10px; display: grid; place-items: center; font-family: 'Rajdhani', Impact, sans-serif; font-weight: 500; font-size: 1.5rem; color: white; }
   .login-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 1.75rem; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; }
@@ -3561,7 +3561,7 @@
     const [mfaLoading, setMfaLoading] = (0, import_react.useState)(false);
     const [mfaInfo, setMfaInfo] = (0, import_react.useState)("");
     const hasRoster = userList.length > 0;
-    const locked = !sheetSynced;
+    const locked = !sheetSynced && !hasRoster;
     const go = () => {
       if (locked) return;
       const q = name.trim().toLowerCase();
@@ -5280,25 +5280,27 @@
     const [userList, setUserList] = (0, import_react.useState)(cachedRoster);
     const [sheetSynced, setSheetSynced] = (0, import_react.useState)(!SHEETS_API_URL || cachedRoster.length > 0);
     const [sheetError, setSheetError] = (0, import_react.useState)(false);
-    const fetchRoster = () => {
+    const fetchRoster = (attempt = 0) => {
       if (!SHEETS_API_URL) {
         setSheetSynced(true);
         return;
       }
-      setSheetSynced(false);
-      setSheetError(false);
+      if (attempt === 0) { setSheetSynced(false); setSheetError(false); }
       const cbName = "__qd_cb_" + Date.now();
       const script = document.createElement("script");
-      const hasCachedRoster = loadCachedRoster().length > 0;
-      const timer = setTimeout(() => {
+      const onFail = () => {
         cleanup();
-        setSheetError(true);
-        setSheetSynced(true);
-      }, hasCachedRoster ? 2500 : 5e3);
+        if (attempt < 2) {
+          setTimeout(() => fetchRoster(attempt + 1), 1500);
+        } else {
+          setSheetError(true);
+          setSheetSynced(true);
+        }
+      };
+      const timer = setTimeout(onFail, 8000);
       function cleanup() {
         clearTimeout(timer);
-        window[cbName] = () => {
-        };
+        delete window[cbName];
         if (script.parentNode) script.parentNode.removeChild(script);
       }
       window[cbName] = (data) => {
@@ -5307,17 +5309,13 @@
           const nextUsers = data.users.map((row, i) => sheetRowToUser(row, i));
           setUserList(nextUsers);
           saveCachedRoster(nextUsers);
+          setSheetSynced(true);
         } else {
-          setSheetError(true);
+          onFail();
         }
-        setSheetSynced(true);
       };
-      script.onerror = () => {
-        cleanup();
-        setSheetError(true);
-        setSheetSynced(true);
-      };
-      script.src = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}&callback=${cbName}`;
+      script.onerror = onFail;
+      script.src = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}&callback=${cbName}&_t=${Date.now()}`;
       document.head.appendChild(script);
     };
     (0, import_react.useEffect)(fetchRoster, []);
