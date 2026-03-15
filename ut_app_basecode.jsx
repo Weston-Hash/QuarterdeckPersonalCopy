@@ -759,7 +759,7 @@ const CSS = `
   .company-co { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.78rem; font-style: normal; color: rgba(255,255,255,0.75); }
   .platoon-grid { padding: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0.75rem; }
   .platoon-card { border: 1.5px solid rgba(191,87,0,0.2); border-radius: 8px; padding: 0.75rem; }
-  .platoon-name { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.82rem; font-weight: 600; font-style: normal; letter-spacing: 1.5px; color: #BF5700; margin-bottom: 0.35rem; }
+  .platoon-name { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.82rem; font-weight: 700; font-style: normal; letter-spacing: 1.5px; color: #BF5700; margin-bottom: 0.35rem; }
   .platoon-detail { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.78rem; font-style: normal; color: #6B6B6B; }
 
   .pt-block { background: white; border-radius: 8px; overflow: hidden; margin-bottom: 0.75rem; border: 1px solid #eee; }
