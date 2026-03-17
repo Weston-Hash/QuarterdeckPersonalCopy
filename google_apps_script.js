@@ -63,7 +63,148 @@ function doGet(e) {
     users.push(row);
   }
 
-  output = ContentService.createTextOutput(JSON.stringify({ users: users }));
+  var result = JSON.stringify({ users: users });
+  var callback = e.parameter.callback;
+  if (callback) {
+    output = ContentService.createTextOutput(callback + "(" + result + ")");
+    output.setMimeType(ContentService.MimeType.JAVASCRIPT);
+  } else {
+    output = ContentService.createTextOutput(result);
+    output.setMimeType(ContentService.MimeType.JSON);
+  }
+  return output;
+}
+
+// ─── MFA ─────────────────────────────────────────────────────────────────────
+// POST body: { token, action, email [, code] }
+//   action="sendMFA"   → generate 6-digit code, store with 5-min expiry, email it
+//   action="verifyMFA" → validate code, delete on use, return ok/error
+
+var MFA_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+
+function doPost(e) {
+  var output;
+  var json;
+  try {
+    json = JSON.parse(e.postData.contents);
+  } catch (err) {
+    output = ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Invalid JSON" }));
+    output.setMimeType(ContentService.MimeType.JSON);
+    return output;
+  }
+
+  if (!json || json.token !== SECRET_TOKEN) {
+    output = ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Unauthorized" }));
+    output.setMimeType(ContentService.MimeType.JSON);
+    return output;
+  }
+
+  var action = json.action || "";
+  var email  = (json.email || "").toString().trim().toLowerCase();
+
+  if (!email) {
+    output = ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Email required" }));
+    output.setMimeType(ContentService.MimeType.JSON);
+    return output;
+  }
+
+  // Verify email exists in the roster (column D, index 3)
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  var data  = sheet ? sheet.getDataRange().getValues() : [];
+  var found = false;
+  var userName = "";
+  for (var i = 0; i < data.length; i++) {
+    var rowEmail = (data[i][3] || "").toString().trim().toLowerCase();
+    if (rowEmail === email) {
+      found    = true;
+      userName = (data[i][1] || "").toString().trim();
+      break;
+    }
+  }
+
+  if (!found) {
+    output = ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Email not found" }));
+    output.setMimeType(ContentService.MimeType.JSON);
+    return output;
+  }
+
+  var props = PropertiesService.getScriptProperties();
+  var propKey = "mfa_" + email;
+
+  if (action === "sendMFA") {
+    // Rate-limit: block resend if a valid code was sent in the last 60 seconds
+    var existing = props.getProperty(propKey);
+    if (existing) {
+      try {
+        var prev = JSON.parse(existing);
+        if (Date.now() - prev.ts < 60 * 1000) {
+          output = ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Please wait before requesting another code." }));
+          output.setMimeType(ContentService.MimeType.JSON);
+          return output;
+        }
+      } catch (ignore) {}
+    }
+
+    // Generate 6-digit code
+    var code = Math.floor(100000 + Math.random() * 900000).toString();
+    props.setProperty(propKey, JSON.stringify({ code: code, ts: Date.now() }));
+
+    // Send email
+    var subject = "UT NROTC Quarterdeck — Your Verification Code";
+    var body =
+      "Hello " + userName + ",\n\n" +
+      "Your one-time verification code is:\n\n" +
+      "    " + code + "\n\n" +
+      "This code expires in 5 minutes. Do not share it with anyone.\n\n" +
+      "If you did not attempt to log in, please contact ADJ immediately.\n\n" +
+      "— UT NROTC Battalion";
+    MailApp.sendEmail(email, subject, body);
+
+    output = ContentService.createTextOutput(JSON.stringify({ ok: true }));
+    output.setMimeType(ContentService.MimeType.JSON);
+    return output;
+  }
+
+  if (action === "verifyMFA") {
+    var inputCode = (json.code || "").toString().trim();
+    var stored    = props.getProperty(propKey);
+
+    // Always delete the stored code after a verify attempt to prevent brute force
+    props.deleteProperty(propKey);
+
+    if (!stored) {
+      output = ContentService.createTextOutput(JSON.stringify({ ok: false, error: "No code found. Request a new one." }));
+      output.setMimeType(ContentService.MimeType.JSON);
+      return output;
+    }
+
+    var record;
+    try {
+      record = JSON.parse(stored);
+    } catch (err2) {
+      output = ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Invalid code record." }));
+      output.setMimeType(ContentService.MimeType.JSON);
+      return output;
+    }
+
+    if (Date.now() - record.ts > MFA_EXPIRY_MS) {
+      output = ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Code expired. Request a new one." }));
+      output.setMimeType(ContentService.MimeType.JSON);
+      return output;
+    }
+
+    if (inputCode !== record.code) {
+      output = ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Incorrect code." }));
+      output.setMimeType(ContentService.MimeType.JSON);
+      return output;
+    }
+
+    output = ContentService.createTextOutput(JSON.stringify({ ok: true }));
+    output.setMimeType(ContentService.MimeType.JSON);
+    return output;
+  }
+
+  output = ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Unknown action" }));
   output.setMimeType(ContentService.MimeType.JSON);
   return output;
 }

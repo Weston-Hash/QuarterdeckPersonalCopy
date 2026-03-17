@@ -34,7 +34,7 @@ const CONFIG = {
   // Google Sheets (for writing passwords back to the roster sheet)
   // Leave SPREADSHEET_ID empty to skip the Sheets write step.
   spreadsheetId:  "",                    // e.g. "1Hlbb_9hW6h2NQ8Fn8nIA2f-kF6nnppUL4Jwipr7TIp4"
-  sheetName:      "Sheet1",             // tab name
+  sheetName:      "MASTER WEBSITE",     // tab name
   googleKeyFile:  "./service-account.json",  // path to service account JSON
 
   // Only send to users whose mustChangePassword column is TRUE in the sheet.
@@ -73,7 +73,7 @@ function buildEmail(user, password) {
       "",
       "Access the app at: [INSERT APP URL HERE]",
       "",
-      "Contact your S1 (ADJ) if you have any issues.",
+      "Contact ADJ if you have any issues.",
       "",
       "Semper Fi / Fair Winds",
       "UT NROTC S1",
@@ -95,7 +95,7 @@ function buildEmail(user, password) {
           <p style="color:#BF5700;font-size:0.88rem">⚠ You will be required to set a new password on your first login.</p>
           <p><a href="#" style="background:#BF5700;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold">Sign In to the App →</a></p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-          <p style="font-size:0.82rem;color:#888">Contact your S1 (ADJ) if you have any issues accessing your account.</p>
+          <p style="font-size:0.82rem;color:#888">Contact ADJ if you have any issues accessing your account.</p>
         </div>
       </div>
     `,

@@ -16,6 +16,7 @@ const useAuth = () => useContext(AuthContext);
 const SENIOR_ROLES = ["bn_cdr", "xo", "ops", "sel"];
 const isSenior  = (u) => u && SENIOR_ROLES.includes(u.role);
 const isCoC     = (u) => u && [...SENIOR_ROLES, "co_cdr", "plt_cdr", "adj"].includes(u.role);
+const isBigFour = (u) => normalizeCompany(u?.company) === "BN" && ["bn_cdr", "xo", "ops", "sel"].includes(u?.role);
 
 function canEdit(user, section) {
   if (!user) return false;
@@ -26,7 +27,7 @@ function canEdit(user, section) {
     case "chits":     return ["adj", "co_cdr", "plt_cdr"].includes(user.role);
     case "structure": return user.role === "adj";
     case "academic":  return user.role === "academics";
-    case "forms":     return ["co_cdr", "adj"].includes(user.role);
+    case "forms":     return ["adj", "pto", "traino", "academics"].includes(user.role); // billets excl. PC/CC
     case "fitreps":   return ["adj", "co_cdr", "plt_cdr"].includes(user.role);
     default:          return false;
   }
@@ -73,171 +74,439 @@ function formatCompanyCoLabel(company) {
   return normalized === "BN" ? "BN" : `${getCompanyShortName(normalized)} Co`;
 }
 
+// Returns the profile descriptor shown under a member's name on the roster, e.g.:
+//   Big Four → "BNCO" / "BNXO" / "OPS" / "SEL"
+//   CC       → "Alpha Co · CC"
+//   SEL      → "Alpha Co · SEL"
+//   PC       → "Alpha Co · 1st Plt PC"
+//   MIR/etc. → "Alpha Co · 1st Plt"
+function getRosterDescriptor(user) {
+  const company  = normalizeCompany(user.company);
+  const coLabel  = formatCompanyCoLabel(company);
+  // Big Four: title only, no company prefix
+  if (company === "BN") {
+    if (user.role === "bn_cdr") return "BNCO";
+    if (user.role === "xo")     return "BNXO";
+    if (user.role === "ops")    return "OPS";
+    if (user.role === "sel")    return "SEL";
+    return user.billet ? `BN · ${user.billet}` : "BN";
+  }
+  // CC and SEL
+  if (user.role === "co_cdr") return `${coLabel} · CC`;
+  if (user.role === "sel")    return `${coLabel} · SEL`;
+  // Platoon ordinal: platoon field is "1st PC" / "2nd PC" — strip the " PC" suffix
+  const pltOrdinal = (user.platoon || "").replace(/\s*PC$/i, "").trim();
+  // PC
+  if (user.role === "plt_cdr") {
+    return pltOrdinal ? `${coLabel} · ${pltOrdinal} Plt PC` : `${coLabel} · PC`;
+  }
+  // MIR and all other billets
+  if (pltOrdinal && pltOrdinal !== "CO" && pltOrdinal !== "SEL") {
+    return `${coLabel} · ${pltOrdinal} Plt`;
+  }
+  return coLabel;
+}
+
 function getBilletLabel(user) {
   return (user.billet || (normalizeCompany(user.company) === "BN" ? user.platoon : "") || "").trim();
 }
 
-// ─── USERS ──────────────────────────────────────────────────
-// mustChangePassword: true  → user must set a new password on first login
-const USERS = [
-  // BN STAFF
-  { id:"u001", name:"Hinz",            rank:"MIDN 1/C", role:"bn_cdr",  company:"BN",         platoon:"BNCO",   password:"jh76769",  email:"bnco.utnrotc@gmail.com",       phone:"(408)460-8418", mustChangePassword:false },
-  { id:"u002", name:"Townsend",        rank:"MIDN 1/C", role:"xo",      company:"BN",         platoon:"BNXO",   password:"jst2536",  email:"bnxo.utnrotc@gmail.com",       phone:"619-315-6406",  mustChangePassword:false },
-  { id:"u003", name:"Galan",           rank:"MIDN 1/C", role:"ops",     company:"BN",         platoon:"OPS",    password:"GG29633",  email:"ops.utnrotc@gmail.com",        phone:"(830)734-1689", mustChangePassword:false },
-  { id:"u004", name:"Zuniga",          rank:"GySgt",    role:"sel",     company:"BN",         platoon:"SEL",    password:"mz9846",   email:"mz9846@eid.utexas.edu",        phone:"817-729-6232",  mustChangePassword:false },
-  { id:"u005", name:"Barela",          rank:"MIDN 2/C", role:"pto",     company:"BN",         platoon:"PTO",    password:"dab5836",  email:"ptoutnrotc@gmail.com",         phone:"(832)506-6377", mustChangePassword:false },
-  { id:"u006", name:"Courtney, L.",    rank:"MIDN 2/C", role:"adj",     company:"BN",         platoon:"ADJ",    password:"lec3474",  email:"adj.utnrotc@gmail.com",        phone:"847-340-0995",  mustChangePassword:false },
-  { id:"u007", name:"Evans",           rank:"MIDN 2/C", role:"mid",     company:"BN",         platoon:"SUPPO",  password:"ace2664",  email:"suppo.utnrotc@gmail.com",      phone:"425-505-7451",  mustChangePassword:false },
-  { id:"u008", name:"Spooner, M.",     rank:"MIDN 3/C", role:"mid",     company:"BN",         platoon:"PAO",    password:"mfs2535",  email:"pao.utnrotc@gmail.com",        phone:"512-632-3258",  mustChangePassword:false },
-  { id:"u009", name:"Doghri",          rank:"GySgt",    role:"traino",  company:"BN",         platoon:"TRAINO", password:"Sbd838",   email:"traino.utnrotc@gmail.com",     phone:"251-235-0552",  mustChangePassword:false },
-  { id:"u010", name:"Hash",            rank:"OC",       role:"academics",company:"BN",        platoon:"AO",     password:"wgh543",   email:"academics.utnrotc@gmail.com",  phone:"512-738-6206",  mustChangePassword:false },
-  { id:"u011", name:"Gu",              rank:"MIDN 2/C", role:"mid",     company:"BN",         platoon:"BGDO",   password:"jg78873",  email:"recruiting.utnrotc@gmail.com", phone:"832-490-5818",  mustChangePassword:false },
-  { id:"u012", name:"Planchon",        rank:"MIDN 3/C", role:"mid",     company:"BN",         platoon:"AOPS",   password:"dmp3637",  email:"bnaops.utnrotc@gmail.com",     phone:"726-213-1790",  mustChangePassword:false },
-  { id:"u013", name:"Treshock, J.",    rank:"MIDN 2/C", role:"mid",     company:"BN",         platoon:"CGC",    password:"jet3778",  email:"cgc.utnrotc@gmail.com",        phone:"732-759-7001",  mustChangePassword:false },
-  // ALPHA CO
-  { id:"u020", name:"McRae",           rank:"MIDN 1/C", role:"co_cdr",  company:"Alpha",      platoon:"CO",     password:"ecm3252",  email:"ellemcrae03@utexas.edu",       phone:"512-731-1057",  mustChangePassword:false },
-  { id:"u021", name:"Shahbaz Butt",    rank:"SSgt",     role:"sel",     company:"Alpha",      platoon:"SEL",    password:"ssb3338",  email:"shahbaz.butt130@gmail.com",    phone:"346-278-4072",  mustChangePassword:false },
-  { id:"u022", name:"Ramirez",         rank:"MIDN 3/C", role:"plt_cdr", company:"Alpha",      platoon:"1st PC", password:"kcr2267",  email:"keith.ramirez@utexas.edu",     phone:"(806)544-0729", mustChangePassword:false },
-  { id:"u023", name:"Locklin",         rank:"MIDN 4/C", role:"mid",     company:"Alpha",      platoon:"1st PC", password:"tjl2677",  email:"theodorejlocklin@icloud.com",  phone:"575-997-5396",  mustChangePassword:false },
-  { id:"u024", name:"Black",           rank:"MIDN 3/C", role:"mid",     company:"Alpha",      platoon:"1st PC", password:"etb638",   email:"evantblack05@utexas.edu",      phone:"817-994-3366",  mustChangePassword:false },
-  { id:"u025", name:"Arevalo",         rank:"SSgt",     role:"nco",     company:"Alpha",      platoon:"1st PC", password:"Cla3383",  email:"Careval2@stedwards.edu",       phone:"(903)806-3670", mustChangePassword:false },
-  { id:"u026", name:"McNutt",          rank:"MIDN 3/C", role:"mid",     company:"Alpha",      platoon:"1st PC", password:"ajm9265",  email:"nutmeg5786@gmail.com",         phone:"737-206-6849",  mustChangePassword:false },
-  { id:"u027", name:"Hill",            rank:"Sgt",      role:"nco",     company:"Alpha",      platoon:"1st PC", password:"mjh5654",  email:"Montyhill14@gmail.com",        phone:"(260)517-9379", mustChangePassword:false },
-  { id:"u028", name:"Cevalles",        rank:"SSgt",     role:"nco",     company:"Alpha",      platoon:"1st PC", password:"1346520",  email:"acevall1@stedwards.edu",       phone:"(210)996-5967", mustChangePassword:false },
-  { id:"u029", name:"Marinescu",       rank:"MIDN 3/C", role:"mid",     company:"Alpha",      platoon:"1st PC", password:"mm226955", email:"mm226955@my.utexas.edu",       phone:"832-874-8461",  mustChangePassword:false },
-  { id:"u030", name:"Edsonschuerfeld", rank:"SSgt",     role:"nco",     company:"Alpha",      platoon:"1st PC", password:"NZE63",    email:"edson.nathyn@gmail.com",       phone:"541-653-1135",  mustChangePassword:false },
-  { id:"u031", name:"Hearn",           rank:"MIDN 2/C", role:"mid",     company:"Alpha",      platoon:"1st PC", password:"cmh6492",  email:"cody.hearn22@gmail.com",       phone:"562-386-7172",  mustChangePassword:false },
-  { id:"u032", name:"Powell",          rank:"MIDN 2/C", role:"mid",     company:"Alpha",      platoon:"1st PC", password:"flp333",   email:"flp333@my.utexas.edu",         phone:"931-215-8160",  mustChangePassword:false },
-  { id:"u033", name:"Lutz",            rank:"MIDN 1/C", role:"plt_cdr", company:"Alpha",      platoon:"2nd PC", password:"tel663",   email:"tyler.lutz@utexas.edu",        phone:"401-516-8455",  mustChangePassword:false },
-  { id:"u034", name:"Felan",           rank:"SSgt",     role:"nco",     company:"Alpha",      platoon:"2nd PC", password:"175862",   email:"Tristianf17@gmail.com",        phone:"(210)887-3068", mustChangePassword:false },
-  { id:"u035", name:"Padmanabhan",     rank:"MIDN 4/C", role:"mid",     company:"Alpha",      platoon:"2nd PC", password:"ap68366",  email:"ap68366@my.utexas.edu",        phone:"737-900-1113",  mustChangePassword:false },
-  { id:"u036", name:"Garza",           rank:"SSgt",     role:"nco",     company:"Alpha",      platoon:"2nd PC", password:"180610",   email:"renemariogarzaiii@gmail.com",  phone:"830-295-0485",  mustChangePassword:false },
-  { id:"u037", name:"Perez",           rank:"Sgt",      role:"nco",     company:"Alpha",      platoon:"2nd PC", password:"178295",   email:"Ethianperez@gmail.com",        phone:"(512)618-2720", mustChangePassword:false },
-  { id:"u038", name:"McCleskey",       rank:"GySgt",    role:"nco",     company:"Alpha",      platoon:"2nd PC", password:"Cwm2938",  email:"Cwm2938@my.utexas.edu",        phone:"(806)677-6784", mustChangePassword:false },
-  { id:"u039", name:"Hernandez Gomez", rank:"SSgt",     role:"nco",     company:"Alpha",      platoon:"2nd PC", password:"CH56244",  email:"CH56244@eid.utexas.edu",       phone:"678-830-8728",  mustChangePassword:false },
-  // BRAVO CO
-  { id:"u040", name:"Irisari",         rank:"MIDN 2/C", role:"co_cdr",  company:"Bravo", platoon:"CO",     password:"ai6959",   email:"airisari@outlook.com",         phone:"703-223-3625",  mustChangePassword:false },
-  { id:"u041", name:"Francis",         rank:"OC",       role:"sel",     company:"Bravo", platoon:"SEL",    password:"cf29624",  email:"chas.francis01@gmail.com",     phone:"512-738-1074",  mustChangePassword:false },
-  { id:"u042", name:"Alcazar",         rank:"MIDN 3/C", role:"plt_cdr", company:"Bravo", platoon:"1st PC", password:"laa3843",  email:"lukealcazar11@gmail.com",      phone:"210-400-3015",  mustChangePassword:false },
-  { id:"u043", name:"Treshock, T.",    rank:"MIDN 2/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"jtt3891",  email:"jimmytreshock145@utexas.edu",  phone:"732-759-7001",  mustChangePassword:false },
-  { id:"u044", name:"Madulara",        rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"cam23254", email:"cnmadulara@gmail.com",         phone:"281-658-2600",  mustChangePassword:false },
-  { id:"u045", name:"Renslow",         rank:"MIDN 3/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"hgr5147",  email:"hgrenslow@gmail.com",          phone:"515-441-4144",  mustChangePassword:false },
-  { id:"u046", name:"Brakefield",      rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"afb868",   email:"afb868@utexas.edu",            phone:"(210)237-2884", mustChangePassword:false },
-  { id:"u047", name:"Rajesh",          rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"ar84238",  email:"arajesh@utexas.edu",           phone:"703-599-2498",  mustChangePassword:false },
-  { id:"u048", name:"Rhodes",          rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"Mpr2348",  email:"Mpr2348@my.utexas.edu",        phone:"512-694-3039",  mustChangePassword:false },
-  { id:"u049", name:"Diedrich",        rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"gd22345",  email:"glincolnd4@gmail.com",         phone:"630-234-4045",  mustChangePassword:false },
-  { id:"u050", name:"Angeles",         rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"jma5962",  email:"jacobangeles@utexas.edu",      phone:"631-827-8716",  mustChangePassword:false },
-  { id:"u051", name:"Harpuder, E.",    rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"1st PC", password:"ehh589",   email:"ehharpuder@utexas.edu",        phone:"808-364-7319",  mustChangePassword:false },
-  { id:"u052", name:"Kessler",         rank:"OC",       role:"oc",      company:"Bravo", platoon:"1st PC", password:"jnk788",   email:"jnk788@my.utexas.edu",         phone:"940-727-8105",  mustChangePassword:false },
-  { id:"u053", name:"Myers",           rank:"OC",       role:"oc",      company:"Bravo", platoon:"1st PC", password:"cm68236",  email:"cannonm1023@gmail.com",        phone:"717-585-1996",  mustChangePassword:false },
-  { id:"u054", name:"Redington",       rank:"MIDN 3/C", role:"plt_cdr", company:"Bravo", platoon:"2nd PC", password:"kjr2897",  email:"kjredington24@gmail.com",      phone:"917-561-3818",  mustChangePassword:false },
-  { id:"u055", name:"Bertrand",        rank:"MIDN 2/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"jb79929",  email:"jb79929@my.utexas.edu",        phone:"(516)305-0975", mustChangePassword:false },
-  { id:"u056", name:"Morales",         rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"jm227556", email:"jm227556@eid.utexas.edu",      phone:"3617931889",    mustChangePassword:false },
-  { id:"u057", name:"Murray",          rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"egm2753",  email:"egrace1211@gmail.com",         phone:"903-436-3601",  mustChangePassword:false },
-  { id:"u058", name:"Opiela",          rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"neo392",   email:"natalie@opiela.org",           phone:"512-915-9446",  mustChangePassword:false },
-  { id:"u059", name:"Reis",            rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"dpr853",   email:"reisdeborah90@gmail.com",      phone:"512-992-5880",  mustChangePassword:false },
-  { id:"u060", name:"Straub",          rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"ncs2239",  email:"nstraub@utexas.edu",           phone:"(281)520-5259", mustChangePassword:false },
-  { id:"u061", name:"Edwards",         rank:"MIDN 2/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"cae2726",  email:"cedwards49@icloud.com",        phone:"805-320-0311",  mustChangePassword:false },
-  { id:"u062", name:"Nicholas",        rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"han494",   email:"hannicholas@utexas.edu",       phone:"832-298-1395",  mustChangePassword:false },
-  { id:"u063", name:"Quidlat",         rank:"MIDN 2/C", role:"mid",     company:"Bravo", platoon:"2nd PC", password:"mqq57",    email:"mjqquidlat@utexas.edu",        phone:"512-662-2622",  mustChangePassword:false },
-  { id:"u064", name:"Nugent",          rank:"OC",       role:"oc",      company:"Bravo", platoon:"2nd PC", password:"nn9389",   email:"nugent.nicolas1@gmail.com",    phone:"717-425-4675",  mustChangePassword:false },
-  { id:"u065", name:"Lee",             rank:"MIDN 3/C", role:"plt_cdr", company:"Bravo", platoon:"3rd PC", password:"dl38724",  email:"daniellee@utexas.edu",         phone:"213-800-2182",  mustChangePassword:false },
-  { id:"u066", name:"Hash, W.",        rank:"OC",       role:"oc",      company:"Bravo", platoon:"3rd PC", password:"wgh543",   email:"weston.hash@utexas.edu",       phone:"512-738-6206",  mustChangePassword:false },
-  { id:"u067", name:"Jiwa",            rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"zcj232",   email:"zcj232@eid.utexas.edu",        phone:"512-496-4193",  mustChangePassword:false },
-  { id:"u068", name:"Ost",             rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"jco2524",  email:"jco2524@my.utexas.edu",        phone:"412-304-6961",  mustChangePassword:false },
-  { id:"u069", name:"Lopez",           rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"ml56697",  email:"marquezl2024@gmail.com",       phone:"830-968-7842",  mustChangePassword:false },
-  { id:"u070", name:"Handford",        rank:"MIDN 1/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"wbh725",   email:"wheeler.betz@utexas.edu",      phone:"904-485-3224",  mustChangePassword:false },
-  { id:"u071", name:"Courtney, L.",    rank:"MIDN 2/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"lec3474",  email:"laurencourtney@utexas.edu",    phone:"847-340-0995",  mustChangePassword:false },
-  { id:"u072", name:"Born",            rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"zpb265",   email:"Zborn73@gmail.com",            phone:"202-807-8663",  mustChangePassword:false },
-  { id:"u073", name:"Tuin",            rank:"MIDN 4/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"vet368",   email:"vet368@eid.utexas.edu",        phone:"682-220-5723",  mustChangePassword:false },
-  { id:"u074", name:"Evans, X.",       rank:"MIDN 2/C", role:"mid",     company:"Bravo", platoon:"3rd PC", password:"xae4821",  email:"xander_evans@icloud.com",      phone:"425-505-7451",  mustChangePassword:false },
-  { id:"u075", name:"Sacco",           rank:"OC",       role:"oc",      company:"Bravo", platoon:"3rd PC", password:"aps3622",  email:"alec.sacco.1@gmail.com",       phone:"469-321-1666",  mustChangePassword:false },
-  // CHARLIE CO
-  { id:"u080", name:"Torres",          rank:"MIDN 2/C", role:"co_cdr",  company:"Charlie", platoon:"CO",     password:"dat2999",  email:"dannytorres569@utexas.edu",    phone:"915-216-1651",  mustChangePassword:false },
-  { id:"u081", name:"Wende",           rank:"OC",       role:"sel",     company:"Charlie", platoon:"SEL",    password:"drw3295",  email:"darrenrwende@gmail.com",       phone:"346-773-8825",  mustChangePassword:false },
-  { id:"u082", name:"Burrell",         rank:"MIDN 3/C", role:"plt_cdr", company:"Charlie", platoon:"1st PC", password:"blb4644",  email:"byronburrell1@gmail.com",      phone:"469-500-0452",  mustChangePassword:false },
-  { id:"u083", name:"Crimmins",        rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"tjc3735",  email:"tjcrimmins@icloud.com",        phone:"301-741-1281",  mustChangePassword:false },
-  { id:"u084", name:"Lucas",           rank:"MIDN 1/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"mjl4272",  email:"lucashorns@utexas.edu",        phone:"512-590-9814",  mustChangePassword:false },
-  { id:"u085", name:"Bell",            rank:"OC",       role:"oc",      company:"Charlie", platoon:"1st PC", password:"ab79952",  email:"alexkrisbell@utexas.edu",      phone:"720-839-7106",  mustChangePassword:false },
-  { id:"u086", name:"Savage",          rank:"OC",       role:"oc",      company:"Charlie", platoon:"1st PC", password:"ccs3944",  email:"ccsavage04@gmail.com",         phone:"(214)966-2119", mustChangePassword:false },
-  { id:"u087", name:"Paz",             rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"seu_paz",  email:"dpaz2@stedwards.edu",          phone:"956-245-9429",  mustChangePassword:false },
-  { id:"u088", name:"Carrizales",      rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"ac95845",  email:"alexcarrizales43@gmail.com",   phone:"512-672-9814",  mustChangePassword:false },
-  { id:"u089", name:"Downey",          rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"lsd793",   email:"logan.sage@gmail.com",         phone:"321-626-4234",  mustChangePassword:false },
-  { id:"u090", name:"Spooner, M.",     rank:"MIDN 3/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"msp6341",  email:"mspooner@utexas.edu",          phone:"512-632-3258",  mustChangePassword:false },
-  { id:"u091", name:"Barto",           rank:"MIDN 3/C", role:"mid",     company:"Charlie", platoon:"1st PC", password:"ekb2234",  email:"theevelyn@utexas.edu",         phone:"214-578-4716",  mustChangePassword:false },
-  { id:"u092", name:"Thai",            rank:"OC",       role:"oc",      company:"Charlie", platoon:"1st PC", password:"jbt2399",  email:"jonathanbthai@utexas.edu",     phone:"(916)257-1880", mustChangePassword:false },
-  { id:"u093", name:"Delgado",         rank:"MIDN 3/C", role:"plt_cdr", company:"Charlie", platoon:"2nd PC", password:"cd38394",  email:"carolinadelgado@utexas.edu",   phone:"832-646-3786",  mustChangePassword:false },
-  { id:"u094", name:"Jennings",        rank:"MIDN 2/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"saj3222",  email:"saj3222@my.utexas.edu",        phone:"3392141051",    mustChangePassword:false },
-  { id:"u095", name:"Roque-Garcia",    rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"ncr839",   email:"natalie.groque0327@gmail.com", phone:"469-460-0237",  mustChangePassword:false },
-  { id:"u096", name:"Mireles",         rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"nvm389",   email:"nvm389@eid.utexas.edu",        phone:"956-203-7485",  mustChangePassword:false },
-  { id:"u097", name:"Cremer",          rank:"MIDN 2/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"jrc7734",  email:"joshuacremer@utexas.edu",      phone:"832-226-2604",  mustChangePassword:false },
-  { id:"u098", name:"Aquino",          rank:"OC",       role:"oc",      company:"Charlie", platoon:"2nd PC", password:"ama8943",  email:"alexmaquino@yahoo.com",        phone:"714-869-5988",  mustChangePassword:false },
-  { id:"u099", name:"Harpuder, S.",    rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"sth2339",  email:"sharpuder@gmail.com",          phone:"808-375-5682",  mustChangePassword:false },
-  { id:"u100", name:"Barela, D.",      rank:"MIDN 2/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"dbd7291",  email:"dylan.barela@utexas.edu",      phone:"(832)506-6377", mustChangePassword:false },
-  { id:"u101", name:"Fernandez",       rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"df25644",  email:"df25644@my.utexas.edu",        phone:"830-344-9014",  mustChangePassword:false },
-  { id:"u102", name:"Petteway",        rank:"MIDN 3/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"eep982",   email:"epetteway15@gmail.com",        phone:"469-978-2712",  mustChangePassword:false },
-  { id:"u103", name:"Carnicle",        rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"2nd PC", password:"arc6339",  email:"abigail.carnicle07@gmail.com", phone:"9799009635",    mustChangePassword:false },
-  { id:"u104", name:"Simpson",         rank:"MIDN 3/C", role:"plt_cdr", company:"Charlie", platoon:"3rd PC", password:"tws2236",  email:"Thomas.simpson@utexas.edu",    phone:"210-330-1509",  mustChangePassword:false },
-  { id:"u105", name:"Gu, A.",          rank:"MIDN 2/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"jga9124",  email:"alexgujiaming@gmail.com",      phone:"832-490-5818",  mustChangePassword:false },
-  { id:"u106", name:"Visintine",       rank:"MIDN 3/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"slv843",   email:"luke.visintine@gmail.com",     phone:"832-507-5542",  mustChangePassword:false },
-  { id:"u107", name:"Escamilla",       rank:"OC",       role:"oc",      company:"Charlie", platoon:"3rd PC", password:"ame3747",  email:"andrewescamilla411@gmail.com", phone:"951-751-6259",  mustChangePassword:false },
-  { id:"u108", name:"Bailey",          rank:"MIDN 1/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"msb4354",  email:"msbailey9@utexas.edu",         phone:"(206)351-8072", mustChangePassword:false },
-  { id:"u109", name:"Planchon, D.",    rank:"MIDN 3/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"dpd8823",  email:"dmedved@utexas.edu",           phone:"726-213-1790",  mustChangePassword:false },
-  { id:"u110", name:"Braun",           rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"dcb3454",  email:"doritlm.gamer@gmail.com",      phone:"737-412-2696",  mustChangePassword:false },
-  { id:"u111", name:"Farrell",         rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"jpf2493",  email:"j.patrick.farrell@gmail.com",  phone:"228-233-0620",  mustChangePassword:false },
-  { id:"u112", name:"Alonzo",          rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"mma4546",  email:"madelynn.alonzo@gmail.com",    phone:"903-271-1289",  mustChangePassword:false },
-  { id:"u113", name:"Nolan",           rank:"MIDN 2/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"rgn334",   email:"rubynolan@utexas.edu",         phone:"631-662-8783",  mustChangePassword:false },
-  { id:"u114", name:"Eng",             rank:"MIDN 4/C", role:"mid",     company:"Charlie", platoon:"3rd PC", password:"be6627",   email:"brandoneng256@gmail.com",      phone:"936-330-5814",  mustChangePassword:false },
-];
+function normalizePlatoon(platoon) {
+  const value = (platoon || "").trim().replace(/\s+/g, " ");
+  if (!value) return "";
+  const companyPrefixedPlatoon = value.match(/^[ABC]\s+(\d+(?:st|nd|rd|th))(?:\s*(?:PC|PLT))?$/i);
+  if (companyPrefixedPlatoon) return `${companyPrefixedPlatoon[1]} PC`;
+  if (/^(?:[ABC]\s+)?CC$/i.test(value) || /^CO$/i.test(value)) return "CO";
+  if (/^(?:[ABC]\s+)?SEL$/i.test(value)) return "SEL";
+  if (/^\d+(?:st|nd|rd|th)\s*PLT$/i.test(value)) return value.replace(/\s*PLT$/i, " PC");
+  if (/^\d+(?:st|nd|rd|th)$/i.test(value)) return `${value} PC`;
+  return value;
+}
 
-// Roster mirrors USERS for the recall roster page
-const ROSTER = USERS.map(u => ({
-  initials: u.name.split(" ").map(p => p[0]).join("").toUpperCase().slice(0,2),
-  rank:     u.rank,
-  name:     u.name,
-  company:  normalizeCompany(u.company),
-  platoon:  u.platoon,
-  phone:    u.phone,
-  email:    u.email,
-}));
+function formatPlatoonLabel(platoon) {
+  const normalized = normalizePlatoon(platoon);
+  if (!normalized) return "—";
+  return /^\d+(?:st|nd|rd|th)\s*PC$/i.test(normalized) ? normalized.replace(/\s*PC$/i, " PLT") : normalized;
+}
+
+function getPlatoonSortValue(platoon) {
+  const match = normalizePlatoon(platoon).match(/^(\d+)/);
+  return match ? Number(match[1]) : 99;
+}
+
+const ROSTER_COMPANY_ORDER = ["BN", "Alpha", "Bravo", "Charlie"];
+const BN_ROSTER_ASSIGNMENT_ORDER = ["BNCO", "BNXO", "OPS", "SEL", "PTO", "ADJ", "SUPPO", "PAO", "TRAINO", "AO", "BGDO", "CGC", "AOPS", "MIR"];
+const COMPANY_ROSTER_ASSIGNMENT_ORDER = ["CO", "SEL", "1st PC", "2nd PC", "3rd PC", "4th PC", "MIR"];
+
+function normalizePhone(phone) {
+  return (phone || "").replace(/\D/g, "");
+}
+
+function getRosterAssignment(user) {
+  const billet = getBilletLabel(user);
+  if (billet) return billet;
+  const platoon = normalizePlatoon(user.platoon);
+  if (platoon === "CO" || user.role === "co_cdr") return "CO";
+  if (platoon === "SEL" || user.role === "sel") return "SEL";
+  if (platoon) return platoon;
+  return "—";
+}
+
+function getRosterProfilePriority(user) {
+  const platoon = normalizePlatoon(user.platoon);
+  if (getBilletLabel(user)) return 100;
+  if (user.role === "co_cdr" || platoon === "CO") return 80;
+  if (user.role === "sel" || platoon === "SEL") return 70;
+  if (user.role === "plt_cdr") return 60;
+  return 0;
+}
+
+function getRosterAssignmentSort(user) {
+  const assignment = getRosterAssignment(user);
+  const order = normalizeCompany(user.company) === "BN" ? BN_ROSTER_ASSIGNMENT_ORDER : COMPANY_ROSTER_ASSIGNMENT_ORDER;
+  const idx = order.indexOf(assignment);
+  return idx === -1 ? order.length : idx;
+}
+
+function getRosterSectionLabel(company) {
+  return company === "BN" ? "Big Four" : getCompanyFullName(company);
+}
+
+function getRosterAvatarStyle(company) {
+  return {
+    background: COMPANY_COLORS[company] || "#BF5700",
+  };
+}
+
+function buildRosterEntries(userList) {
+  const deduped = new Map();
+
+  userList.forEach((user, index) => {
+    const normalizedCompany = normalizeCompany(user.company);
+    const dedupeKey = normalizePhone(user.phone) || `${user.name}|${(user.email || "").toLowerCase()}|${normalizedCompany}|${user.platoon}`;
+    const current = deduped.get(dedupeKey);
+
+    if (!current) {
+      deduped.set(dedupeKey, { user, index });
+      return;
+    }
+
+    const currentPriority = getRosterProfilePriority(current.user);
+    const nextPriority = getRosterProfilePriority(user);
+
+    if (nextPriority > currentPriority || (nextPriority === currentPriority && index < current.index)) {
+      deduped.set(dedupeKey, { user, index });
+    }
+  });
+
+  return Array.from(deduped.values())
+    .map(({ user }) => ({
+      id: user.id || `${normalizeCompany(user.company)}-${user.name}`,
+      initials: user.name.split(" ").map(part => part[0]).join("").toUpperCase().slice(0, 2),
+      rank: user.rank,
+      name: user.name,
+      company: normalizeCompany(user.company),
+      assignment: getRosterAssignment(user),
+      phone: user.phone,
+      email: user.email,
+      sortAssignment: getRosterAssignmentSort(user),
+    }))
+    .sort((a, b) => {
+      const companyDiff = ROSTER_COMPANY_ORDER.indexOf(a.company) - ROSTER_COMPANY_ORDER.indexOf(b.company);
+      if (companyDiff !== 0) return companyDiff;
+      const assignmentDiff = a.sortAssignment - b.sortAssignment;
+      if (assignmentDiff !== 0) return assignmentDiff;
+      return a.name.localeCompare(b.name);
+    });
+}
+
+function getBattalionStrength(userList) {
+  return buildRosterEntries(userList).length;
+}
+
+// Comparator for the Recall Roster page sort order:
+//   BN (Big Four order) → Alpha → Bravo → Charlie
+//   Within company: CC → SEL → 1st Plt (PC first, then alpha) → 2nd Plt → …
+function compareRoster(a, b) {
+  const ac = normalizeCompany(a.company), bc = normalizeCompany(b.company);
+  const co = ROSTER_COMPANY_ORDER.indexOf(ac) - ROSTER_COMPANY_ORDER.indexOf(bc);
+  if (co !== 0) return co;
+
+  // BN: use Big Four assignment order, then alpha by last name
+  if (ac === "BN") {
+    const ai = BN_ROSTER_ASSIGNMENT_ORDER.indexOf(getRosterAssignment(a));
+    const bi = BN_ROSTER_ASSIGNMENT_ORDER.indexOf(getRosterAssignment(b));
+    const d = (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    if (d !== 0) return d;
+    return getNameKey(a.name).localeCompare(getNameKey(b.name));
+  }
+
+  // CC first
+  if (a.role === "co_cdr" && b.role !== "co_cdr") return -1;
+  if (b.role === "co_cdr" && a.role !== "co_cdr") return  1;
+  // SEL second
+  if (a.role === "sel" && b.role !== "sel") return -1;
+  if (b.role === "sel" && a.role !== "sel") return  1;
+  // By platoon number (1st → 2nd → 3rd…)
+  const pd = getPlatoonSortValue(a.platoon) - getPlatoonSortValue(b.platoon);
+  if (pd !== 0) return pd;
+  // Within platoon: PC before everyone else
+  if (a.role === "plt_cdr" && b.role !== "plt_cdr") return -1;
+  if (b.role === "plt_cdr" && a.role !== "plt_cdr") return  1;
+  // Alpha by last name
+  return getNameKey(a.name).localeCompare(getNameKey(b.name));
+}
+
+function getNameKey(name) {
+  return (name || "").split(",")[0].trim().toLowerCase();
+}
+
+function matchesUserIdentity(user, candidate = {}) {
+  if (!user) return false;
+  const candidateId = (candidate.id || "").trim();
+  const candidateEid = (candidate.eid || "").trim().toLowerCase();
+  const candidateEmail = (candidate.email || "").trim().toLowerCase();
+  const candidateName = (candidate.name || "").trim().toLowerCase();
+  const userEmail = (user.email || "").trim().toLowerCase();
+  const userEid = (user.eid || "").trim().toLowerCase();
+  const userName = (user.name || "").trim().toLowerCase();
+  const userNameKey = getNameKey(user.name);
+  const candidateNameKey = getNameKey(candidate.name);
+
+  return (candidateId && user.id === candidateId) ||
+    (candidateEid && userEid === candidateEid) ||
+    (candidateEmail && userEmail === candidateEmail) ||
+    (candidateName && userName === candidateName) ||
+    (candidateNameKey && userNameKey === candidateNameKey);
+}
+
+function findMatchingUser(userList, candidate) {
+  if (!candidate) return null;
+  return userList.find(user => matchesUserIdentity(user, candidate)) || null;
+}
+
+function canSubmitChit(user) {
+  return !!user && !isBigFour(user);
+}
+
+function requiresChitRouteSelection(user) {
+  if (!user || isBigFour(user) || ["adj", "co_cdr", "plt_cdr"].includes(user.role)) return false;
+  return !["Alpha", "Bravo", "Charlie"].includes(normalizeCompany(user.company)) || !/^\d+(?:st|nd|rd|th)\s*PC$/i.test(normalizePlatoon(user.platoon));
+}
+
+function getCompanyCommander(userList, company) {
+  return userList.find(u => normalizeCompany(u.company) === normalizeCompany(company) && u.role === "co_cdr");
+}
+
+function getPlatoonCommander(userList, company, platoon) {
+  const normalizedCompany = normalizeCompany(company);
+  const normalizedPlatoon = normalizePlatoon(platoon);
+  return userList.find(u =>
+    normalizeCompany(u.company) === normalizedCompany &&
+    u.role === "plt_cdr" &&
+    normalizePlatoon(u.platoon) === normalizedPlatoon
+  );
+}
+
+function formatRouteNode(label, person) {
+  if (!label) return "";
+  if (!person) return label;
+  return `${label} (${person.name.split(",")[0]})`;
+}
+
+function resolveChitRoutingContext(user, form) {
+  const needsSelection = requiresChitRouteSelection(user);
+  const company = normalizeCompany(
+    needsSelection
+      ? (form.routeCompany || user.company)
+      : user.company
+  );
+  const platoon = normalizePlatoon(
+    needsSelection
+      ? (form.routePlatoon || user.platoon)
+      : user.platoon
+  );
+
+  return { company, platoon, needsSelection };
+}
+
+function makeChitChainNode(label, stageName, person, approverRole, icon) {
+  return {
+    label: formatRouteNode(label, person),
+    stageName,
+    approverId: person?.id || null,
+    approverName: person?.name || label,
+    approverRole: approverRole || person?.role || null,
+    icon,
+  };
+}
+
+function buildChitApprovalChain(userList, user, routeContext) {
+  const { company, platoon } = routeContext;
+  const adj = userList.find(u => u.role === "adj");
+  const bnxo = userList.find(u => u.role === "xo");
+  const bnco = userList.find(u => u.role === "bn_cdr");
+  const cc = getCompanyCommander(userList, company);
+  const pc = getPlatoonCommander(userList, company, platoon);
+  const chain = [];
+
+  if (user.role === "adj") {
+    chain.push(
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
+      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
+    );
+  } else if (user.role === "co_cdr") {
+    chain.push(
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "🗂"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
+      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
+    );
+  } else if (user.role === "plt_cdr") {
+    chain.push(
+      makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "🗂"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
+      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
+    );
+  } else {
+    chain.push(
+      makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "👤"),
+      makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "🗂"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
+      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
+    );
+  }
+
+  return chain.length > 0 && chain.every(node => node.approverId) ? chain : [];
+}
+
+function buildChitRoute(userList, user, routeContext) {
+  return buildChitApprovalChain(userList, user, routeContext).map(node => node.label);
+}
+
+function buildChitStages(submitterName, submittedAt, approvalChain) {
+  return [
+    { name:"Submitted", routeLabel: submitterName, approverId:null, approverRole:null, approverName:submitterName, icon:"📝", completedBy:submitterName, completedAt:submittedAt, comment:"" },
+    ...approvalChain.map(node => ({
+      name: node.stageName,
+      routeLabel: node.label,
+      approverId: node.approverId,
+      approverRole: node.approverRole,
+      approverName: node.approverName,
+      icon: node.icon,
+      completedBy:null,
+      completedAt:null,
+      comment:"",
+    })),
+    { name:"Complete", routeLabel:"", approverId:null, approverRole:null, approverName:"", icon:"🏅", completedBy:null, completedAt:null, comment:"" },
+  ];
+}
+
+function canActOnChit(user, chit) {
+  if (!user || !chit?.stages || chit.status === "Approved" || chit.status === "Denied" || chit.status === "Returned") return false;
+  if (chit.currentStage >= chit.stages.length - 1) return false;
+  // Enforce CoC order: every prior stage must be completed before acting on the current one
+  if (!chit.stages.slice(0, chit.currentStage).every(s => s.completedBy)) return false;
+  const stage = chit.stages[chit.currentStage];
+  if (!stage?.approverRole) return false;
+  if (stage.approverId && user.id === stage.approverId) return true;
+  if (stage.approverRole === "plt_cdr") {
+    return user.role === "plt_cdr" &&
+      normalizeCompany(user.company) === normalizeCompany(chit.company) &&
+      normalizePlatoon(user.platoon) === normalizePlatoon(chit.platoon);
+  }
+  if (stage.approverRole === "co_cdr") {
+    return user.role === "co_cdr" && normalizeCompany(user.company) === normalizeCompany(chit.company);
+  }
+  return user.role === stage.approverRole;
+}
+
+function canViewChit(user, chit) {
+  if (!user || !chit) return false;
+  if (matchesUserIdentity(user, { id: chit.userId, name: chit.name })) return true;
+  return !!chit.stages?.some(stage => {
+    if (matchesUserIdentity(user, { id: stage.approverId, name: stage.approverName })) return true;
+    if (stage.approverRole === "plt_cdr") {
+      return user.role === "plt_cdr" &&
+        normalizeCompany(user.company) === normalizeCompany(chit.company) &&
+        normalizePlatoon(user.platoon) === normalizePlatoon(chit.platoon);
+    }
+    if (stage.approverRole === "co_cdr") {
+      return user.role === "co_cdr" && normalizeCompany(user.company) === normalizeCompany(chit.company);
+    }
+    return !!stage.approverRole && user.role === stage.approverRole;
+  });
+}
+
+// ─── USERS ──────────────────────────────────────────────────
+// User data is sourced entirely from Google Sheets via Apps Script.
+// No credentials are stored in this file. See SHEETS_API_URL below.
+
+// ─── GOOGLE CALENDAR CONFIG ──────────────────────────────────
+// To enable live event fetching, create a free API key at console.cloud.google.com
+// (Enable "Google Calendar API", restrict key to Calendar API readonly).
+const GCAL_API_KEY      = "";  // ← paste your key here
+const GCAL_CALENDAR_ID  = "8favdaqbd14bfquur8fvil5ecc@group.calendar.google.com";
+
+// Spring 2026: Week 1 starts Monday Jan 19 2026.  Change each semester.
+const SEMESTER_START = new Date("2026-01-19T00:00:00");
+const SEMESTER_LABEL = "Spring 2026";
+
+function getCurrentWeekMonday() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun … 6=Sat
+  const daysBack = day === 0 ? 6 : day - 1;
+  const mon = new Date(now);
+  mon.setHours(0, 0, 0, 0);
+  mon.setDate(mon.getDate() - daysBack);
+  // On Saturday or Sunday flip forward to the upcoming Monday
+  if (day === 6 || day === 0) mon.setDate(mon.getDate() + 7);
+  return mon;
+}
+function getWeekNumber(mon) {
+  return Math.round((mon - SEMESTER_START) / (7 * 24 * 3600 * 1000)) + 1;
+}
+function formatWeekRange(mon) {
+  const fri = new Date(mon); fri.setDate(fri.getDate() + 4);
+  const M = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  const f = d => `${String(d.getDate()).padStart(2,"0")}${M[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
+  return `${f(mon)} - ${f(fri)}`;
+}
+function formatEventTime(isoStr) {
+  if (!isoStr) return "";
+  const d = new Date(isoStr);
+  return `${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}`;
+}
+function guessEventType(title) {
+  const t = (title || "").toLowerCase();
+  if (/\bpt\b|run|fep|drill/.test(t)) return "PT";
+  if (/fitrep|chit|inspection/.test(t)) return "Admin";
+  if (/leadership|leadlab|\bll\b/.test(t)) return "Leadership";
+  if (/tutor|calculus|physics/.test(t)) return "Academic";
+  if (/staff|meeting|sync/.test(t)) return "Staff";
+  if (/conference/.test(t)) return "Conference";
+  return "Event";
+}
 
 // ─── STATIC DATA ────────────────────────────────────────────
 const POTW = {
-  week: "Week 10 — Spring 2026",
-  title: "Chain of Command & Unity of Command",
-  body: "The principle of unity of command means each soldier receives orders from only one superior. Know your chain at all times: Squad Leader → Platoon Commander → Company Commander → Battalion Commander.",
-  points: ["Know your direct superior at all times", "All orders flow through proper channels", "Report issues up your chain promptly"],
+  operations: [
+    { date:"23 MAR", title:"Battalion PT", time:"0700–0800", type:"PT", location:"Caven Lacrosse and Sports Center at Clark Field" },
+    { date:"23 MAR", title:"Digital FITREPs due to PCs", time:"1500–1600", type:"Admin", location:"" },
+    { date:"24 MAR", title:"PNS Inspection", time:"0700–0800", type:"Inspection", location:"" },
+    { date:"24 MAR", title:"Company LL", time:"0800–0900", type:"Leadership", location:"ADM McRaven Classroom" },
+    { date:"24 MAR", title:"Calculus/Physics Tutoring", time:"1900–2000", type:"Academic", location:"ADM McRaven Classroom" },
+    { date:"25 MAR", title:"Alpha Company PT", time:"0530–0630", type:"PT", location:"Lady Bird Lake Trail" },
+    { date:"25 MAR", title:"Bravo/Charlie Company PT", time:"0700–0800", type:"PT", location:"Caven Lacrosse and Sports Center at Clark Field" },
+    { date:"26 MAR", title:"FEP", time:"0700–0800", type:"PT", location:"Caven Lacrosse and Sports Center at Clark Field" },
+    { date:"26 MAR", title:"BN Staff Meeting", time:"1530–1630", type:"Staff", location:"BN Staff Office" },
+    { date:"26-29 MAR", title:"Yale Leadership Conference", time:"All Day", type:"Conference", location:"" },
+    { date:"27 MAR", title:"Drill", time:"0700–0800", type:"Drill", location:"Caven Lacrosse and Sports Center at Clark Field" },
+    { date:"27 MAR", title:"Unit Sync Meeting", time:"1000–1100", type:"Staff", location:"Conference Room" },
+  ],
 };
 
-const EVENTS = [
-  { date:"11", month:"MAR", title:"Morning PT — Formation Run", time:"0530–0700", type:"PT", location:"Gregory Gym" },
-  { date:"12", month:"MAR", title:"Leadership Lab", time:"1400–1700", type:"Leadlab", location:"UT Drill Field" },
-  { date:"13", month:"MAR", title:"CHIT Submission Deadline", time:"1700", type:"Admin", location:"Online" },
-  { date:"14", month:"MAR", title:"Morning PT — Weight Room", time:"0530–0700", type:"PT", location:"Gregory Gym" },
-  { date:"15", month:"MAR", title:"Battalion Review Board", time:"1000–1200", type:"Admin", location:"Jester Hall 312" },
-  { date:"17", month:"MAR", title:"Spring Ball Planning Mtg.", time:"1800", type:"Social", location:"UT Campus" },
-  { date:"19", month:"MAR", title:"Drill Competition Prep", time:"0600–0900", type:"Drill", location:"UT Drill Field" },
-];
-
-const BN = [
-  { name:"Alpha Company", co:"MIDN 1/C McRae", xo:"SSgt Shahbaz Butt (SEL)", color:COMPANY_COLORS.Alpha,
-    platoons:[
-      { name:"1st PLT", plt:"MIDN 3/C Ramirez", mids: USERS.filter(u=>normalizeCompany(u.company)==="Alpha"&&u.platoon==="1st PC").length },
-      { name:"2nd PLT", plt:"MIDN 1/C Lutz",    mids: USERS.filter(u=>normalizeCompany(u.company)==="Alpha"&&u.platoon==="2nd PC").length },
-    ]},
-  { name:"Bravo Company", co:"MIDN 2/C Irisari", xo:"OC Francis (SEL)", color:COMPANY_COLORS.Bravo,
-    platoons:[
-      { name:"1st PLT", plt:"MIDN 3/C Alcazar",   psg:"OC Kessler",  mids: USERS.filter(u=>u.company==="Bravo"&&u.platoon==="1st PC").length },
-      { name:"2nd PLT", plt:"MIDN 3/C Redington",  psg:"OC Nugent",   mids: USERS.filter(u=>u.company==="Bravo"&&u.platoon==="2nd PC").length },
-      { name:"3rd PLT", plt:"MIDN 3/C Lee",        psg:"OC Hash, W.", mids: USERS.filter(u=>u.company==="Bravo"&&u.platoon==="3rd PC").length },
-    ]},
-  { name:"Charlie Company", co:"MIDN 2/C Torres", xo:"OC Wende (SEL)", color:COMPANY_COLORS.Charlie,
-    platoons:[
-      { name:"1st PLT", plt:"MIDN 3/C Burrell",  psg:"OC Bell",      mids: USERS.filter(u=>u.company==="Charlie"&&u.platoon==="1st PC").length },
-      { name:"2nd PLT", plt:"MIDN 3/C Delgado",  psg:"OC Aquino",    mids: USERS.filter(u=>u.company==="Charlie"&&u.platoon==="2nd PC").length },
-      { name:"3rd PLT", plt:"MIDN 3/C Simpson",  psg:"OC Escamilla", mids: USERS.filter(u=>u.company==="Charlie"&&u.platoon==="3rd PC").length },
-    ]},
-];
 
 const PT = [
   { day:"Monday", focus:"Cardio / Run", exercises:[
@@ -259,23 +528,20 @@ const PT = [
   ]},
 ];
 
-const LEADLAB = [
-  { title:"Land Navigation", date:"Mar 12",
-    objectives:["Identify terrain features on a map","Plot an 8-digit grid coordinate","Navigate 3 points in under 90 min"],
-    notes:"Bring protractor, compass, pencil. MGRS map issued at 1345." },
-  { title:"React to Contact", date:"Mar 26",
-    objectives:["Identify threat direction","Issue a SALUTE report","Execute squad battle drill"],
-    notes:"ACU/camouflage required. No live ammo." },
-  { title:"Leadership Reaction Course", date:"Apr 9",
-    objectives:["Complete obstacle with assigned team","Issue and receive clear OPORD","Debrief AAR"],
-    notes:"Teams assigned day prior." },
+const LEADLAB_INIT = [
+  { id:1, title:"Land Navigation",          date:"Mar 12", notes:"Bring protractor, compass, pencil. MGRS map issued at 1345." },
+  { id:2, title:"React to Contact",         date:"Mar 26", notes:"ACU/camouflage required. No live ammo." },
+  { id:3, title:"Leadership Reaction Course", date:"Apr 9",  notes:"Teams assigned day prior." },
 ];
 
-const INIT_CHITS = [
-  { id:"CHT-001", userId:"u009", name:"Wilson, Ryan",    company:"Alpha",   platoon:"1st", date:"2026-03-14", reason:"Medical Appointment",    notes:"", status:"Pending",  route:["1st PC","Alpha Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
-  { id:"CHT-002", userId:"u010", name:"Moore, Emma",     company:"Bravo",   platoon:"2nd", date:"2026-03-15", reason:"Family Emergency",         notes:"", status:"Approved", route:["2nd PC","Bravo Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
-  { id:"CHT-003", userId:"u011", name:"Jackson, Tyler",  company:"Charlie", platoon:"1st", date:"2026-03-19", reason:"Academic Conflict — Exam", notes:"", status:"Pending",  route:["3rd PC","Charlie Co CDR","ADJ (Courtney)","BNXO (Townsend)","BNCO (Hinz)"] },
+// Three fixed PT sessions per week. OPS (and other seniors) upload PDFs here.
+const PT_SESSIONS = [
+  { key:"monday",    day:"Monday",    type:"BN PT",      desc:"Battalion-wide formation PT",    color:"#BF5700" },
+  { key:"wednesday", day:"Wednesday", type:"Company PT", desc:"Company-level physical training", color:"#003087" },
+  { key:"thursday",  day:"Thursday",  type:"FEP",        desc:"Fitness Enhancement Program",    color:"#2A7D4F" },
 ];
+
+const INIT_CHITS = [];
 
 const INIT_QS = [
   { id:1, authorId:"u009", author:"Wilson, Ryan",   rank:"CDT/PVT", subject:"Calculus II", time:"2h ago", answered:true,
@@ -289,12 +555,6 @@ const INIT_QS = [
     answers:[] },
 ];
 
-const FORMS = [
-  { id:1, title:"Spring Ball RSVP",               deadline:"Mar 15", responses:34, total:82, status:"Open",   type:"Event" },
-  { id:2, title:"ACFT Readiness Self-Assessment",  deadline:"Mar 18", responses:61, total:82, status:"Open",   type:"PT" },
-  { id:3, title:"Leadership Lab AAR",              deadline:"Mar 12", responses:82, total:82, status:"Closed", type:"Training" },
-  { id:4, title:"Uniform Accountability Survey",   deadline:"Mar 20", responses:12, total:82, status:"Open",   type:"Admin" },
-];
 
 // ─── GOOGLE SHEETS CONFIG (Option B — Private Sheet via Apps Script) ──
 // HOW TO CONNECT YOUR PRIVATE ROSTER GOOGLE SHEET:
@@ -305,9 +565,32 @@ const FORMS = [
 //   5. Copy the deployment URL and paste below
 //   6. Set the same token below
 //   7. Save — the app will pull live data on each page load.
-//      If the URL is empty, the hardcoded USERS array above is used as a fallback.
-const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbxRgepNbdZ1PKYO43MCehQ-2tRiIJ5p_imisTwjSFd7p-yfl6SWfIReFx5BEghObD6Maw/exec";
+//      In sheet-only mode, the app stays locked until this feed loads successfully.
+const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbzlf-kNMTGKZDvvTS9zBeMuqphwM_ybCQZLalZIKL0-SxTnQ-hj0hT-X30QEr1mQM8/exec";
 const SHEETS_API_TOKEN = "UT_NROTC";
+const ROSTER_CACHE_KEY = "quarterdeck_roster_cache_v1";
+
+function loadCachedRoster() {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return [];
+    const raw = window.localStorage.getItem(ROSTER_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function saveCachedRoster(users) {
+  try {
+    if (typeof window === "undefined" || !window.localStorage || !Array.isArray(users)) return;
+    window.localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify(users));
+  } catch (err) {
+    // Ignore cache write failures; live data still works.
+  }
+}
+const SHEET_ONLY_MODE  = true;
 
 // Sheet columns A→J: company, name, class, email, phone number, major, campus, eid, password, billet
 // Maps sheet company prefix → app company name
@@ -366,7 +649,13 @@ function sheetRowToUser(row, index) {
 
   // Platoon: extract from company or billet if it has a number (e.g. "A 1st" → "1st PC")
   const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i) || billetRaw.match(/(\d+(?:st|nd|rd|th))/i);
-  const platoon = platoonMatch ? `${platoonMatch[1]} PC` : billetRaw;
+  const platoon = platoonMatch
+    ? `${platoonMatch[1]} PC`
+    : /CC$/i.test(billetRaw)
+      ? "CO"
+      : /SEL$/i.test(billetRaw)
+        ? "SEL"
+        : billetRaw;
 
   // Name: strip rank prefix (MIDN, GySgt, SSgt, OC, Sgt, etc.)
   const name = nameRaw.replace(/^(MIDN|GySgt|GySGT|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
@@ -397,85 +686,79 @@ function sheetRowToUser(row, index) {
 }
 
 // ─── FITREP DATA ─────────────────────────────────────────────
-// Pipeline: Submitted → PC Review → Co CDR Review → BNXO Review → BNCO Approval → Complete
+// Pipeline: Submitted → PC Review → Co CDR Review → ADJ Review → BNXO Review → BNCO Approval → Complete
+// Used only as a reference template for stage icons; each fitrep stores its own stages array.
 const FITREP_STAGES = [
   { name:"Submitted",      approverRole:null,      icon:"📝" },
-  { name:"PC Review",      approverRole:"plt_cdr",  icon:"👤" },
-  { name:"Co CDR Review",  approverRole:"co_cdr",   icon:"⭐" },
-  { name:"BNXO Review",    approverRole:"xo",       icon:"🎖" },
-  { name:"BNCO Approval",  approverRole:"bn_cdr",   icon:"✅" },
-  { name:"Complete",       approverRole:null,       icon:"🏅" },
+  { name:"PC Review",      approverRole:"plt_cdr", icon:"👤" },
+  { name:"Co CDR Review",  approverRole:"co_cdr",  icon:"⭐" },
+  { name:"ADJ Review",     approverRole:"adj",     icon:"🗂" },
+  { name:"BNXO Review",    approverRole:"xo",      icon:"🎖" },
+  { name:"BNCO Approval",  approverRole:"bn_cdr",  icon:"✅" },
+  { name:"Complete",       approverRole:null,      icon:"🏅" },
 ];
 
-// Returns true if `user` is the designated approver for the fitrep's current stage
+// Returns true if `user` is the designated approver for the fitrep's current stage.
+// Uses per-fitrep stages array (same pattern as canActOnChit).
 function canActOnFitrep(user, fitrep) {
-  if (!user || fitrep.currentStage >= FITREP_STAGES.length - 1) return false;
-  if (isSenior(user)) return true;
-  const stage = FITREP_STAGES[fitrep.currentStage];
-  if (!stage.approverRole) return false;
+  if (!user || !fitrep?.stages || fitrep.status === "Returned" || fitrep.currentStage >= fitrep.stages.length - 1) return false;
+  // Enforce CoC order: every prior stage must be completed before acting on the current one
+  if (!fitrep.stages.slice(0, fitrep.currentStage).every(s => s.completedBy)) return false;
+  const stage = fitrep.stages[fitrep.currentStage];
+  if (!stage?.approverRole) return false;
+  if (stage.approverId && user.id === stage.approverId) return true;
   if (stage.approverRole === "plt_cdr")
-    return user.role === "plt_cdr" && normalizeCompany(user.company) === normalizeCompany(fitrep.company) && user.platoon === fitrep.platoon;
+    return user.role === "plt_cdr" &&
+      normalizeCompany(user.company) === normalizeCompany(fitrep.company) &&
+      normalizePlatoon(user.platoon) === normalizePlatoon(fitrep.platoon);
   if (stage.approverRole === "co_cdr")
     return user.role === "co_cdr" && normalizeCompany(user.company) === normalizeCompany(fitrep.company);
   return user.role === stage.approverRole;
 }
 
-const INIT_FITREBS = [
-  {
-    id:"FIT-001", subjectId:"u023", subjectName:"Locklin", subjectRank:"MIDN 4/C",
-    company:"Alpha", platoon:"1st PC", period:"Spring 2026", currentStage:1,
-    stages:[
-      { name:"Submitted",     completedBy:"Locklin",  completedAt:"2026-03-01", comment:"" },
-      { name:"PC Review",     completedBy:null,       completedAt:null,         comment:"" },
-      { name:"Co CDR Review", completedBy:null,       completedAt:null,         comment:"" },
-      { name:"BNXO Review",   completedBy:null,       completedAt:null,         comment:"" },
-      { name:"BNCO Approval", completedBy:null,       completedAt:null,         comment:"" },
-    ],
-  },
-  {
-    id:"FIT-002", subjectId:"u044", subjectName:"Madulara", subjectRank:"MIDN 4/C",
-    company:"Bravo", platoon:"1st PC", period:"Spring 2026", currentStage:2,
-    stages:[
-      { name:"Submitted",     completedBy:"Madulara",  completedAt:"2026-03-02", comment:"" },
-      { name:"PC Review",     completedBy:"Alcazar",   completedAt:"2026-03-05", comment:"Strong performer. Shows initiative in platoon activities." },
-      { name:"Co CDR Review", completedBy:null,        completedAt:null,         comment:"" },
-      { name:"BNXO Review",   completedBy:null,        completedAt:null,         comment:"" },
-      { name:"BNCO Approval", completedBy:null,        completedAt:null,         comment:"" },
-    ],
-  },
-  {
-    id:"FIT-003", subjectId:"u083", subjectName:"Crimmins", subjectRank:"MIDN 4/C",
-    company:"Charlie", platoon:"1st PC", period:"Spring 2026", currentStage:3,
-    stages:[
-      { name:"Submitted",     completedBy:"Crimmins",  completedAt:"2026-03-01", comment:"" },
-      { name:"PC Review",     completedBy:"Burrell",   completedAt:"2026-03-04", comment:"Excellent leadership potential. Consistently performs above expectations." },
-      { name:"Co CDR Review", completedBy:"Torres",    completedAt:"2026-03-07", comment:"Concur with PC assessment. Recommend early promotion consideration." },
-      { name:"BNXO Review",   completedBy:null,        completedAt:null,         comment:"" },
-      { name:"BNCO Approval", completedBy:null,        completedAt:null,         comment:"" },
-    ],
-  },
-];
+// Only those in the routing chain (or the subject) can view a fitrep.
+// OPS and BN SEL are NOT in the pipeline and therefore cannot see fitreps.
+function canViewFitrep(user, fitrep) {
+  if (!user || !fitrep) return false;
+  // Subject always sees their own
+  if (matchesUserIdentity(user, { id: fitrep.subjectId, name: fitrep.subjectName })) return true;
+  // Check if user is listed in any routing stage
+  return !!fitrep.stages?.some(stage => {
+    if (!stage.approverRole) return false;
+    if (stage.approverId && matchesUserIdentity(user, { id: stage.approverId })) return true;
+    if (stage.approverRole === "plt_cdr") {
+      return user.role === "plt_cdr" &&
+        normalizeCompany(user.company) === normalizeCompany(fitrep.company) &&
+        normalizePlatoon(user.platoon) === normalizePlatoon(fitrep.platoon);
+    }
+    if (stage.approverRole === "co_cdr") {
+      return user.role === "co_cdr" && normalizeCompany(user.company) === normalizeCompany(fitrep.company);
+    }
+    return user.role === stage.approverRole;
+  });
+}
+
+const INIT_FITREBS = [];
 
 // ─── STYLES ─────────────────────────────────────────────────
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Source Sans 3', sans-serif; background: #FFF8F0; color: #1A1209; }
+  body { font-family: 'Barlow', "Segoe UI", sans-serif; font-size: 1rem; background: #FFF8F0; color: #1A1209; }
 
   .topbar { background: #1A1209; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; height: 58px; border-bottom: 3px solid #BF5700; position: sticky; top: 0; z-index: 50; }
-  .topbar-logo { width: 36px; height: 36px; background: #BF5700; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: Oswald; font-weight: 700; font-size: 1rem; color: white; margin-right: 0.6rem; }
-  .topbar-title { font-family: Oswald; font-weight: 700; font-size: 1.15rem; letter-spacing: 2px; text-transform: uppercase; }
+  .topbar-logo { width: 40px; height: 40px; background: #BF5700; border-radius: 6px; display: grid; place-items: center; font-family: 'Rajdhani', Impact, sans-serif; font-weight: 500; font-size: 1.1rem; color: white; margin-right: 0.7rem; }
+  .topbar-title { font-family: 'Rajdhani', Impact, sans-serif; font-weight: 500; font-size: 1.35rem; letter-spacing: 3px; text-transform: uppercase; }
   .topbar-title span { color: #F7941D; }
   .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
-  .rank-pill { background: #BF5700; color: white; padding: 2px 8px; border-radius: 4px; font-family: Oswald; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; }
+  .rank-pill { background: #BF5700; color: white; padding: 2px 8px; border-radius: 4px; font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; }
   .role-pill { background: rgba(255,255,255,0.12); color: #ccc; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; text-transform: uppercase; }
-  .btn-logout { background: transparent; border: 1.5px solid rgba(255,255,255,0.25); color: #ccc; border-radius: 4px; padding: 3px 10px; font-size: 0.75rem; cursor: pointer; font-family: Oswald; letter-spacing: 1px; text-transform: uppercase; }
+  .btn-logout { background: transparent; border: 1.5px solid rgba(255,255,255,0.25); color: #ccc; border-radius: 4px; padding: 3px 10px; font-size: 0.75rem; cursor: pointer; font-family: 'Rajdhani', Impact, sans-serif; letter-spacing: 1px; text-transform: uppercase; }
   .btn-logout:hover { background: rgba(255,255,255,0.1); }
 
   .layout { display: flex; min-height: calc(100vh - 58px); }
   .sidebar { width: 210px; background: #0D1B2A; flex-shrink: 0; position: sticky; top: 58px; height: calc(100vh - 58px); overflow-y: auto; display: flex; flex-direction: column; }
   .sidebar-group { padding: 1rem 0 0.5rem; }
-  .sidebar-label { font-family: Oswald; font-size: 0.62rem; letter-spacing: 3px; text-transform: uppercase; color: #7a8fa0; padding: 0 1rem; margin-bottom: 0.5rem; }
+  .sidebar-label { font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.62rem; letter-spacing: 3px; text-transform: uppercase; color: #7a8fa0; padding: 0 1rem; margin-bottom: 0.5rem; }
   .nav-btn { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; cursor: pointer; color: #9ab0c4; font-size: 0.88rem; border-left: 3px solid transparent; transition: all 0.15s; background: none; border-top: none; border-right: none; border-bottom: none; width: 100%; text-align: left; }
   .nav-btn:hover { background: rgba(255,255,255,0.05); color: white; }
   .nav-btn.active { background: rgba(191,87,0,0.2); color: #F7941D; border-left-color: #BF5700; font-weight: 600; }
@@ -483,22 +766,22 @@ const CSS = `
 
   .content { flex: 1; padding: 1.5rem; overflow-y: auto; min-width: 0; }
 
-  .page-title { font-family: Oswald; font-size: 1.7rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 0.2rem; }
+  .page-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 2.1rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 0.2rem; }
   .page-title span { color: #BF5700; }
   .page-sub { font-size: 0.88rem; color: #6B6B6B; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 2px solid rgba(191,87,0,0.15); }
 
   .card { background: white; border-radius: 10px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid rgba(191,87,0,0.1); margin-bottom: 1rem; }
-  .card-title { font-family: Oswald; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; color: #1A1209; }
+  .card-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; color: #1A1209; }
   .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
 
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
 
   .stat { background: white; border-radius: 10px; padding: 1rem 1.2rem; border-left: 4px solid #BF5700; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-  .stat-n { font-family: Oswald; font-size: 2rem; font-weight: 700; color: #BF5700; line-height: 1; }
+  .stat-n { font-family: 'Rajdhani', Impact, sans-serif; font-size: 2.4rem; font-weight: 700; color: #BF5700; line-height: 1; }
   .stat-l { font-size: 0.78rem; color: #6B6B6B; text-transform: uppercase; letter-spacing: 1px; margin-top: 0.2rem; }
 
-  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; border-radius: 6px; font-family: Oswald; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; border: none; font-weight: 500; transition: all 0.15s; }
+  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; border-radius: 6px; font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.8rem; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; border: none; font-weight: 600; transition: all 0.15s; }
   .btn-orange { background: #BF5700; color: white; }
   .btn-orange:hover { background: #8B3D00; }
   .btn-outline { background: transparent; border: 2px solid #BF5700; color: #BF5700; }
@@ -515,7 +798,7 @@ const CSS = `
   .badge-navy   { background: rgba(13,27,42,0.1); color: #0D1B2A; }
   .badge-gray   { background: #eee; color: #666; }
 
-  .input { width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #ddd; border-radius: 6px; font-family: 'Source Sans 3', sans-serif; font-size: 0.9rem; color: #1A1209; background: white; }
+  .input { width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #ddd; border-radius: 6px; font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.9rem; color: #1A1209; background: white; }
   .input:focus { outline: none; border-color: #BF5700; }
   .input-group { margin-bottom: 0.9rem; }
   .input-label { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #6B6B6B; margin-bottom: 0.3rem; }
@@ -525,32 +808,32 @@ const CSS = `
   .privacy-note { background: rgba(13,27,42,0.05); border: 1.5px solid rgba(13,27,42,0.15); border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.82rem; color: #0D1B2A; margin-bottom: 1rem; }
 
   .potw-card { background: linear-gradient(135deg, #1A1209 0%, #0D1B2A 100%); color: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
-  .potw-week { font-family: Oswald; font-size: 0.68rem; letter-spacing: 3px; text-transform: uppercase; color: #F7941D; margin-bottom: 0.4rem; }
-  .potw-title { font-family: Oswald; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.6rem; }
+  .potw-week { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #F7941D; margin-bottom: 0.4rem; }
+  .potw-title { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.6rem; }
   .potw-body { font-size: 0.88rem; line-height: 1.6; color: #CCC; margin-bottom: 0.75rem; }
 
   .event-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.7rem 0; border-bottom: 1px solid #f0ede8; }
   .event-date { min-width: 46px; text-align: center; background: #BF5700; color: white; border-radius: 7px; padding: 3px; }
-  .event-day { font-family: Oswald; font-size: 1.35rem; font-weight: 700; line-height: 1; }
+  .event-day { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 1.35rem; font-weight: 700; line-height: 1; }
   .event-mo  { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; }
   .event-title { font-weight: 600; font-size: 0.88rem; }
   .event-sub   { font-size: 0.78rem; color: #6B6B6B; }
 
   .company-block { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 1rem; }
   .company-header { color: white; padding: 0.8rem 1.2rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
-  .company-name { font-family: Oswald; font-size: 1.05rem; letter-spacing: 2px; text-transform: uppercase; }
-  .company-co { font-size: 0.78rem; color: rgba(255,255,255,0.75); }
+  .company-name { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 1.05rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+  .company-co { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.78rem; font-style: normal; color: rgba(255,255,255,0.75); }
   .platoon-grid { padding: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0.75rem; }
   .platoon-card { border: 1.5px solid rgba(191,87,0,0.2); border-radius: 8px; padding: 0.75rem; }
-  .platoon-name { font-family: Oswald; font-size: 0.82rem; letter-spacing: 1.5px; color: #BF5700; margin-bottom: 0.35rem; }
-  .platoon-detail { font-size: 0.78rem; color: #6B6B6B; }
+  .platoon-name { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.82rem; font-weight: 700; font-style: normal; letter-spacing: 1.5px; color: #BF5700; margin-bottom: 0.35rem; }
+  .platoon-detail { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.78rem; font-style: normal; color: #6B6B6B; }
 
   .pt-block { background: white; border-radius: 8px; overflow: hidden; margin-bottom: 0.75rem; border: 1px solid #eee; }
-  .pt-header { background: #BF5700; color: white; padding: 0.55rem 1rem; display: flex; align-items: center; justify-content: space-between; font-family: Oswald; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; }
+  .pt-header { background: #BF5700; color: white; padding: 0.55rem 1rem; display: flex; align-items: center; justify-content: space-between; font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.9rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
   .pt-row { display: flex; align-items: center; gap: 1rem; padding: 0.4rem 1rem; border-bottom: 1px solid #faf7f4; font-size: 0.85rem; }
   .pt-name { flex: 1; font-weight: 500; }
   .pt-sets { color: #BF5700; font-weight: 600; font-size: 0.82rem; min-width: 80px; }
-  .pt-notes { color: #888; font-size: 0.78rem; font-style: italic; }
+  .pt-notes { color: #888; font-size: 0.78rem; }
 
   .chit-card { border-left: 4px solid #BF5700; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 0.75rem; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
   .chit-route { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.78rem; }
@@ -561,7 +844,7 @@ const CSS = `
   .progress-fill { background: #BF5700; height: 100%; border-radius: 4px; }
 
   .roster-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0; border-bottom: 1px solid #f4f0eb; flex-wrap: wrap; }
-  .avatar { width: 36px; height: 36px; border-radius: 50%; background: #BF5700; color: white; display: flex; align-items: center; justify-content: center; font-family: Oswald; font-weight: 700; font-size: 0.82rem; flex-shrink: 0; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; background: #BF5700; color: white; display: flex; align-items: center; justify-content: center; font-family: 'Barlow', 'Segoe UI', sans-serif; font-weight: 700; font-style: normal; font-size: 0.82rem; flex-shrink: 0; }
 
   .q-card { background: white; border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; border: 1.5px solid #eee; }
   .q-meta { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
@@ -572,16 +855,16 @@ const CSS = `
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
   .modal { background: white; border-radius: 12px; padding: 1.5rem; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
   .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
-  .modal-title { font-family: Oswald; font-size: 1.1rem; letter-spacing: 2px; text-transform: uppercase; }
+  .modal-title { font-family: 'Rajdhani'; font-size: 1.1rem; letter-spacing: 2px; text-transform: uppercase; }
   .modal-close { background: none; border: none; font-size: 1.4rem; color: #888; cursor: pointer; }
 
   .tag { display: inline-block; padding: 2px 8px; background: rgba(191,87,0,0.1); border-radius: 20px; font-size: 0.72rem; color: #8B3D00; }
 
   .login-wrap { min-height: 100vh; background: #1A1209; display: flex; align-items: center; justify-content: center; padding: 1rem; }
-  .login-card { background: white; border-radius: 14px; padding: 2.25rem 1.75rem; max-width: 380px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+  .login-card { background: white; border-radius: 14px; padding: 2.75rem 2.5rem; max-width: 480px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
   .login-logo { display: flex; align-items: center; gap: 0.75rem; justify-content: center; margin-bottom: 1.25rem; }
-  .login-mark { width: 48px; height: 48px; background: #BF5700; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: Oswald; font-weight: 700; font-size: 1.3rem; color: white; }
-  .login-title { font-family: Oswald; font-size: 1.3rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+  .login-mark { width: 56px; height: 56px; background: #BF5700; border-radius: 10px; display: grid; place-items: center; font-family: 'Rajdhani', Impact, sans-serif; font-weight: 500; font-size: 1.5rem; color: white; }
+  .login-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 1.75rem; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; }
   .login-title span { color: #BF5700; }
   .login-sub { text-align: center; font-size: 0.88rem; color: #888; margin-bottom: 1.5rem; }
   .hint-box { margin-top: 1rem; background: #f5f2ee; border-radius: 8px; padding: 0.75rem; font-size: 0.75rem; color: #666; line-height: 1.6; }
@@ -604,11 +887,14 @@ const CSS = `
   .stage-dot { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1rem; border:3px solid #eee; background:white; z-index:1; position:relative; flex-shrink:0; }
   .stage-dot.done  { border-color:#2A7D4F; background:#2A7D4F; color:white; }
   .stage-dot.active { border-color:#BF5700; background:#BF5700; color:white; box-shadow:0 0 0 4px rgba(191,87,0,0.2); animation: pulse 2s infinite; }
-  .stage-dot.pending { border-color:#ddd; background:#f5f5f5; color:#aaa; }
+  .stage-dot.pending  { border-color:#ddd; background:#f5f5f5; color:#aaa; }
+  .stage-dot.returned { border-color:#9b1c1c; background:#9b1c1c; color:white; }
+  .stage-item.returned::after { background:#9b1c1c; }
   @keyframes pulse { 0%,100% { box-shadow:0 0 0 4px rgba(191,87,0,0.2); } 50% { box-shadow:0 0 0 8px rgba(191,87,0,0.08); } }
-  .stage-label { font-size:0.65rem; text-align:center; margin-top:0.35rem; text-transform:uppercase; letter-spacing:0.5px; line-height:1.3; color:#888; font-family:Oswald; }
-  .stage-label.active { color:#BF5700; font-weight:700; }
-  .stage-label.done   { color:#2A7D4F; }
+  .stage-label { font-size:0.65rem; text-align:center; margin-top:0.35rem; text-transform:uppercase; letter-spacing:0.5px; line-height:1.3; color:#888; font-family:'Barlow','Segoe UI',sans-serif; }
+  .stage-label.active   { color:#BF5700; font-weight:700; }
+  .stage-label.done     { color:#2A7D4F; }
+  .stage-label.returned { color:#9b1c1c; font-weight:700; }
   .stage-approver { font-size:0.6rem; color:#aaa; text-align:center; }
   .stage-approver.active { color:#BF5700; }
 
@@ -616,10 +902,10 @@ const CSS = `
   .fitrep-header { padding:0.9rem 1.2rem; border-bottom:1px solid #f5f2ee; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; }
   .fitrep-body { padding:1rem 1.2rem; }
   .stage-comment { background:#f8f6f2; border-left:3px solid #2A7D4F; border-radius:0 6px 6px 0; padding:0.5rem 0.75rem; margin-top:0.4rem; font-size:0.82rem; }
-  .stage-comment-by { font-size:0.72rem; color:#2A7D4F; font-weight:600; margin-bottom:0.2rem; font-family:Oswald; letter-spacing:0.5px; text-transform:uppercase; }
+  .stage-comment-by { font-size:0.72rem; color:#2A7D4F; font-weight:600; margin-bottom:0.2rem; font-family:'Barlow','Segoe UI',sans-serif; letter-spacing:0.5px; text-transform:uppercase; }
   .active-stage-comment { background:#fff9f5; border-left:3px solid #BF5700; border-radius:0 6px 6px 0; padding:0.5rem 0.75rem; margin-top:0.4rem; font-size:0.82rem; }
   .stage-action-box { background:#fff9f5; border:1.5px solid rgba(191,87,0,0.2); border-radius:8px; padding:0.9rem; margin-top:0.75rem; }
-  .stage-action-label { font-family:Oswald; font-size:0.72rem; letter-spacing:1.5px; text-transform:uppercase; color:#BF5700; margin-bottom:0.5rem; }
+  .stage-action-label { font-family:'Barlow','Segoe UI',sans-serif; font-size:0.72rem; letter-spacing:1.5px; text-transform:uppercase; color:#BF5700; margin-bottom:0.5rem; }
 
   /* ── ACCOUNT MODAL ───────────────────────────────── */
   .acct-field { display:flex; align-items:center; gap:0.75rem; padding:0.55rem 0; border-bottom:1px solid #f5f2ee; font-size:0.88rem; }
@@ -760,12 +1046,24 @@ function FirstLoginGate({ onPasswordChange }) {
 
 // ─── PAGES ──────────────────────────────────────────────────
 
-function LoginPage({ onLogin, userList }) {
-  const [name, setName] = useState("");
-  const [pass, setPass] = useState("");
-  const [err, setErr]   = useState("");
+function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
+  const [name, setName]         = useState("");
+  const [pass, setPass]         = useState("");
+  const [err, setErr]           = useState("");
 
+  // MFA state
+  const [mfaStep, setMfaStep]   = useState(false);   // true = showing code input
+  const [mfaUser, setMfaUser]   = useState(null);    // user object pending MFA
+  const [mfaCode, setMfaCode]   = useState("");
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [mfaInfo, setMfaInfo]   = useState("");       // non-error info message
+
+  const hasRoster = userList.length > 0;
+  const locked = !sheetSynced && !hasRoster;
+
+  // ── Step 1: validate credentials → send MFA code ──────────────────────────
   const go = () => {
+    if (locked) return;
     const q = name.trim().toLowerCase();
     const user = userList.find(u =>
       u.name.toLowerCase() === q ||
@@ -774,76 +1072,296 @@ function LoginPage({ onLogin, userList }) {
       (u.eid && u.eid.toLowerCase() === q)
     );
     if (!user) { setErr("Name not found. Try your last name, email, or EID."); return; }
-    if (user.password !== pass.trim()) { setErr("Incorrect password. Contact your S1 if you need a reset."); return; }
+    if (user.password !== pass.trim()) { setErr("Incorrect password. Contact ADJ if you need a reset."); return; }
+    if (!user.email) { setErr("No email on file. Contact ADJ to add your email before logging in."); return; }
+
     setErr("");
-    onLogin(user);
+    setMfaLoading(true);
+    fetch(SHEETS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: user.email }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        setMfaLoading(false);
+        if (data.ok) {
+          setMfaUser(user);
+          setMfaStep(true);
+          setMfaInfo("A 6-digit code was sent to " + user.email + ". It expires in 5 minutes.");
+        } else {
+          setErr(data.error || "Failed to send verification code. Try again.");
+        }
+      })
+      .catch(() => {
+        setMfaLoading(false);
+        setErr("Network error sending verification code. Check your connection.");
+      });
   };
+
+  // ── Step 2: verify MFA code → complete login ──────────────────────────────
+  const verifyCode = () => {
+    if (!mfaCode.trim()) { setErr("Enter the 6-digit code from your email."); return; }
+    setErr("");
+    setMfaLoading(true);
+    fetch(SHEETS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "verifyMFA", email: mfaUser.email, code: mfaCode.trim() }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        setMfaLoading(false);
+        if (data.ok) {
+          onLogin(mfaUser);
+        } else {
+          setErr(data.error || "Verification failed. Request a new code.");
+          setMfaCode("");
+        }
+      })
+      .catch(() => {
+        setMfaLoading(false);
+        setErr("Network error verifying code. Check your connection.");
+      });
+  };
+
+  // ── Resend code ───────────────────────────────────────────────────────────
+  const resendCode = () => {
+    setErr("");
+    setMfaCode("");
+    setMfaLoading(true);
+    fetch(SHEETS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: mfaUser.email }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        setMfaLoading(false);
+        if (data.ok) {
+          setMfaInfo("A new code was sent to " + mfaUser.email + ".");
+        } else {
+          setErr(data.error || "Failed to resend code.");
+        }
+      })
+      .catch(() => {
+        setMfaLoading(false);
+        setErr("Network error. Check your connection.");
+      });
+  };
+
+  // ── Shared card chrome ────────────────────────────────────────────────────
+  const banner = (msg, color) => (
+    <div style={{ background:`rgba(${color},0.1)`, border:`1.5px solid rgb(${color})`, borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:`rgb(${color})`, marginBottom:"0.9rem" }}>
+      {msg}
+    </div>
+  );
 
   return (
     <div className="login-wrap">
       <div className="login-card">
         <div className="login-logo">
           <div className="login-mark">UT</div>
-          <div className="login-title">NROTC <span>BN</span></div>
+          <div className="login-title">The <span>Quarterdeck</span></div>
         </div>
-        <div className="login-sub">Sign in with your battalion credentials</div>
-        {err && <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>⚠ {err}</div>}
-        <div className="input-group">
-          <label className="input-label">Last Name, Email, or EID</label>
-          <input className="input" placeholder="Last name, email, or EID" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && go()} />
-        </div>
-        <div className="input-group">
-          <label className="input-label">Password</label>
-          <input className="input" type="password" placeholder="Your password" value={pass} onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === "Enter" && go()} />
-        </div>
-        <button className="btn btn-orange" style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem" }} onClick={go}>
-          Sign In →
-        </button>
-        <div className="hint-box">
-          <strong>Username:</strong> your last name, full email, or EID<br />
-          Contact your S1 (ADJ) if you need a password reset.
-        </div>
+
+        {!mfaStep ? (
+          <>
+            <div className="login-sub">Sign in with your battalion credentials</div>
+
+            {!sheetSynced && !hasRoster && (
+              <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem", display:"flex", alignItems:"center", gap:"0.6rem" }}>
+                <span style={{ fontSize:"1.1rem" }}>⏳</span>
+                <span>Syncing roster from Google Sheets… please wait.</span>
+              </div>
+            )}
+            {!sheetSynced && hasRoster && (
+              <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem" }}>
+                ⏳ Refreshing roster from Google Sheets in the background…
+              </div>
+            )}
+            {sheetSynced && sheetError && (
+              <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>
+                ⚠ Could not reach Google Sheets{hasRoster ? ". Using cached roster for now" : ""}. Check your connection and{" "}
+                <button onClick={onRetry} style={{ background:"none", border:"none", color:"#C0392B", fontWeight:700, textDecoration:"underline", cursor:"pointer", fontSize:"inherit", padding:0 }}>retry</button>.
+              </div>
+            )}
+
+            {err && banner("⚠ " + err, "192,57,43")}
+
+            <div className="input-group">
+              <label className="input-label">Last Name, Email, or EID</label>
+              <input
+                className="input"
+                placeholder={locked ? "Waiting for roster sync…" : "Last name, email, or EID"}
+                value={name}
+                disabled={locked || mfaLoading}
+                style={(locked || mfaLoading) ? { opacity:0.45, cursor:"not-allowed" } : {}}
+                onChange={e => setName(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && go()}
+              />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Password</label>
+              <input
+                className="input"
+                type="password"
+                placeholder={locked ? "Waiting for roster sync…" : "Your password"}
+                value={pass}
+                disabled={locked || mfaLoading}
+                style={(locked || mfaLoading) ? { opacity:0.45, cursor:"not-allowed" } : {}}
+                onChange={e => setPass(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && go()}
+              />
+            </div>
+            <button
+              className="btn btn-orange"
+              style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:(locked || mfaLoading) ? 0.45 : 1, cursor:(locked || mfaLoading) ? "not-allowed" : "pointer", fontFamily:"'Barlow', 'Segoe UI', sans-serif", letterSpacing:"normal", textTransform:"none" }}
+              disabled={locked || mfaLoading}
+              onClick={go}
+            >
+              {mfaLoading ? "⏳ Sending code…" : locked ? "⏳ Syncing…" : "Sign In →"}
+            </button>
+
+            <div className="hint-box">
+              <strong>Username:</strong> your last name, full email, or EID.<br />
+              <strong>Password:</strong> use your provided password on first login.<br />
+              Contact ADJ if you need a password reset.
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="login-sub">Two-factor verification</div>
+
+            {mfaInfo && (
+              <div style={{ background:"rgba(39,174,96,0.1)", border:"1.5px solid #27AE60", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"#1e8449", marginBottom:"0.9rem" }}>
+                ✉ {mfaInfo}
+              </div>
+            )}
+            {err && banner("⚠ " + err, "192,57,43")}
+
+            <div className="input-group">
+              <label className="input-label">Verification Code</label>
+              <input
+                className="input"
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="Enter 6-digit code"
+                value={mfaCode}
+                disabled={mfaLoading}
+                style={mfaLoading ? { opacity:0.45, cursor:"not-allowed" } : {}}
+                onChange={e => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                onKeyDown={e => e.key === "Enter" && verifyCode()}
+                autoFocus
+              />
+            </div>
+            <button
+              className="btn btn-orange"
+              style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:mfaLoading ? 0.45 : 1, cursor:mfaLoading ? "not-allowed" : "pointer", fontFamily:"'Barlow', 'Segoe UI', sans-serif", letterSpacing:"normal", textTransform:"none" }}
+              disabled={mfaLoading}
+              onClick={verifyCode}
+            >
+              {mfaLoading ? "⏳ Verifying…" : "Verify & Sign In →"}
+            </button>
+
+            <div style={{ display:"flex", justifyContent:"space-between", marginTop:"0.75rem", fontSize:"0.83rem" }}>
+              <button
+                onClick={() => { setMfaStep(false); setMfaUser(null); setMfaCode(""); setErr(""); setMfaInfo(""); }}
+                style={{ background:"none", border:"none", color:"#666", cursor:"pointer", padding:0, textDecoration:"underline" }}
+              >
+                ← Back
+              </button>
+              <button
+                onClick={resendCode}
+                disabled={mfaLoading}
+                style={{ background:"none", border:"none", color:"#BF5700", cursor:mfaLoading ? "not-allowed" : "pointer", padding:0, textDecoration:"underline", opacity:mfaLoading ? 0.45 : 1 }}
+              >
+                Resend code
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function Dashboard({ onNav }) {
+function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
   const { user } = useAuth();
+  const canManageReminder = isBigFour(user);
+  const [editingReminder, setEditingReminder] = React.useState(false);
+  const [draftText, setDraftText] = React.useState(reminder.text);
+
+  const saveReminder = () => {
+    setReminder({ enabled: draftText.trim().length > 0, text: draftText.trim() });
+    setEditingReminder(false);
+  };
+
   return (
     <div>
       <div className="page-title">BN <span>Dashboard</span></div>
       <div className="page-sub">Welcome, {user.rank} {user.name} — Spring 2026</div>
 
-      <div className="alert">
-        🔔 <strong>Reminder:</strong> ACFT Readiness survey closes Mar 18. PT formation tomorrow 0530 at Gregory Gym.
-      </div>
+      {/* Reminder — visible to all when enabled; Big Four can manage it */}
+      {reminder.enabled && reminder.text && (
+        <div className="alert">
+          🔔 <strong>Reminder:</strong> {reminder.text}
+        </div>
+      )}
+      {canManageReminder && (
+        <div style={{ marginBottom:"1rem" }}>
+          {editingReminder ? (
+            <div className="stage-action-box">
+              <div className="stage-action-label">BN Reminder</div>
+              <textarea
+                className="input"
+                style={{ minHeight:"60px", resize:"vertical", marginBottom:"0.5rem", fontSize:"0.85rem" }}
+                placeholder="Type reminder text… (leave blank to hide)"
+                value={draftText}
+                onChange={e => setDraftText(e.target.value)}
+              />
+              <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                <button className="btn btn-green btn-sm" onClick={saveReminder}>Save</button>
+                {reminder.enabled && (
+                  <button className="btn btn-red btn-sm" onClick={() => { setReminder({ enabled:false, text:"" }); setDraftText(""); setEditingReminder(false); }}>Turn Off</button>
+                )}
+                <button className="btn btn-outline btn-sm" onClick={() => { setDraftText(reminder.text); setEditingReminder(false); }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button className="btn btn-outline btn-sm" onClick={() => { setDraftText(reminder.text); setEditingReminder(true); }}>
+              {reminder.enabled ? "✏ Edit Reminder" : "+ Add Reminder"}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="grid3" style={{ marginBottom:"1rem" }}>
-        <div className="stat"><div className="stat-n">{USERS.length}</div><div className="stat-l">BN Strength</div></div>
-        <div className="stat" style={{ borderLeftColor:"#0D1B2A" }}><div className="stat-n" style={{ color:"#0D1B2A" }}>3</div><div className="stat-l">Open CHITs</div></div>
-        <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}><div className="stat-n" style={{ color:"#2A7D4F" }}>4</div><div className="stat-l">Active Forms</div></div>
+        <div className="stat"><div className="stat-n">{userList.length}</div><div className="stat-l">BN Strength</div></div>
+        <div className="stat" style={{ borderLeftColor:"#0D1B2A" }}><div className="stat-n" style={{ color:"#0D1B2A" }}>{chits.filter(c => c.status !== "Complete").length}</div><div className="stat-l">Open CHITs</div></div>
+        <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}><div className="stat-n" style={{ color:"#2A7D4F" }}>{forms.length}</div><div className="stat-l">Active Forms</div></div>
       </div>
 
       <div className="grid2">
         <div>
           <div className="potw-card">
-            <div className="potw-week">📖 {POTW.week}</div>
-            <div className="potw-title">POTW: {POTW.title}</div>
-            <div className="potw-body">{POTW.body}</div>
-            {POTW.points.map((p,i) => <div key={i} style={{ fontSize:"0.82rem", color:"#aaa", marginBottom:"2px" }}>✓ {p}</div>)}
+            {(() => { const mon = getCurrentWeekMonday(); return (<>
+              <div className="potw-week">📖 Week {getWeekNumber(mon)} — {SEMESTER_LABEL}</div>
+              <div className="potw-title">POTW: {formatWeekRange(mon)}</div>
+            </>); })()}
           </div>
           <div className="card">
             <div className="card-header">
               <span className="card-title">📅 Upcoming Events</span>
               <button className="btn btn-outline btn-sm" onClick={() => onNav("calendar")}>View All</button>
             </div>
-            {EVENTS.slice(0,4).map((e,i) => (
+            {POTW.operations.slice(0,4).map((e,i) => (
               <div className="event-row" key={i}>
-                <div className="event-date"><div className="event-day">{e.date}</div><div className="event-mo">{e.month}</div></div>
+                <div className="event-date"><div className="event-day">{e.date.split(" ")[0]}</div><div className="event-mo">{e.date.split(" ")[1] || ""}</div></div>
                 <div style={{ flex:1 }}>
                   <div className="event-title">{e.title}</div>
-                  <div className="event-sub">{e.time} · {e.location}</div>
+                  <div className="event-sub">{e.time}{e.location ? ` · ${e.location}` : ""}</div>
                 </div>
                 <span className="badge badge-navy">{e.type}</span>
               </div>
@@ -861,7 +1379,7 @@ function Dashboard({ onNav }) {
           </div>
           <div className="card">
             <div className="card-header"><span className="card-title">📝 Open Forms</span><button className="btn btn-outline btn-sm" onClick={() => onNav("forms")}>View</button></div>
-            <div style={{ fontSize:"0.88rem" }}>{FORMS.filter(f => f.status === "Open").length} forms open for your response.</div>
+            <div style={{ fontSize:"0.88rem" }}>{forms.length} form{forms.length !== 1 ? "s" : ""} posted for your response.</div>
           </div>
         </div>
       </div>
@@ -869,31 +1387,35 @@ function Dashboard({ onNav }) {
   );
 }
 
+// CalendarPage: displays the static POTW schedule.
+// Live Google Calendar integration would require a GCAL API key (see GCAL_CALENDAR_ID above).
+// Until that is configured, POTW.operations is the authoritative source.
 function CalendarPage() {
-  const { user } = useAuth();
+  const mon = getCurrentWeekMonday();
+  const weekNum = getWeekNumber(mon);
+  const weekRange = formatWeekRange(mon);
+  const weekLabel = `Week ${weekNum} — ${SEMESTER_LABEL}`;
+
   return (
     <div>
-      <div className="page-title"><span>Calendar</span> & POTW</div>
-      <div className="page-sub">Battalion schedule — connect Google Calendar ID in config to go live</div>
+      <div className="page-title"><span>POTW</span></div>
       <div className="potw-card">
-        <div className="potw-week">📖 {POTW.week}</div>
-        <div className="potw-title">{POTW.title}</div>
-        <div className="potw-body">{POTW.body}</div>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:"0.5rem", marginTop:"0.5rem" }}>
-          {POTW.points.map((p,i) => <span key={i} style={{ background:"rgba(255,255,255,0.1)", borderRadius:"20px", padding:"2px 10px", fontSize:"0.78rem" }}>✓ {p}</span>)}
-        </div>
+        <div className="potw-week">📖 {weekLabel}</div>
+        <div className="potw-title">{weekRange}</div>
       </div>
       <div className="card">
         <div className="card-header">
-          <span className="card-title">📅 March 2026</span>
-          {canEdit(user,"potw") && <span style={{fontFamily:"Oswald",fontSize:"0.72rem",letterSpacing:"1.5px",textTransform:"uppercase",color:"#BF5700"}}>✏ Senior Staff — edit EVENTS array to update</span>}
+          <span className="card-title">📅 {weekRange}</span>
         </div>
-        {EVENTS.map((e,i) => (
+        {POTW.operations.length === 0 && (
+          <div style={{fontSize:"0.88rem",color:"#666",padding:"0.5rem 0"}}>No events scheduled for this week.</div>
+        )}
+        {POTW.operations.map((e,i) => (
           <div className="event-row" key={i}>
-            <div className="event-date"><div className="event-day">{e.date}</div><div className="event-mo">{e.month}</div></div>
+            <div className="event-date"><div className="event-day">{e.date.split(" ")[0]}</div><div className="event-mo">{e.date.split(" ")[1] || ""}</div></div>
             <div style={{ flex:1 }}>
               <div className="event-title">{e.title}</div>
-              <div className="event-sub">🕐 {e.time} · 📍 {e.location}</div>
+              <div className="event-sub">🕐 {e.time}{e.location ? ` · 📍 ${e.location}` : ""}</div>
             </div>
             <span className="badge badge-navy">{e.type}</span>
           </div>
@@ -952,7 +1474,7 @@ function StructurePage({ userList }) {
   return (
     <div>
       <div className="page-title">BN <span>Structure</span></div>
-      <div className="page-sub">UT NROTC Battalion — {grandTotal} Personnel</div>
+      <div className="page-sub">The Quarterdeck — {grandTotal} Personnel</div>
 
       {/* Big Four */}
       <div className="card" style={{ padding:"1rem 1.2rem", marginBottom:"1rem" }}>
@@ -1037,153 +1559,505 @@ function StructurePage({ userList }) {
   );
 }
 
-function TrainingPage() {
+function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
   const { user } = useAuth();
-  const [tab, setTab] = useState("pt");
-  const [open, setOpen] = useState({ 0:true, 1:false, 2:false });
+  const canUploadPT = canEdit(user, "pt");     // OPS, PTO, and other seniors
+  const canEditLL   = user.role === "traino";  // TRAINO only for LL notes
+
+  const [tab, setTab]           = useState("pt");
+  const [toast, setToast]       = useState("");
+  const [editingLL, setEditingLL] = useState(null); // id of session being edited
+  const [llDraft, setLlDraft]   = useState({});
+  const [showAddLL, setShowAddLL] = useState(false);
+  const [newLL, setNewLL]       = useState({ title:"", date:"", notes:"" });
+
+  const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+
+  // ── PT upload / remove ──────────────────────────────────────
+  const handlePTUpload = (key, file) => {
+    if (!file) return;
+    if (file.type !== "application/pdf") { fire("⚠ Please select a PDF file."); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      setPtPlans(prev => ({
+        ...prev,
+        [key]: { fileName: file.name, dataUrl: e.target.result, uploadedBy: user.name, uploadedAt: new Date().toLocaleDateString() },
+      }));
+      fire("✅ PT plan uploaded.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePTPlan = key => {
+    setPtPlans(prev => ({ ...prev, [key]: null }));
+    fire("PT plan removed.");
+  };
+
+  // ── LL session management ───────────────────────────────────
+  const startEditLL = ll => {
+    setEditingLL(ll.id);
+    setLlDraft({ title: ll.title, date: ll.date, notes: ll.notes });
+  };
+
+  const saveEditLL = () => {
+    setLlSessions(prev => prev.map(s => s.id === editingLL ? { ...s, ...llDraft } : s));
+    setEditingLL(null);
+    fire("✅ Session updated.");
+  };
+
+  const addLLSession = () => {
+    if (!newLL.title || !newLL.date) return;
+    setLlSessions(prev => [...prev, { id: Date.now(), ...newLL }]);
+    setNewLL({ title:"", date:"", notes:"" });
+    setShowAddLL(false);
+    fire("✅ Leadership Lab session added.");
+  };
+
+  const deleteLLSession = id => {
+    setLlSessions(prev => prev.filter(s => s.id !== id));
+    fire("Session removed.");
+  };
+
   return (
     <div>
       <div className="page-title">Training <span>Plans</span></div>
-      <div className="page-sub">Weekly PT and Leadership Lab Schedules</div>
-      <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1.25rem", borderBottom:"2px solid #eee", paddingBottom:"-2px" }}>
-        {["pt","leadlab"].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ padding:"0.5rem 1rem", fontFamily:"Oswald", fontSize:"0.8rem", letterSpacing:"1.5px", textTransform:"uppercase", cursor:"pointer", background:"none", border:"none", borderBottom: tab===t ? "2px solid #BF5700":"2px solid transparent", color: tab===t ? "#BF5700":"#888", marginBottom:"-2px" }}>
-            {t === "pt" ? "PT Plan" : "LeadLab"}
-          </button>
+      <div className="page-sub">Weekly PT schedules and Leadership Lab notes</div>
+
+      {toast && <div className="alert alert-green">{toast}</div>}
+
+      {/* Tab bar */}
+      <div style={{ display:"flex", borderBottom:"2px solid #eee", marginBottom:"1.25rem" }}>
+        {[["pt","PT Plan"],["leadlab","LL"]].map(([t, label]) => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            padding:"0.5rem 1.2rem", fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.8rem", letterSpacing:"1.5px",
+            textTransform:"uppercase", cursor:"pointer", background:"none", border:"none",
+            borderBottom: tab===t ? "2px solid #BF5700" : "2px solid transparent",
+            color: tab===t ? "#BF5700" : "#888", marginBottom:"-2px",
+          }}>{label}</button>
         ))}
       </div>
+
+      {/* ── PT PLAN TAB ─────────────────────────────────────── */}
       {tab === "pt" && (
-        <>
-          <div className="alert">💪 ACFT goal: All Mids score 60+ per event by Apr 30.</div>
-      {canEdit(user,"pt") && (
-        <div style={{marginBottom:"0.75rem"}}>
-          <span style={{fontFamily:"Oswald",fontSize:"0.72rem",letterSpacing:"1.5px",textTransform:"uppercase",color:"#BF5700"}}>✏ PTO Edit Mode — you can update this plan</span>
+        <div>
+          {canUploadPT && (
+            <div className="alert">
+              ✏ <strong>OPS / PTO — Upload Mode:</strong> Use the buttons below to post this week's PT plan PDFs.
+            </div>
+          )}
+
+          {PT_SESSIONS.map(s => {
+            const plan = ptPlans[s.key];
+            const inputId = `pt-file-${s.key}`;
+            return (
+              <div key={s.key} style={{ background:"white", borderRadius:"10px", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", border:"1px solid rgba(191,87,0,0.1)", borderTop:`4px solid ${s.color}`, padding:"1.25rem", marginBottom:"1.25rem" }}>
+                {/* Session header */}
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.9rem" }}>
+                  <div>
+                    <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"1.05rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"1.5px" }}>
+                      {s.day} — <span style={{ color: s.color }}>{s.type}</span>
+                    </div>
+                    <div style={{ fontSize:"0.78rem", color:"#888", marginTop:"2px" }}>{s.desc}</div>
+                  </div>
+                  {canUploadPT && (
+                    <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+                      <label htmlFor={inputId} className="btn btn-orange btn-sm" style={{ cursor:"pointer" }}>
+                        ↑ {plan ? "Replace PDF" : "Upload PDF"}
+                      </label>
+                      <input
+                        id={inputId} type="file" accept=".pdf,application/pdf"
+                        style={{ display:"none" }}
+                        onChange={e => { handlePTUpload(s.key, e.target.files[0]); e.target.value = ""; }}
+                      />
+                      {plan && (
+                        <button className="btn btn-outline btn-sm" onClick={() => removePTPlan(s.key)}>✕ Remove</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* PDF viewer or empty state */}
+                {plan ? (
+                  <div>
+                    <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"0.65rem", flexWrap:"wrap" }}>
+                      <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {plan.fileName}</span>
+                      <span style={{ fontSize:"0.72rem", color:"#aaa" }}>Uploaded by {plan.uploadedBy} · {plan.uploadedAt}</span>
+                      <a href={plan.dataUrl} download={plan.fileName} className="btn btn-outline btn-sm">⬇ Download</a>
+                    </div>
+                    <iframe
+                      src={plan.dataUrl}
+                      title={`${s.day} ${s.type} Plan`}
+                      style={{ width:"100%", height:"620px", border:"1px solid #eee", borderRadius:"6px", display:"block" }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ textAlign:"center", padding:"2.5rem 1rem", background:"#faf8f5", borderRadius:"8px", border:"2px dashed #e0d8d0" }}>
+                    <div style={{ fontSize:"2.2rem", marginBottom:"0.4rem" }}>📋</div>
+                    <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.82rem", letterSpacing:"1px", textTransform:"uppercase", color:"#bbb" }}>
+                      No plan uploaded for this week
+                    </div>
+                    {canUploadPT && (
+                      <div style={{ fontSize:"0.78rem", color:"#BF5700", marginTop:"0.4rem" }}>
+                        Use the Upload PDF button above.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
-          {PT.map((d,i) => (
-            <div className="pt-block" key={i}>
-              <div className="pt-header" onClick={() => setOpen(s => ({ ...s, [i]:!s[i] }))}>
-                <span>{d.day} — {d.focus}</span>
-                <span>{open[i] ? "▲" : "▼"}</span>
-              </div>
-              {open[i] && d.exercises.map((ex,j) => (
-                <div className="pt-row" key={j}>
-                  <div className="pt-name">{ex.name}</div>
-                  <div className="pt-sets">{ex.sets}</div>
-                  {ex.notes && <div className="pt-notes">{ex.notes}</div>}
+
+      {/* ── LEADLAB TAB ─────────────────────────────────────── */}
+      {tab === "leadlab" && (
+        <div>
+          {canEditLL && (
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1rem", flexWrap:"wrap", gap:"0.5rem" }}>
+              <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#BF5700" }}>
+                ✏ TRAINO — you can add and edit sessions
+              </span>
+              <button className="btn btn-orange btn-sm" onClick={() => setShowAddLL(true)}>+ Add Session</button>
+            </div>
+          )}
+
+          {llSessions.length === 0 && (
+            <div className="empty">
+              <div style={{ fontSize:"2rem" }}>🗺</div>
+              <div style={{ marginTop:"0.5rem" }}>No Leadership Lab sessions scheduled yet.</div>
+            </div>
+          )}
+
+          {llSessions.map(ll => (
+            <div className="card" key={ll.id} style={{ marginBottom:"1rem" }}>
+              {editingLL === ll.id ? (
+                /* ── Edit mode (TRAINO only) ── */
+                <div>
+                  <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#BF5700", marginBottom:"0.75rem" }}>
+                    ✏ Editing Session
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Title</label>
+                    <input className="input" value={llDraft.title} onChange={e => setLlDraft(d => ({ ...d, title:e.target.value }))} />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Date</label>
+                    <input className="input" type="date" value={llDraft.date} onChange={e => setLlDraft(d => ({ ...d, date:e.target.value }))} />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Notes</label>
+                    <textarea
+                      className="input" style={{ minHeight:"100px", resize:"vertical" }}
+                      value={llDraft.notes}
+                      onChange={e => setLlDraft(d => ({ ...d, notes:e.target.value }))}
+                    />
+                  </div>
+                  <div style={{ display:"flex", gap:"0.5rem", justifyContent:"flex-end" }}>
+                    <button className="btn btn-outline btn-sm" onClick={() => setEditingLL(null)}>Cancel</button>
+                    <button className="btn btn-orange btn-sm" onClick={saveEditLL}>Save</button>
+                  </div>
                 </div>
-              ))}
+              ) : (
+                /* ── View mode ── */
+                <div>
+                  <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom: ll.notes ? "0.75rem" : 0 }}>
+                    <div>
+                      <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"1rem", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase" }}>{ll.title}</div>
+                      <span className="badge badge-orange" style={{ marginTop:"0.3rem" }}>{ll.date}</span>
+                    </div>
+                    {canEditLL && (
+                      <div style={{ display:"flex", gap:"0.4rem" }}>
+                        <button className="btn btn-outline btn-sm" onClick={() => startEditLL(ll)}>✏ Edit</button>
+                        <button className="btn btn-sm" style={{ background:"transparent", border:"1.5px solid #C0392B", color:"#C0392B" }} onClick={() => deleteLLSession(ll.id)}>🗑</button>
+                      </div>
+                    )}
+                  </div>
+                  {ll.notes ? (
+                    <div style={{ background:"#f5f2ee", borderRadius:"6px", padding:"0.65rem 0.85rem", fontSize:"0.85rem", color:"#555", lineHeight:1.6 }}>
+                      {ll.notes}
+                    </div>
+                  ) : (
+                    canEditLL && (
+                      <div style={{ fontSize:"0.78rem", color:"#aaa" }}>No notes yet — click Edit to add.</div>
+                    )
+                  )}
+                </div>
+              )}
             </div>
           ))}
-        </>
-      )}
-      {tab === "leadlab" && canEdit(user,"leadlab") && (
-        <div style={{marginBottom:"0.75rem"}}>
-          <span style={{fontFamily:"Oswald",fontSize:"0.72rem",letterSpacing:"1.5px",textTransform:"uppercase",color:"#BF5700"}}>✏ TRAINO Edit Mode — you can update this schedule</span>
+
+          {/* Add session modal */}
+          {showAddLL && (
+            <Modal title="Add Leadership Lab Session" onClose={() => setShowAddLL(false)}>
+              <div className="input-group">
+                <label className="input-label">Title</label>
+                <input className="input" placeholder="e.g. Land Navigation" value={newLL.title} onChange={e => setNewLL(s => ({ ...s, title:e.target.value }))} />
+              </div>
+              <div className="input-group">
+                <label className="input-label">Date</label>
+                <input className="input" type="date" value={newLL.date} onChange={e => setNewLL(s => ({ ...s, date:e.target.value }))} />
+              </div>
+              <div className="input-group">
+                <label className="input-label">Notes</label>
+                <textarea className="input" style={{ minHeight:"90px", resize:"vertical" }}
+                  placeholder="Equipment, uniform, location, objectives…"
+                  value={newLL.notes} onChange={e => setNewLL(s => ({ ...s, notes:e.target.value }))}
+                />
+              </div>
+              <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
+                <button className="btn btn-outline" onClick={() => setShowAddLL(false)}>Cancel</button>
+                <button className="btn btn-orange" onClick={addLLSession}>Add Session</button>
+              </div>
+            </Modal>
+          )}
         </div>
       )}
-      {tab === "leadlab" && LEADLAB.map((ll,i) => (
-        <div className="card" key={i}>
-          <div className="card-header"><span className="card-title">{ll.title}</span><span className="badge badge-orange">{ll.date}</span></div>
-          <div style={{ marginBottom:"0.75rem" }}>
-            <div style={{ fontFamily:"Oswald", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.35rem" }}>Objectives</div>
-            {ll.objectives.map((o,j) => <div key={j} style={{ display:"flex", gap:"0.5rem", fontSize:"0.86rem", marginBottom:"0.2rem" }}><span style={{ color:"#BF5700", flexShrink:0 }}>▸</span>{o}</div>)}
-          </div>
-          <div style={{ background:"#f5f2ee", borderRadius:"6px", padding:"0.6rem 0.8rem", fontSize:"0.8rem", color:"#666" }}>📋 {ll.notes}</div>
-        </div>
-      ))}
     </div>
   );
 }
 
-function ChitsPage({ chits, setChits }) {
+function ChitsPage({ chits, setChits, userList }) {
   const { user } = useAuth();
-  const coc = isCoC(user);
+  const canSubmit = canSubmitChit(user);
+  const needsRouteSelect = requiresChitRouteSelection(user);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState("");
-  const [form, setForm] = useState({ date:"", reason:"", notes:"" });
+  const [form, setForm] = useState({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
+  const [chitSubmitAttempted, setChitSubmitAttempted] = useState(false);
+  const [activeComment, setActiveComment] = useState(null);
+  const [commentText, setCommentText] = useState("");
 
-  const canSeeAll = isCoC(user);
-  const visible = canSeeAll ? chits : chits.filter(c => c.userId === user.id);
+  // Only show CHITs the logged-in user is permitted to see (routing line + subject)
+  const visible = chits.filter(c => canViewChit(user, c));
 
-  const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+  const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
+
+  const loadChitPDF = (field, file) => {
+    if (!file || file.type !== "application/pdf") { fire("⚠ Please select a PDF file."); return; }
+    const reader = new FileReader();
+    reader.onload = e => setForm(s => ({ ...s, [field]: { fileName: file.name, dataUrl: e.target.result } }));
+    reader.readAsDataURL(file);
+  };
+
+  const getPlatoons = (company) => {
+    const pcs = userList.filter(u => normalizeCompany(u.company) === company && u.role === "plt_cdr");
+    return [...new Set(pcs.map(u => normalizePlatoon(u.platoon)).filter(Boolean))].sort();
+  };
+
+  const routeHint = () => {
+    if (user.role === "adj")    return "BNXO → BNCO";
+    if (user.role === "co_cdr") return "ADJ → BNXO → BNCO";
+    if (user.role === "plt_cdr") return "CC → ADJ → BNXO → BNCO";
+    return "PC → CC → ADJ → BNXO → BNCO";
+  };
 
   const submit = () => {
-    if (!form.date || !form.reason) return;
+    setChitSubmitAttempted(true);
+    if (!form.date || !form.reason) {
+      fire("⚠ Date of Absence and Reason are required."); return;
+    }
+    if (!form.routingSheet || !form.chitDoc) {
+      fire("⚠ Both PDFs are required: Routing Sheet and CHIT Document."); return;
+    }
+    if (needsRouteSelect && (!form.routeCompany || !form.routePlatoon)) {
+      fire("⚠ Please select your company and platoon."); return;
+    }
+    const routeContext = resolveChitRoutingContext(user, form);
+    const approvalChain = buildChitApprovalChain(userList, user, routeContext);
+    if (approvalChain.length === 0) {
+      fire("⚠ Could not build approval chain. Ensure your company/platoon has assigned personnel."); return;
+    }
+    const now = new Date().toISOString().split("T")[0];
+    const stages = buildChitStages(user.name, now, approvalChain);
     const c = {
       id: "CHT-" + String(chits.length + 1).padStart(3, "0"),
       userId: user.id,
       name: user.name,
-      company: normalizeCompany(user.company),
-      platoon: user.platoon,
+      company: routeContext.company,
+      platoon: routeContext.platoon,
       date: form.date,
       reason: form.reason,
       notes: form.notes,
       status: "Pending",
-      route: [user.platoon + " PC", getCompanyShortName(user.company) + " Co CDR", "ADJ (Courtney)", "BNXO (Townsend)", "BNCO (Hinz)"],
+      currentStage: 1,
+      stages,
+      docs: { routingSheet: form.routingSheet, chitDoc: form.chitDoc },
     };
     setChits(prev => [...prev, c]);
     setShowModal(false);
-    setForm({ date:"", reason:"", notes:"" });
-    fire("✅ CHIT submitted! Your chain of command has been notified.");
+    setForm({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
+    setChitSubmitAttempted(false);
+    fire("✅ CHIT submitted and routed to your chain of command.");
   };
 
-  const updateStatus = (id, status) => {
-    setChits(prev => prev.map(c => c.id === id ? { ...c, status } : c));
-    fire("CHIT " + id + " marked " + status + ".");
+  const advanceStage = (id, action) => {
+    const comment = commentText.trim();
+    setChits(prev => prev.map(c => {
+      if (c.id !== id) return c;
+      const updated = [...c.stages];
+      updated[c.currentStage] = {
+        ...updated[c.currentStage],
+        completedBy: user.name,
+        completedAt: new Date().toISOString().split("T")[0],
+        comment,
+      };
+      const next = action === "returned"
+        ? c.currentStage   // stay at denial stage so audit trail is visible
+        : Math.min(c.currentStage + 1, c.stages.length - 1);
+      const status = action === "returned" ? "Returned"
+        : next === c.stages.length - 1 ? "Approved"
+        : "Pending";
+      return { ...c, currentStage: next, stages: updated, status };
+    }));
+    setActiveComment(null);
+    setCommentText("");
+    fire("CHIT updated.");
   };
 
   return (
     <div>
-      <div className="page-title">CHIT <span>Routing</span></div>
+      <div className="page-title"><span>CHITs</span></div>
       <div className="page-sub">Submit and track absence requests</div>
 
       {toast && <div className="alert alert-green">{toast}</div>}
 
       <div className="privacy-note">
-        🔒 {coc
-          ? <strong>CoC View — you can see all battalion CHITs ({user.role.replace("_"," ").toUpperCase()})</strong>
-          : <span><strong>Private.</strong> Only you and your chain of command can see your CHITs.</span>}
+        🔒 <strong>Private.</strong> Only you and your chain of command can see your CHITs.
       </div>
 
-      <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
-        <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Submit New CHIT</button>
-      </div>
-
-      {visible.length === 0 && <div className="empty"><div style={{ fontSize:"2rem" }}>📋</div><div style={{ marginTop:"0.5rem" }}>No CHITs on file.</div></div>}
-
-      {visible.map((c, i) => (
-        <div className="chit-card" key={i}>
-          <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.3rem" }}>
-            <div>
-              <strong>{c.id}</strong>
-              {coc && <span style={{ color:"#888", fontSize:"0.82rem", marginLeft:"0.75rem" }}>{c.name} · {formatCompanyCoLabel(c.company)}, {c.platoon} Plt</span>}
-            </div>
-            <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
-          </div>
-          <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · Absent: {c.date}</div>
-          {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", fontStyle:"italic", marginTop:"0.2rem" }}>{c.notes}</div>}
-          <div className="chit-route">
-            <span style={{ color:"#888", fontFamily:"Oswald", fontSize:"0.68rem", letterSpacing:"1.5px", textTransform:"uppercase" }}>Route:</span>
-            {c.route.map((n, j) => (
-              <span key={j} style={{ display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
-                <span className="chit-node">{n}</span>
-                {j < c.route.length - 1 && <span style={{ color:"#BF5700" }}>→</span>}
-              </span>
-            ))}
-          </div>
-          {coc && c.status === "Pending" && (
-            <div style={{ display:"flex", gap:"0.5rem", marginTop:"0.75rem" }}>
-              <button className="btn btn-green btn-sm" onClick={() => updateStatus(c.id, "Approved")}>✓ Approve</button>
-              <button className="btn btn-red btn-sm" onClick={() => updateStatus(c.id, "Denied")}>✕ Deny</button>
-            </div>
-          )}
+      {canSubmit && (
+        <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
+          <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Submit New CHIT</button>
         </div>
-      ))}
+      )}
+
+      {visible.length === 0 && (
+        <div className="empty">
+          <div style={{ fontSize:"2rem" }}>📋</div>
+          <div style={{ marginTop:"0.5rem" }}>No CHITs on file.</div>
+        </div>
+      )}
+
+      {visible.map((c, i) => {
+        const canAct = canActOnChit(user, c);
+        const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
+        const currentStageName = c.stages?.[c.currentStage]?.name || "";
+
+        return (
+          <div className="chit-card" key={i}>
+            <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.3rem" }}>
+              <div>
+                <strong>{c.id}</strong>
+                <span style={{ color:"#888", fontSize:"0.82rem", marginLeft:"0.75rem" }}>
+                  {c.name} · {formatCompanyCoLabel(c.company)}, {formatPlatoonLabel(c.platoon)}
+                </span>
+              </div>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+                <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" || c.status==="Returned" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
+                {canAct && !isDone && <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>}
+              </div>
+            </div>
+            <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · Absent: {c.date}</div>
+            {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", marginTop:"0.2rem" }}>{c.notes}</div>}
+
+            {/* Attached documents */}
+            {c.docs && (
+              <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginTop:"0.55rem" }}>
+                <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
+                {c.docs.routingSheet && (
+                  <a href={c.docs.routingSheet.dataUrl} download={c.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
+                )}
+                {c.docs.chitDoc && (
+                  <a href={c.docs.chitDoc.dataUrl} download={c.docs.chitDoc.fileName} className="btn btn-outline btn-sm">📄 CHIT Document</a>
+                )}
+              </div>
+            )}
+
+            {/* Stage tracker */}
+            {c.stages && (
+              <div className="stage-track" style={{ marginTop:"0.75rem" }}>
+                {c.stages.map((s, j) => {
+                  const done     = j < c.currentStage;
+                  const returned = j === c.currentStage && c.status === "Returned";
+                  const active   = j === c.currentStage && !isDone;
+                  return (
+                    <div key={j} className={`stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>
+                      <div className={`stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`}>
+                        {done ? "✓" : returned ? "↩" : s.icon}
+                      </div>
+                      <div className={`stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>{s.name}</div>
+                      {active && canAct && <div className="stage-approver active">● You</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Completed stage comments */}
+            {c.stages?.some(s => s.completedBy && s.comment) && (
+              <div style={{ marginTop:"0.5rem" }}>
+                {c.stages.map((s, j) => s.completedBy && s.comment ? (
+                  <div className="stage-comment" key={j}>
+                    <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
+                    {s.comment}
+                  </div>
+                ) : null)}
+              </div>
+            )}
+
+            {/* Action box for current approver */}
+            {canAct && !isDone && (
+              <div className="stage-action-box" style={{ marginTop:"0.75rem" }}>
+                <div className="stage-action-label">⭐ Your Review — {currentStageName}</div>
+                {activeComment === c.id ? (
+                  <>
+                    <textarea
+                      className="input"
+                      style={{ minHeight:"70px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
+                      placeholder="Add comments (optional)…"
+                      value={commentText}
+                      onChange={e => setCommentText(e.target.value)}
+                    />
+                    <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                      <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
+                      <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return to Originator</button>
+                      <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>Cancel</button>
+                    </div>
+                  </>
+                ) : (
+                  <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(c.id); setCommentText(""); }}>
+                    ✏ Review CHIT
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       {showModal && (
         <Modal title="Submit CHIT" onClose={() => setShowModal(false)}>
           <div className="privacy-note">🔒 Private — only you and your CoC will see this.</div>
+          {needsRouteSelect && (
+            <>
+              <div className="input-group">
+                <label className="input-label">Your Company</label>
+                <select className="input" value={form.routeCompany} onChange={e => setForm(s => ({ ...s, routeCompany:e.target.value, routePlatoon:"" }))}>
+                  <option value="">Select company…</option>
+                  {["Alpha","Bravo","Charlie"].map(co => <option key={co} value={co}>{co}</option>)}
+                </select>
+              </div>
+              {form.routeCompany && (
+                <div className="input-group">
+                  <label className="input-label">Your Platoon</label>
+                  <select className="input" value={form.routePlatoon} onChange={e => setForm(s => ({ ...s, routePlatoon:e.target.value }))}>
+                    <option value="">Select platoon…</option>
+                    {getPlatoons(form.routeCompany).map(p => <option key={p} value={p}>{formatPlatoonLabel(p)}</option>)}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
           <div className="input-group">
             <label className="input-label">Date of Absence</label>
             <input className="input" type="date" value={form.date} onChange={e => setForm(s => ({ ...s, date:e.target.value }))} />
@@ -1204,12 +2078,62 @@ function ChitsPage({ chits, setChits }) {
             <label className="input-label">Notes (optional)</label>
             <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} />
           </div>
+
+          {/* ── Required PDFs ── */}
+          <div style={{ borderTop:"1px solid #eee", paddingTop:"0.85rem", marginTop:"0.25rem" }}>
+            <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.65rem" }}>
+              Required Documents
+            </div>
+
+            {/* Routing Sheet */}
+            <div className="input-group">
+              <label className="input-label">
+                Routing Sheet <span style={{ color:"#C0392B" }}>*</span>
+              </label>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                <label htmlFor="chit-routing-sheet" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                  {form.routingSheet ? "↑ Replace PDF" : "↑ Upload PDF"}
+                </label>
+                <input
+                  id="chit-routing-sheet" type="file" accept=".pdf,application/pdf"
+                  style={{ display:"none" }}
+                  onChange={e => { loadChitPDF("routingSheet", e.target.files[0]); e.target.value = ""; }}
+                />
+                {form.routingSheet
+                  ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {form.routingSheet.fileName}</span>
+                  : <span style={{ fontSize:"0.75rem", color:"#C0392B" }}>Required</span>
+                }
+              </div>
+            </div>
+
+            {/* CHIT Document */}
+            <div className="input-group">
+              <label className="input-label">
+                CHIT Document <span style={{ color:"#C0392B" }}>*</span>
+              </label>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                <label htmlFor="chit-doc" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                  {form.chitDoc ? "↑ Replace PDF" : "↑ Upload PDF"}
+                </label>
+                <input
+                  id="chit-doc" type="file" accept=".pdf,application/pdf"
+                  style={{ display:"none" }}
+                  onChange={e => { loadChitPDF("chitDoc", e.target.files[0]); e.target.value = ""; }}
+                />
+                {form.chitDoc
+                  ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {form.chitDoc.fileName}</span>
+                  : <span style={{ fontSize:"0.75rem", color:"#C0392B" }}>Required</span>
+                }
+              </div>
+            </div>
+          </div>
+
           <div style={{ background:"#f5f2ee", borderRadius:"8px", padding:"0.65rem", fontSize:"0.8rem", color:"#666", marginBottom:"1rem" }}>
-            Submitting notifies: <strong>PC → Co CDR → ADJ → BNXO → BNCO</strong>
+            Your CHIT routes to: <strong>{routeHint()}</strong>
           </div>
           <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
             <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
-            <button className="btn btn-orange" onClick={submit}>Submit & Notify CoC</button>
+            <button className="btn btn-orange" onClick={submit}>Submit CHIT</button>
           </div>
         </Modal>
       )}
@@ -1217,17 +2141,19 @@ function ChitsPage({ chits, setChits }) {
   );
 }
 
-function RosterPage() {
+function RosterPage({ userList }) {
   const [q, setQ] = useState("");
   const [co, setCo] = useState("");
-  const fil = ROSTER.filter(p =>
-    (!q || p.name.toLowerCase().includes(q.toLowerCase()) || p.rank.toLowerCase().includes(q.toLowerCase())) &&
-    (!co || normalizeCompany(p.company) === co)
-  );
+  const fil = [...userList]
+    .sort(compareRoster)
+    .filter(p =>
+      (!q || p.name.toLowerCase().includes(q.toLowerCase()) || p.rank.toLowerCase().includes(q.toLowerCase())) &&
+      (!co || normalizeCompany(p.company) === co)
+    );
   return (
     <div>
       <div className="page-title">Recall <span>Roster</span></div>
-      <div className="page-sub">BN contact directory — replace ROSTER array with your real data, or connect Google Sheets</div>
+      <div className="page-sub">BN contact directory — sourced live from Google Sheets</div>
       <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap" }}>
         <div style={{ position:"relative", flex:1, minWidth:"180px" }}>
           <span style={{ position:"absolute", left:"0.7rem", top:"50%", transform:"translateY(-50%)", color:"#aaa" }}>🔍</span>
@@ -1235,7 +2161,7 @@ function RosterPage() {
         </div>
         <select className="input" style={{ maxWidth:"170px" }} value={co} onChange={e => setCo(e.target.value)}>
           <option value="">All Companies</option>
-          <option value="BN">BN</option><option value="Alpha">Alpha</option><option value="Bravo">Bravo</option><option value="Charlie">Charlie</option>
+          <option value="BN">Big Four</option><option value="Alpha">Alpha</option><option value="Bravo">Bravo</option><option value="Charlie">Charlie</option>
         </select>
       </div>
       <div className="card">
@@ -1243,11 +2169,11 @@ function RosterPage() {
         {fil.length === 0 && <div className="empty">No results found.</div>}
         {fil.map((p, i) => (
           <div className="roster-row" key={i}>
-            <div className="avatar">{p.initials}</div>
+            <div className="avatar" style={{ background: COMPANY_COLORS[normalizeCompany(p.company)] || "#BF5700" }}>{p.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2)}</div>
             <div style={{ flex:1 }}>
               <div style={{ fontWeight:600, fontSize:"0.9rem" }}>{p.name}</div>
               <div style={{ fontSize:"0.78rem", color:"#BF5700", fontWeight:600 }}>{p.rank}</div>
-              <div style={{ fontSize:"0.78rem", color:"#888" }}>{formatCompanyCoLabel(p.company)} · {p.platoon} Plt</div>
+              <div style={{ fontSize:"0.78rem", color:"#888" }}>{getRosterDescriptor(p)}</div>
             </div>
             <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginLeft:"auto" }}>
               {p.phone && <a href={"tel:" + p.phone}><button className="btn btn-outline btn-sm">📞 {p.phone}</button></a>}
@@ -1260,54 +2186,138 @@ function RosterPage() {
   );
 }
 
-function FormsPage() {
+function FormsPage({ forms, setForms }) {
   const { user } = useAuth();
-  const coc = canEdit(user,"forms");
+  // Big Four (isSenior) + billets excluding PC (plt_cdr) and CC (co_cdr)
+  const canManage = isSenior(user) || ["adj", "pto", "traino", "academics"].includes(user.role);
+
   const [showModal, setShowModal] = useState(false);
-  const [toast, setToast] = useState("");
+  const [toast, setToast]         = useState("");
+  const [draft, setDraft]         = useState({ title:"", url:"", category:"Admin", deadline:"" });
+
+  const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+
+  const addForm = () => {
+    if (!draft.title.trim() || !draft.url.trim()) { fire("⚠ Title and URL are required."); return; }
+    setForms(prev => [...prev, {
+      id:       Date.now(),
+      title:    draft.title.trim(),
+      url:      draft.url.trim(),
+      category: draft.category,
+      deadline: draft.deadline,
+      addedBy:  user.name,
+      addedAt:  new Date().toLocaleDateString(),
+      clicks:   {},   // { [userId]: true } once they click Fill Out
+    }]);
+    setShowModal(false);
+    setDraft({ title:"", url:"", category:"Admin", deadline:"" });
+    fire("✅ Form posted to the battalion.");
+  };
+
+  const deleteForm = id => {
+    setForms(prev => prev.filter(f => f.id !== id));
+    fire("Form removed.");
+  };
+
+  const handleFillOut = id => {
+    const f = forms.find(f => f.id === id);
+    if (!f) return;
+    // Mark this user as having opened the link
+    setForms(prev => prev.map(f => f.id === id
+      ? { ...f, clicks: { ...f.clicks, [user.id]: true } }
+      : f
+    ));
+    window.open(f.url, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div>
-      <div className="page-title">Forms & <span>Surveys</span></div>
-      <div className="page-sub">Battalion Google Forms hub</div>
+      <div className="page-title">Forms & <span>Links</span></div>
+      <div className="page-sub">Click a link to open the form — your status updates automatically</div>
+
       {toast && <div className="alert alert-green">{toast}</div>}
-      <div className="grid3" style={{ marginBottom:"1rem" }}>
-        <div className="stat"><div className="stat-n">{FORMS.filter(f => f.status==="Open").length}</div><div className="stat-l">Open Forms</div></div>
-        <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}><div className="stat-n" style={{ color:"#2A7D4F" }}>{FORMS.reduce((a,f) => a+f.responses,0)}</div><div className="stat-l">Total Responses</div></div>
-        <div className="stat" style={{ borderLeftColor:"#0D1B2A" }}><div className="stat-n" style={{ color:"#0D1B2A" }}>82</div><div className="stat-l">BN Strength</div></div>
-      </div>
-      {coc && <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}><button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Share New Form</button></div>}
-      {FORMS.map((f, i) => (
-        <div className="form-row" key={i}>
-          <div style={{ flex:1 }}>
-            <div style={{ fontWeight:600, marginBottom:"0.2rem" }}>{f.title}</div>
-            <div style={{ fontSize:"0.8rem", color:"#888" }}>Deadline: {f.deadline} · <span className="tag">{f.type}</span></div>
-          </div>
-          <div style={{ textAlign:"center", minWidth:"58px" }}>
-            <div style={{ fontFamily:"Oswald", fontSize:"1.4rem", fontWeight:700, color:"#BF5700", lineHeight:1 }}>{f.responses}</div>
-            <div style={{ fontSize:"0.68rem", color:"#888", textTransform:"uppercase" }}>/ {f.total}</div>
-            <div className="progress-bar"><div className="progress-fill" style={{ width: Math.round(f.responses/f.total*100) + "%" }} /></div>
-          </div>
-          <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
-            <span className={`badge ${f.status==="Open" ? "badge-green":"badge-gray"}`}>{f.status}</span>
-            {f.status === "Open" && <button className="btn btn-orange btn-sm">Fill Out ↗</button>}
-            {coc && <button className="btn btn-outline btn-sm">Results</button>}
-          </div>
+
+      {canManage && (
+        <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
+          <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Add Form</button>
         </div>
-      ))}
-      {showModal && (
-        <Modal title="Share New Form" onClose={() => setShowModal(false)}>
-          <div className="input-group"><label className="input-label">Form Title</label><input className="input" placeholder="e.g. ACFT Readiness Survey" /></div>
-          <div className="input-group"><label className="input-label">Google Form URL</label><input className="input" placeholder="https://forms.google.com/…" /></div>
-          <div className="input-group"><label className="input-label">Category</label>
-            <select className="input"><option>Admin</option><option>PT</option><option>Training</option><option>Event</option></select>
+      )}
+
+      {forms.length === 0 && (
+        <div className="empty">
+          <div style={{ fontSize:"2rem" }}>📝</div>
+          <div style={{ marginTop:"0.5rem" }}>No forms posted yet.</div>
+          {canManage && (
+            <div style={{ fontSize:"0.8rem", color:"#BF5700", marginTop:"0.3rem" }}>
+              Use the Add Form button to share a link with the battalion.
+            </div>
+          )}
+        </div>
+      )}
+
+      {forms.map(f => {
+        const opened = !!f.clicks[user.id];
+        return (
+          <div className="form-row" key={f.id} style={{ alignItems:"center" }}>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:600, marginBottom:"0.2rem" }}>{f.title}</div>
+              <div style={{ fontSize:"0.78rem", color:"#888" }}>
+                <span className="tag">{f.category}</span>
+                {f.deadline && <span> · Due: {f.deadline}</span>}
+                <span> · Added by {f.addedBy} · {f.addedAt}</span>
+              </div>
+            </div>
+
+            <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+              {opened
+                ? <span className="badge badge-green">✓ Opened</span>
+                : <span className="badge" style={{ background:"#f5f2ee", color:"#bbb" }}>Not opened</span>
+              }
+              <button className="btn btn-orange btn-sm" onClick={() => handleFillOut(f.id)}>
+                Fill Out ↗
+              </button>
+              {canManage && (
+                <button
+                  className="btn btn-sm"
+                  style={{ background:"transparent", border:"1.5px solid #C0392B", color:"#C0392B" }}
+                  onClick={() => deleteForm(f.id)}
+                >🗑</button>
+              )}
+            </div>
           </div>
-          <div className="input-group"><label className="input-label">Deadline</label><input className="input" type="date" /></div>
-          <div className="input-group"><label className="input-label">Distribute To</label>
-            <select className="input"><option>Entire Battalion</option><option>Alpha Company</option><option>Bravo Company</option><option>Charlie Company</option></select>
+        );
+      })}
+
+      {showModal && (
+        <Modal title="Add Form" onClose={() => setShowModal(false)}>
+          <div className="input-group">
+            <label className="input-label">Title <span style={{ color:"#C0392B" }}>*</span></label>
+            <input className="input" placeholder="e.g. ACFT Readiness Survey"
+              value={draft.title} onChange={e => setDraft(s => ({ ...s, title:e.target.value }))} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">URL <span style={{ color:"#C0392B" }}>*</span></label>
+            <input className="input" type="url" placeholder="https://forms.google.com/…"
+              value={draft.url} onChange={e => setDraft(s => ({ ...s, url:e.target.value }))} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Category</label>
+            <select className="input" value={draft.category} onChange={e => setDraft(s => ({ ...s, category:e.target.value }))}>
+              <option>Admin</option>
+              <option>PT</option>
+              <option>Training</option>
+              <option>Event</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Deadline (optional)</label>
+            <input className="input" type="date"
+              value={draft.deadline} onChange={e => setDraft(s => ({ ...s, deadline:e.target.value }))} />
           </div>
           <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
             <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
-            <button className="btn btn-orange" onClick={() => { setShowModal(false); setToast("Form shared with the battalion!"); }}>Share Form</button>
+            <button className="btn btn-orange" onClick={addForm}>Add Form</button>
           </div>
         </Modal>
       )}
@@ -1380,7 +2390,7 @@ function AcademicPage() {
           <div className="q-text">{q.text}</div>
           {q.answers.length > 0 && (
             <div>
-              <div style={{ fontFamily:"Oswald", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>
+              <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>
                 Answers ({q.answers.length})
               </div>
               {q.answers.map((a, j) => (
@@ -1434,26 +2444,77 @@ function AcademicPage() {
 }
 
 // ─── FITREP PAGE ─────────────────────────────────────────────
-function FitrepsPage({ fitrebs, setFitrebs }) {
+function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   const { user } = useAuth();
-  const [activeComment, setActiveComment] = useState(null); // id of fitrep being commented on
+  const canSubmit = canSubmitChit(user); // same Big Four restriction
+  const needsRouteSelect = requiresChitRouteSelection(user);
+  const [showModal, setShowModal]         = useState(false);
+  const [submitForm, setSubmitForm]       = useState({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"", fitrepDoc:null, routingSheet:null });
+  const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText]     = useState("");
   const [toast, setToast]                 = useState("");
   const [filter, setFilter]               = useState("");
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
-  // Scope: seniors/adj see all; co_cdr sees their company; plt_cdr sees their platoon; mids see only their own
-  const visible = (() => {
-    if (isSenior(user) || user.role === "adj") return fitrebs;
-    if (user.role === "co_cdr")  return fitrebs.filter(f => normalizeCompany(f.company) === normalizeCompany(user.company));
-    if (user.role === "plt_cdr") return fitrebs.filter(f => normalizeCompany(f.company) === normalizeCompany(user.company) && f.platoon === user.platoon);
-    return fitrebs.filter(f => f.subjectId === user.id);
-  })();
+  const loadFitrepPDF = (field, file) => {
+    if (!file || file.type !== "application/pdf") { fire("⚠ Please select a PDF file."); return; }
+    const reader = new FileReader();
+    reader.onload = e => setSubmitForm(s => ({ ...s, [field]: { fileName: file.name, dataUrl: e.target.result } }));
+    reader.readAsDataURL(file);
+  };
 
+  // Only show FITREPs the user is permitted to see (routing line + subject)
+  const visible  = fitrebs.filter(f => canViewFitrep(user, f));
   const filtered = filter ? visible.filter(f => normalizeCompany(f.company) === filter) : visible;
 
-  const advanceStage = (id) => {
+  const getPlatoons = (company) => {
+    const pcs = userList.filter(u => normalizeCompany(u.company) === company && u.role === "plt_cdr");
+    return [...new Set(pcs.map(u => normalizePlatoon(u.platoon)).filter(Boolean))].sort();
+  };
+
+  const routeHint = () => {
+    if (user.role === "adj")     return "BNXO → BNCO";
+    if (user.role === "co_cdr")  return "ADJ → BNXO → BNCO";
+    if (user.role === "plt_cdr") return "CC → ADJ → BNXO → BNCO";
+    return "PC → CC → ADJ → BNXO → BNCO";
+  };
+
+  const handleSubmit = () => {
+    if (!submitForm.period) return;
+    if (!submitForm.fitrepDoc || !submitForm.routingSheet) {
+      fire("⚠ Both PDFs are required: FITREP Document and Routing Sheet."); return;
+    }
+    if (needsRouteSelect && (!submitForm.routeCompany || !submitForm.routePlatoon)) {
+      fire("⚠ Please select your company and platoon."); return;
+    }
+    const routeContext = resolveChitRoutingContext(user, submitForm);
+    const approvalChain = buildChitApprovalChain(userList, user, routeContext);
+    if (approvalChain.length === 0) {
+      fire("⚠ Could not build approval chain. Ensure your company/platoon has assigned personnel."); return;
+    }
+    const now = new Date().toISOString().split("T")[0];
+    const stages = buildChitStages(user.name, now, approvalChain);
+    const f = {
+      id: "FIT-" + String(fitrebs.length + 1).padStart(3, "0"),
+      subjectId: user.id,
+      subjectName: user.name,
+      subjectRank: user.rank,
+      company: routeContext.company,
+      platoon: routeContext.platoon,
+      period: submitForm.period,
+      status: "Pending",
+      currentStage: 1,
+      stages,
+      docs: { fitrepDoc: submitForm.fitrepDoc, routingSheet: submitForm.routingSheet },
+    };
+    setFitrebs(prev => [...prev, f]);
+    setShowModal(false);
+    setSubmitForm({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"", fitrepDoc:null, routingSheet:null });
+    fire("✅ FITREP submitted and routed to your chain of command.");
+  };
+
+  const advanceStage = (id, action = "approved") => {
     const comment = commentText.trim();
     setFitrebs(prev => prev.map(f => {
       if (f.id !== id) return f;
@@ -1464,68 +2525,75 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
         completedAt: new Date().toISOString().split("T")[0],
         comment,
       };
-      const next = Math.min(f.currentStage + 1, FITREP_STAGES.length - 1);
-      return { ...f, currentStage: next, stages: updated };
+      const next = action === "returned"
+        ? f.currentStage   // stay at denial stage so audit trail is visible
+        : Math.min(f.currentStage + 1, f.stages.length - 1);
+      const status = action === "returned" ? "Returned"
+        : next === f.stages.length - 1 ? "Approved"
+        : "Pending";
+      return { ...f, currentStage: next, stages: updated, status };
     }));
     setActiveComment(null);
     setCommentText("");
-    fire("✅ FITREP advanced. Stage comments saved.");
+    fire(action === "returned" ? "FITREP returned to originator." : "✅ FITREP advanced. Stage comments saved.");
   };
 
-  const stageLabel = (idx) => {
-    const s = FITREP_STAGES[idx];
-    if (!s) return "";
-    if (idx === FITREP_STAGES.length - 1) return "Complete";
-    return s.name;
-  };
-
-  const companies = [...new Set(fitrebs.map(f => normalizeCompany(f.company)))];
+  const companies = [...new Set(visible.map(f => normalizeCompany(f.company)))];
 
   return (
     <div>
       <div className="page-title">FITREP <span>Tracker</span></div>
-      <div className="page-sub">Fitness Report pipeline — {fitrebs.length} report{fitrebs.length !== 1 ? "s" : ""} in system</div>
+      <div className="page-sub">Fitness Report pipeline — {visible.length} report{visible.length !== 1 ? "s" : ""} visible to you</div>
 
       {toast && <div className="alert alert-green">{toast}</div>}
 
-      {/* Summary stats */}
+      <div className="privacy-note">
+        🔒 <strong>Private.</strong> Only you and your chain of command can see your FITREPs.
+      </div>
+
+      {/* Summary stats (based on what user can see) */}
       <div className="grid3" style={{ marginBottom:"1rem" }}>
         <div className="stat">
-          <div className="stat-n">{fitrebs.filter(f => f.currentStage > 0 && f.currentStage < FITREP_STAGES.length - 1).length}</div>
+          <div className="stat-n">{visible.filter(f => f.currentStage > 0 && f.currentStage < f.stages.length - 1).length}</div>
           <div className="stat-l">In Progress</div>
         </div>
         <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}>
-          <div className="stat-n" style={{ color:"#2A7D4F" }}>{fitrebs.filter(f => f.currentStage === FITREP_STAGES.length - 1).length}</div>
+          <div className="stat-n" style={{ color:"#2A7D4F" }}>{visible.filter(f => f.currentStage === f.stages.length - 1).length}</div>
           <div className="stat-l">Complete</div>
         </div>
         <div className="stat" style={{ borderLeftColor:"#0D1B2A" }}>
-          <div className="stat-n" style={{ color:"#0D1B2A" }}>{fitrebs.filter(f => f.currentStage === 1).length}</div>
+          <div className="stat-n" style={{ color:"#0D1B2A" }}>{visible.filter(f => f.currentStage === 1).length}</div>
           <div className="stat-l">Awaiting PC</div>
         </div>
       </div>
 
-      {/* Filters (CoC only) */}
-      {isCoC(user) && (
-        <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap" }}>
+      <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap", alignItems:"center" }}>
+        {/* Company filter — only show if user can see multiple companies */}
+        {companies.length > 1 && (
           <select className="input" style={{ maxWidth:"200px" }} value={filter} onChange={e => setFilter(e.target.value)}>
             <option value="">All Companies</option>
             {companies.map(c => <option key={c} value={c}>{getCompanyShortName(c)}</option>)}
           </select>
-          <span style={{ fontSize:"0.82rem", color:"#888", alignSelf:"center" }}>{filtered.length} report{filtered.length !== 1 ? "s" : ""} shown</span>
-        </div>
-      )}
+        )}
+        <span style={{ fontSize:"0.82rem", color:"#888", flex:1 }}>
+          {filtered.length} report{filtered.length !== 1 ? "s" : ""} shown
+        </span>
+        {canSubmit && (
+          <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Submit FITREP</button>
+        )}
+      </div>
 
       {filtered.length === 0 && (
         <div className="empty">
-          <div style={{ fontSize:"2rem" }}>📋</div>
+          <div style={{ fontSize:"2rem" }}>📊</div>
           <div style={{ marginTop:"0.5rem" }}>No FITREPs on file.</div>
         </div>
       )}
 
       {filtered.map(f => {
         const canAct = canActOnFitrep(user, f);
-        const isDone = f.currentStage >= FITREP_STAGES.length - 1;
-        const currentStageName = stageLabel(f.currentStage);
+        const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
+        const currentStageName = isDone ? (f.status === "Returned" ? "Returned" : "Complete") : (f.stages?.[f.currentStage]?.name || "");
 
         return (
           <div className="fitrep-card" key={f.id}>
@@ -1533,13 +2601,17 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
             <div className="fitrep-header">
               <div>
                 <strong style={{ fontSize:"0.95rem" }}>{f.subjectRank} {f.subjectName}</strong>
-                <div style={{ fontSize:"0.78rem", color:"#888", marginTop:"1px" }}>{formatCompanyCoLabel(f.company)} · {f.platoon} · {f.period}</div>
+                <div style={{ fontSize:"0.78rem", color:"#888", marginTop:"1px" }}>
+                  {formatCompanyCoLabel(f.company)} · {formatPlatoonLabel(f.platoon)} · {f.period}
+                </div>
               </div>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
                 <span className="badge badge-navy">{f.id}</span>
-                {isDone
-                  ? <span className="badge badge-green">Complete</span>
-                  : <span className="badge badge-orange">{currentStageName}</span>
+                {f.status === "Returned"
+                  ? <span className="badge badge-red">Returned</span>
+                  : isDone
+                    ? <span className="badge badge-green">Complete</span>
+                    : <span className="badge badge-orange">{currentStageName}</span>
                 }
                 {canAct && !isDone && (
                   <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>
@@ -1547,32 +2619,44 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
               </div>
             </div>
 
-            {/* Stage tracker */}
+            {/* Stage tracker — uses per-fitrep stages */}
             <div className="fitrep-body">
+              {/* Attached documents */}
+              {f.docs && (
+                <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginBottom:"0.75rem" }}>
+                  <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
+                  {f.docs.fitrepDoc && (
+                    <a href={f.docs.fitrepDoc.dataUrl} download={f.docs.fitrepDoc.fileName} className="btn btn-outline btn-sm">📄 FITREP Document</a>
+                  )}
+                  {f.docs.routingSheet && (
+                    <a href={f.docs.routingSheet.dataUrl} download={f.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
+                  )}
+                </div>
+              )}
               <div className="stage-track">
-                {FITREP_STAGES.map((s, i) => {
-                  const done    = i < f.currentStage;
-                  const active  = i === f.currentStage && !isDone;
-                  const pending = i > f.currentStage;
+                {f.stages.map((s, i) => {
+                  const done     = i < f.currentStage;
+                  const returned = i === f.currentStage && f.status === "Returned";
+                  const active   = i === f.currentStage && !isDone;
                   return (
-                    <div key={i} className={`stage-item ${done ? "done" : active ? "active" : ""}`}>
-                      <div className={`stage-dot ${done ? "done" : active ? "active" : "pending"}`}>
-                        {done ? "✓" : s.icon}
+                    <div key={i} className={`stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>
+                      <div className={`stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`}>
+                        {done ? "✓" : returned ? "↩" : s.icon}
                       </div>
-                      <div className={`stage-label ${done ? "done" : active ? "active" : ""}`}>{s.name}</div>
+                      <div className={`stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>{s.name}</div>
                       {active && canAct && <div className="stage-approver active">● You</div>}
                     </div>
                   );
                 })}
               </div>
 
-              {/* Stage comments (completed stages) */}
+              {/* Completed stage comments */}
               {f.stages.some(s => s.completedBy && s.comment) && (
                 <div style={{ marginTop:"0.75rem" }}>
-                  <div style={{ fontFamily:"Oswald", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>Stage Comments</div>
+                  <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>Stage Comments</div>
                   {f.stages.map((s, i) => s.completedBy && s.comment ? (
                     <div className="stage-comment" key={i}>
-                      <div className="stage-comment-by">{FITREP_STAGES[i]?.name} · {s.completedBy} · {s.completedAt}</div>
+                      <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
                       {s.comment}
                     </div>
                   ) : null)}
@@ -1593,8 +2677,11 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
                         onChange={e => setCommentText(e.target.value)}
                       />
                       <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-                        <button className="btn btn-green btn-sm" onClick={() => advanceStage(f.id)}>
+                        <button className="btn btn-green btn-sm" onClick={() => advanceStage(f.id, "approved")}>
                           ✓ Approve & Advance
+                        </button>
+                        <button className="btn btn-red btn-sm" onClick={() => advanceStage(f.id, "returned")}>
+                          ↩ Return to Originator
                         </button>
                         <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>
                           Cancel
@@ -1612,6 +2699,102 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
           </div>
         );
       })}
+
+      {/* Submit FITREP modal */}
+      {showModal && (
+        <Modal title="Submit FITREP" onClose={() => setShowModal(false)}>
+          <div className="privacy-note">🔒 Private — only you and your CoC will see this.</div>
+          {needsRouteSelect && (
+            <>
+              <div className="input-group">
+                <label className="input-label">Your Company</label>
+                <select className="input" value={submitForm.routeCompany} onChange={e => setSubmitForm(s => ({ ...s, routeCompany:e.target.value, routePlatoon:"" }))}>
+                  <option value="">Select company…</option>
+                  {["Alpha","Bravo","Charlie"].map(co => <option key={co} value={co}>{co}</option>)}
+                </select>
+              </div>
+              {submitForm.routeCompany && (
+                <div className="input-group">
+                  <label className="input-label">Your Platoon</label>
+                  <select className="input" value={submitForm.routePlatoon} onChange={e => setSubmitForm(s => ({ ...s, routePlatoon:e.target.value }))}>
+                    <option value="">Select platoon…</option>
+                    {getPlatoons(submitForm.routeCompany).map(p => <option key={p} value={p}>{formatPlatoonLabel(p)}</option>)}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
+          <div className="input-group">
+            <label className="input-label">Period</label>
+            <select className="input" value={submitForm.period} onChange={e => setSubmitForm(s => ({ ...s, period:e.target.value }))}>
+              <option>Spring 2026</option>
+              <option>Fall 2025</option>
+              <option>Spring 2025</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Notes (optional)</label>
+            <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} value={submitForm.notes} onChange={e => setSubmitForm(s => ({ ...s, notes:e.target.value }))} />
+          </div>
+
+          {/* ── Required PDFs ── */}
+          <div style={{ borderTop:"1px solid #eee", paddingTop:"0.85rem", marginTop:"0.25rem" }}>
+            <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.65rem" }}>
+              Required Documents
+            </div>
+
+            {/* FITREP Document */}
+            <div className="input-group">
+              <label className="input-label">
+                FITREP Document <span style={{ color:"#C0392B" }}>*</span>
+              </label>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                <label htmlFor="fitrep-doc" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                  {submitForm.fitrepDoc ? "↑ Replace PDF" : "↑ Upload PDF"}
+                </label>
+                <input
+                  id="fitrep-doc" type="file" accept=".pdf,application/pdf"
+                  style={{ display:"none" }}
+                  onChange={e => { loadFitrepPDF("fitrepDoc", e.target.files[0]); e.target.value = ""; }}
+                />
+                {submitForm.fitrepDoc
+                  ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {submitForm.fitrepDoc.fileName}</span>
+                  : <span style={{ fontSize:"0.75rem", color:"#C0392B" }}>Required</span>
+                }
+              </div>
+            </div>
+
+            {/* Routing Sheet */}
+            <div className="input-group">
+              <label className="input-label">
+                Routing Sheet <span style={{ color:"#C0392B" }}>*</span>
+              </label>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                <label htmlFor="fitrep-routing-sheet" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                  {submitForm.routingSheet ? "↑ Replace PDF" : "↑ Upload PDF"}
+                </label>
+                <input
+                  id="fitrep-routing-sheet" type="file" accept=".pdf,application/pdf"
+                  style={{ display:"none" }}
+                  onChange={e => { loadFitrepPDF("routingSheet", e.target.files[0]); e.target.value = ""; }}
+                />
+                {submitForm.routingSheet
+                  ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {submitForm.routingSheet.fileName}</span>
+                  : <span style={{ fontSize:"0.75rem", color:"#C0392B" }}>Required</span>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background:"#f5f2ee", borderRadius:"8px", padding:"0.65rem", fontSize:"0.8rem", color:"#666", marginBottom:"1rem" }}>
+            Your FITREP routes to: <strong>{routeHint()}</strong>
+          </div>
+          <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
+            <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-orange" onClick={handleSubmit}>Submit FITREP</button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -1619,10 +2802,10 @@ function FitrepsPage({ fitrebs, setFitrebs }) {
 // ─── ROOT APP ────────────────────────────────────────────────
 const NAV = [
   { id:"dashboard", label:"Dashboard",     icon:"🏠" },
-  { id:"calendar",  label:"Calendar/POTW", icon:"📅" },
+  { id:"calendar",  label:"POTW",          icon:"📅" },
   { id:"structure", label:"BN Structure",  icon:"🏛" },
-  { id:"training",  label:"PT & LeadLab",  icon:"💪" },
-  { id:"chits",     label:"CHIT Routing",  icon:"📋" },
+  { id:"training",  label:"PT & LL",       icon:"💪" },
+  { id:"chits",     label:"CHITs",         icon:"📋" },
   { id:"fitreps",   label:"FITREPs",       icon:"📊" },
   { id:"roster",    label:"Recall Roster", icon:"📒" },
   { id:"forms",     label:"Forms",         icon:"📝" },
@@ -1631,35 +2814,70 @@ const NAV = [
 
 const MNAV = [
   { id:"dashboard", label:"Home",    icon:"🏠" },
-  { id:"calendar",  label:"Cal",     icon:"📅" },
+  { id:"calendar",  label:"POTW",    icon:"📅" },
   { id:"chits",     label:"CHITs",   icon:"📋" },
   { id:"fitreps",   label:"FITREPs", icon:"📊" },
   { id:"roster",    label:"Roster",  icon:"📒" },
 ];
 
 export default function App() {
+  const cachedRoster = loadCachedRoster();
   const [user, setUser]           = useState(null);
   const [page, setPage]           = useState("dashboard");
+  const [reminder, setReminder]   = useState({ enabled: false, text: "" });
   const [chits, setChits]         = useState(INIT_CHITS);
   const [fitrebs, setFitrebs]     = useState(INIT_FITREBS);
   const [showAccount, setShowAccount] = useState(false);
-  // userList: starts as hardcoded USERS, overridden by Google Sheet if SHEETS_CSV_URL is set
-  const [userList, setUserList]   = useState(USERS);
+  // Forms: posted by billets/Big Four, clicks tracked per user id.
+  const [forms, setForms]         = useState([]);
+  // PT plan PDFs: one per session key (monday/wednesday/thursday). Null until OPS uploads.
+  const [ptPlans, setPtPlans]     = useState({ monday:null, wednesday:null, thursday:null });
+  // LL session list: TRAINO manages text notes; everyone reads.
+  const [llSessions, setLlSessions] = useState(LEADLAB_INIT);
+  // userList: populated from Google Sheet on mount; empty until fetch completes
+  const [userList, setUserList]   = useState(cachedRoster);
+  // sheetSynced: true only after the Sheets fetch resolves OR rejects (never while in-flight)
+  const [sheetSynced, setSheetSynced] = useState(!SHEETS_API_URL || cachedRoster.length > 0);
+  const [sheetError,  setSheetError]  = useState(false);
+
+  const fetchRoster = (attempt = 0) => {
+    if (!SHEETS_API_URL) { setSheetSynced(true); return; }
+    if (attempt === 0) { setSheetSynced(false); setSheetError(false); }
+    const cbName = "__qd_cb_" + Date.now();
+    const script = document.createElement("script");
+    const onFail = () => {
+      cleanup();
+      if (attempt < 2) {
+        setTimeout(() => fetchRoster(attempt + 1), 1500);
+      } else {
+        setSheetError(true);
+        setSheetSynced(true);
+      }
+    };
+    const timer = setTimeout(onFail, 8000);
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+    window[cbName] = (data) => {
+      cleanup();
+      if (data.users && data.users.length > 0) {
+        const nextUsers = data.users.map((row, i) => sheetRowToUser(row, i));
+        setUserList(nextUsers);
+        saveCachedRoster(nextUsers);
+        setSheetSynced(true);
+      } else {
+        onFail();
+      }
+    };
+    script.onerror = onFail;
+    script.src = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}&callback=${cbName}&_t=${Date.now()}`;
+    document.head.appendChild(script);
+  };
 
   // Fetch roster from private Google Sheet via Apps Script on mount
-  useEffect(() => {
-    if (!SHEETS_API_URL) return;
-    const url = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}`;
-    fetch(url)
-      .then(r => r.json())
-      .then(data => {
-        if (data.users && data.users.length > 0) {
-          const mapped = data.users.map((row, i) => sheetRowToUser(row, i));
-          setUserList(mapped);
-        }
-      })
-      .catch(() => {}); // silently fall back to hardcoded USERS
-  }, []);
+  useEffect(fetchRoster, []);
 
   const handleLogin = (loggedInUser) => {
     // Sync with live userList in case Sheets data was fetched
@@ -1676,7 +2894,7 @@ export default function App() {
     return (
       <>
         <style>{CSS}</style>
-        <LoginPage onLogin={handleLogin} userList={userList} />
+        <LoginPage onLogin={handleLogin} userList={userList} sheetSynced={sheetSynced} sheetError={sheetError} onRetry={fetchRoster} />
       </>
     );
   }
@@ -1692,14 +2910,14 @@ export default function App() {
   }
 
   const renderPage = () => {
-    if (page === "dashboard")  return <Dashboard onNav={setPage} />;
+    if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} chits={chits} forms={forms} reminder={reminder} setReminder={setReminder} />;
     if (page === "calendar")   return <CalendarPage />;
     if (page === "structure")  return <StructurePage userList={userList} />;
-    if (page === "training")   return <TrainingPage />;
-    if (page === "chits")      return <ChitsPage chits={chits} setChits={setChits} />;
-    if (page === "fitreps")    return <FitrepsPage fitrebs={fitrebs} setFitrebs={setFitrebs} />;
-    if (page === "roster")     return <RosterPage />;
-    if (page === "forms")      return <FormsPage />;
+    if (page === "training")   return <TrainingPage ptPlans={ptPlans} setPtPlans={setPtPlans} llSessions={llSessions} setLlSessions={setLlSessions} />;
+    if (page === "chits")      return <ChitsPage chits={chits} setChits={setChits} userList={userList} />;
+    if (page === "fitreps")    return <FitrepsPage fitrebs={fitrebs} setFitrebs={setFitrebs} userList={userList} />;
+    if (page === "roster")     return <RosterPage userList={userList} />;
+    if (page === "forms")      return <FormsPage forms={forms} setForms={setForms} />;
     if (page === "academic")   return <AcademicPage />;
     return <Dashboard onNav={setPage} />;
   };
@@ -1717,7 +2935,7 @@ export default function App() {
         <header className="topbar">
           <div style={{ display:"flex", alignItems:"center" }}>
             <div className="topbar-logo">UT</div>
-            <div className="topbar-title">NROTC <span>Battalion</span></div>
+            <div className="topbar-title">The <span>Quarterdeck</span></div>
           </div>
           <div className="topbar-right">
             <div
@@ -1725,7 +2943,7 @@ export default function App() {
               onClick={() => setShowAccount(true)}
               title="Account Info"
             >
-              <span className="rank-pill">{user.rank.split("/")[1] || user.rank}</span>
+              <span className="rank-pill">{user.rank.split(" ")[0] || user.rank}</span>
               <span style={{ color:"#ccc", fontSize:"0.85rem" }}>{user.name.split(",")[0]}</span>
               {isCoC(user) && <span className="role-pill">{user.role.replace("_"," ")}</span>}
             </div>
