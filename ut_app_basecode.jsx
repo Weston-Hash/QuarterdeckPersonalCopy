@@ -74,6 +74,39 @@ function formatCompanyCoLabel(company) {
   return normalized === "BN" ? "BN" : `${getCompanyShortName(normalized)} Co`;
 }
 
+// Returns the profile descriptor shown under a member's name on the roster, e.g.:
+//   Big Four → "BNCO" / "BNXO" / "OPS" / "SEL"
+//   CC       → "Alpha Co · CC"
+//   SEL      → "Alpha Co · SEL"
+//   PC       → "Alpha Co · 1st Plt PC"
+//   MIR/etc. → "Alpha Co · 1st Plt"
+function getRosterDescriptor(user) {
+  const company  = normalizeCompany(user.company);
+  const coLabel  = formatCompanyCoLabel(company);
+  // Big Four: title only, no company prefix
+  if (company === "BN") {
+    if (user.role === "bn_cdr") return "BNCO";
+    if (user.role === "xo")     return "BNXO";
+    if (user.role === "ops")    return "OPS";
+    if (user.role === "sel")    return "SEL";
+    return user.billet ? `BN · ${user.billet}` : "BN";
+  }
+  // CC and SEL
+  if (user.role === "co_cdr") return `${coLabel} · CC`;
+  if (user.role === "sel")    return `${coLabel} · SEL`;
+  // Platoon ordinal: platoon field is "1st PC" / "2nd PC" — strip the " PC" suffix
+  const pltOrdinal = (user.platoon || "").replace(/\s*PC$/i, "").trim();
+  // PC
+  if (user.role === "plt_cdr") {
+    return pltOrdinal ? `${coLabel} · ${pltOrdinal} Plt PC` : `${coLabel} · PC`;
+  }
+  // MIR and all other billets
+  if (pltOrdinal && pltOrdinal !== "CO" && pltOrdinal !== "SEL") {
+    return `${coLabel} · ${pltOrdinal} Plt`;
+  }
+  return coLabel;
+}
+
 function getBilletLabel(user) {
   return (user.billet || (normalizeCompany(user.company) === "BN" ? user.platoon : "") || "").trim();
 }
@@ -2105,7 +2138,7 @@ function RosterPage({ userList }) {
             <div style={{ flex:1 }}>
               <div style={{ fontWeight:600, fontSize:"0.9rem" }}>{p.name}</div>
               <div style={{ fontSize:"0.78rem", color:"#BF5700", fontWeight:600 }}>{p.rank}</div>
-              <div style={{ fontSize:"0.78rem", color:"#888" }}>{formatCompanyCoLabel(p.company)} · {p.platoon} Plt</div>
+              <div style={{ fontSize:"0.78rem", color:"#888" }}>{getRosterDescriptor(p)}</div>
             </div>
             <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginLeft:"auto" }}>
               {p.phone && <a href={"tel:" + p.phone}><button className="btn btn-outline btn-sm">📞 {p.phone}</button></a>}

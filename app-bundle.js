@@ -2881,6 +2881,27 @@
     if (!normalized) return "\u2014";
     return normalized === "BN" ? "BN" : `${getCompanyShortName(normalized)} Co`;
   }
+  function getRosterDescriptor(user) {
+    const company = normalizeCompany(user.company);
+    const coLabel = formatCompanyCoLabel(company);
+    if (company === "BN") {
+      if (user.role === "bn_cdr") return "BNCO";
+      if (user.role === "xo")     return "BNXO";
+      if (user.role === "ops")    return "OPS";
+      if (user.role === "sel")    return "SEL";
+      return user.billet ? `BN \xB7 ${user.billet}` : "BN";
+    }
+    if (user.role === "co_cdr") return `${coLabel} \xB7 CC`;
+    if (user.role === "sel")    return `${coLabel} \xB7 SEL`;
+    const pltOrdinal = (user.platoon || "").replace(/\s*PC$/i, "").trim();
+    if (user.role === "plt_cdr") {
+      return pltOrdinal ? `${coLabel} \xB7 ${pltOrdinal} Plt PC` : `${coLabel} \xB7 PC`;
+    }
+    if (pltOrdinal && pltOrdinal !== "CO" && pltOrdinal !== "SEL") {
+      return `${coLabel} \xB7 ${pltOrdinal} Plt`;
+    }
+    return coLabel;
+  }
   function getBilletLabel(user) {
     return (user.billet || (normalizeCompany(user.company) === "BN" ? user.platoon : "") || "").trim();
   }
@@ -4623,12 +4644,7 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { flex: 1 }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontWeight: 600, fontSize: "0.9rem" }, children: p.name }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#BF5700", fontWeight: 600 }, children: p.rank }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.78rem", color: "#888" }, children: [
-              formatCompanyCoLabel(p.company),
-              " \xB7 ",
-              p.platoon,
-              " Plt"
-            ] })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#888" }, children: getRosterDescriptor(p) })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginLeft: "auto" }, children: [
             p.phone && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: "tel:" + p.phone, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "btn btn-outline btn-sm", children: [
