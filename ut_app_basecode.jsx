@@ -224,6 +224,39 @@ function getBattalionStrength(userList) {
   return buildRosterEntries(userList).length;
 }
 
+// Comparator for the Recall Roster page sort order:
+//   BN (Big Four order) → Alpha → Bravo → Charlie
+//   Within company: CC → SEL → 1st Plt (PC first, then alpha) → 2nd Plt → …
+function compareRoster(a, b) {
+  const ac = normalizeCompany(a.company), bc = normalizeCompany(b.company);
+  const co = ROSTER_COMPANY_ORDER.indexOf(ac) - ROSTER_COMPANY_ORDER.indexOf(bc);
+  if (co !== 0) return co;
+
+  // BN: use Big Four assignment order, then alpha by last name
+  if (ac === "BN") {
+    const ai = BN_ROSTER_ASSIGNMENT_ORDER.indexOf(getRosterAssignment(a));
+    const bi = BN_ROSTER_ASSIGNMENT_ORDER.indexOf(getRosterAssignment(b));
+    const d = (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    if (d !== 0) return d;
+    return getNameKey(a.name).localeCompare(getNameKey(b.name));
+  }
+
+  // CC first
+  if (a.role === "co_cdr" && b.role !== "co_cdr") return -1;
+  if (b.role === "co_cdr" && a.role !== "co_cdr") return  1;
+  // SEL second
+  if (a.role === "sel" && b.role !== "sel") return -1;
+  if (b.role === "sel" && a.role !== "sel") return  1;
+  // By platoon number (1st → 2nd → 3rd…)
+  const pd = getPlatoonSortValue(a.platoon) - getPlatoonSortValue(b.platoon);
+  if (pd !== 0) return pd;
+  // Within platoon: PC before everyone else
+  if (a.role === "plt_cdr" && b.role !== "plt_cdr") return -1;
+  if (b.role === "plt_cdr" && a.role !== "plt_cdr") return  1;
+  // Alpha by last name
+  return getNameKey(a.name).localeCompare(getNameKey(b.name));
+}
+
 function getNameKey(name) {
   return (name || "").split(",")[0].trim().toLowerCase();
 }
@@ -2111,10 +2144,12 @@ function ChitsPage({ chits, setChits, userList }) {
 function RosterPage({ userList }) {
   const [q, setQ] = useState("");
   const [co, setCo] = useState("");
-  const fil = userList.filter(p =>
-    (!q || p.name.toLowerCase().includes(q.toLowerCase()) || p.rank.toLowerCase().includes(q.toLowerCase())) &&
-    (!co || normalizeCompany(p.company) === co)
-  );
+  const fil = [...userList]
+    .sort(compareRoster)
+    .filter(p =>
+      (!q || p.name.toLowerCase().includes(q.toLowerCase()) || p.rank.toLowerCase().includes(q.toLowerCase())) &&
+      (!co || normalizeCompany(p.company) === co)
+    );
   return (
     <div>
       <div className="page-title">Recall <span>Roster</span></div>
@@ -2126,7 +2161,7 @@ function RosterPage({ userList }) {
         </div>
         <select className="input" style={{ maxWidth:"170px" }} value={co} onChange={e => setCo(e.target.value)}>
           <option value="">All Companies</option>
-          <option value="BN">BN</option><option value="Alpha">Alpha</option><option value="Bravo">Bravo</option><option value="Charlie">Charlie</option>
+          <option value="BN">Big Four</option><option value="Alpha">Alpha</option><option value="Bravo">Bravo</option><option value="Charlie">Charlie</option>
         </select>
       </div>
       <div className="card">

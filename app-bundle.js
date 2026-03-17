@@ -2924,6 +2924,38 @@
   function getNameKey(name) {
     return (name || "").split(",")[0].trim().toLowerCase();
   }
+  const _ROSTER_CO_ORDER = ["BN", "Alpha", "Bravo", "Charlie"];
+  const _BN_ASSIGN_ORDER = ["BNCO", "BNXO", "OPS", "SEL", "PTO", "ADJ", "SUPPO", "PAO", "TRAINO", "AO", "BGDO", "CGC", "AOPS", "MIR"];
+  function _pltNum(platoon) {
+    const m = (platoon || "").replace(/\s*PC$/i, "").trim().match(/^(\d+)/);
+    return m ? Number(m[1]) : 99;
+  }
+  function _bnAssign(user) {
+    const b = (user.billet || "").trim();
+    const bn = b.replace(/^[ABC]\s+/, "");
+    return _BN_ASSIGN_ORDER.includes(b) ? b : _BN_ASSIGN_ORDER.includes(bn) ? bn : b || user.platoon || "";
+  }
+  function compareRoster(a, b) {
+    const ac = normalizeCompany(a.company), bc = normalizeCompany(b.company);
+    const co = _ROSTER_CO_ORDER.indexOf(ac) - _ROSTER_CO_ORDER.indexOf(bc);
+    if (co !== 0) return co;
+    if (ac === "BN") {
+      const ai = _BN_ASSIGN_ORDER.indexOf(_bnAssign(a));
+      const bi = _BN_ASSIGN_ORDER.indexOf(_bnAssign(b));
+      const d = (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      if (d !== 0) return d;
+      return getNameKey(a.name).localeCompare(getNameKey(b.name));
+    }
+    if (a.role === "co_cdr" && b.role !== "co_cdr") return -1;
+    if (b.role === "co_cdr" && a.role !== "co_cdr") return  1;
+    if (a.role === "sel" && b.role !== "sel") return -1;
+    if (b.role === "sel" && a.role !== "sel") return  1;
+    const pd = _pltNum(a.platoon) - _pltNum(b.platoon);
+    if (pd !== 0) return pd;
+    if (a.role === "plt_cdr" && b.role !== "plt_cdr") return -1;
+    if (b.role === "plt_cdr" && a.role !== "plt_cdr") return  1;
+    return getNameKey(a.name).localeCompare(getNameKey(b.name));
+  }
   function matchesUserIdentity(user, candidate = {}) {
     if (!user) return false;
     const candidateId = (candidate.id || "").trim();
@@ -4610,9 +4642,9 @@
   function RosterPage({ userList }) {
     const [q, setQ] = (0, import_react.useState)("");
     const [co, setCo] = (0, import_react.useState)("");
-    const fil = userList.filter(
-      (p) => (!q || p.name.toLowerCase().includes(q.toLowerCase()) || p.rank.toLowerCase().includes(q.toLowerCase())) && (!co || normalizeCompany(p.company) === co)
-    );
+    const fil = [...userList]
+      .sort(compareRoster)
+      .filter((p) => (!q || p.name.toLowerCase().includes(q.toLowerCase()) || p.rank.toLowerCase().includes(q.toLowerCase())) && (!co || normalizeCompany(p.company) === co));
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-title", children: [
         "Recall ",
@@ -4626,7 +4658,7 @@
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", style: { maxWidth: "170px" }, value: co, onChange: (e) => setCo(e.target.value), children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "All Companies" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "BN", children: "BN" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "BN", children: "Big Four" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "Alpha", children: "Alpha" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "Bravo", children: "Bravo" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "Charlie", children: "Charlie" })
