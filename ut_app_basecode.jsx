@@ -1177,7 +1177,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
             )}
             {!sheetSynced && hasRoster && (
               <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem" }}>
-                ⏳ Refreshing roster from Google Sheets in the background…
+                ⏳ Pulling login details…
               </div>
             )}
             {sheetSynced && sheetError && (
