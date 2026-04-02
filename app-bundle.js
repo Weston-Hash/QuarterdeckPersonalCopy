@@ -2895,10 +2895,10 @@
     if (user.role === "sel")    return `${coLabel} \xB7 SEL`;
     const pltOrdinal = (user.platoon || "").replace(/\s*PC$/i, "").trim();
     if (user.role === "plt_cdr") {
-      return pltOrdinal ? `${coLabel} \xB7 ${pltOrdinal} Plt PC` : `${coLabel} \xB7 PC`;
+      return pltOrdinal ? `${coLabel} \xB7 ${pltOrdinal} PLT PC` : `${coLabel} \xB7 PC`;
     }
     if (pltOrdinal && pltOrdinal !== "CO" && pltOrdinal !== "SEL") {
-      return `${coLabel} \xB7 ${pltOrdinal} Plt`;
+      return `${coLabel} \xB7 ${pltOrdinal} PLT`;
     }
     return coLabel;
   }

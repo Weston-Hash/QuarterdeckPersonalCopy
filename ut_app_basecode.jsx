@@ -78,8 +78,8 @@ function formatCompanyCoLabel(company) {
 //   Big Four → "BNCO" / "BNXO" / "OPS" / "SEL"
 //   CC       → "Alpha Co · CC"
 //   SEL      → "Alpha Co · SEL"
-//   PC       → "Alpha Co · 1st Plt PC"
-//   MIR/etc. → "Alpha Co · 1st Plt"
+//   PC       → "Alpha Co · 1st PLT PC"
+//   MIR/etc. → "Alpha Co · 1st PLT"
 function getRosterDescriptor(user) {
   const company  = normalizeCompany(user.company);
   const coLabel  = formatCompanyCoLabel(company);
@@ -98,11 +98,11 @@ function getRosterDescriptor(user) {
   const pltOrdinal = (user.platoon || "").replace(/\s*PC$/i, "").trim();
   // PC
   if (user.role === "plt_cdr") {
-    return pltOrdinal ? `${coLabel} · ${pltOrdinal} Plt PC` : `${coLabel} · PC`;
+    return pltOrdinal ? `${coLabel} · ${pltOrdinal} PLT PC` : `${coLabel} · PC`;
   }
   // MIR and all other billets
   if (pltOrdinal && pltOrdinal !== "CO" && pltOrdinal !== "SEL") {
-    return `${coLabel} · ${pltOrdinal} Plt`;
+    return `${coLabel} · ${pltOrdinal} PLT`;
   }
   return coLabel;
 }
@@ -226,7 +226,7 @@ function getBattalionStrength(userList) {
 
 // Comparator for the Recall Roster page sort order:
 //   BN (Big Four order) → Alpha → Bravo → Charlie
-//   Within company: CC → SEL → 1st Plt (PC first, then alpha) → 2nd Plt → …
+//   Within company: CC → SEL → 1st PLT (PC first, then alpha) → 2nd PLT → …
 function compareRoster(a, b) {
   const ac = normalizeCompany(a.company), bc = normalizeCompany(b.company);
   const co = ROSTER_COMPANY_ORDER.indexOf(ac) - ROSTER_COMPANY_ORDER.indexOf(bc);
@@ -576,7 +576,12 @@ function loadCachedRoster() {
     const raw = window.localStorage.getItem(ROSTER_CACHE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.every(user =>
+      user &&
+      typeof user === "object" &&
+      Object.prototype.hasOwnProperty.call(user, "password")
+    ) ? parsed : [];
   } catch (err) {
     return [];
   }

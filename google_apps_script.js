@@ -2,15 +2,13 @@ const SECRET_TOKEN = "UT_NROTC";
 const SHEET_NAME = "MASTER WEBSITE";
 
 const MFA_EXPIRY_MS = 5 * 60 * 1000;
-const RATE_LIMIT_MS = 60 * 1000;
 
 const CACHE_TTL_USERS = 300;      // 5 min
 const CACHE_TTL_ROSTER = 21600;   // 6 hr
-const CACHE_KEY_USERS = "qd_users_payload_v1";
+const CACHE_KEY_USERS = "qd_users_payload_v2";
 const CACHE_KEY_ROSTER = "qd_email_name_map_v1";
 
-// Only include fields you actually want exposed to the website.
-// DO NOT include password unless you are absolutely sure you intend to.
+// These are the fields the website login flow expects to receive.
 const PUBLIC_FIELDS = [
   "company",
   "name",
@@ -20,6 +18,7 @@ const PUBLIC_FIELDS = [
   "major",
   "campus",
   "eid",
+  "password",
   "billet"
 ];
 
@@ -124,6 +123,37 @@ function clearCaches() {
   cache.remove(CACHE_KEY_ROSTER);
 }
 
+function readActiveMfaRecords_(props, propKey) {
+  var stored = props.getProperty(propKey);
+  if (!stored) return [];
+
+  var parsed;
+  try {
+    parsed = JSON.parse(stored);
+  } catch (err) {
+    props.deleteProperty(propKey);
+    return [];
+  }
+
+  var records = Array.isArray(parsed) ? parsed : [parsed];
+  var cutoff = Date.now() - MFA_EXPIRY_MS;
+  var active = records.filter(function(record) {
+    return record &&
+      typeof record.code === "string" &&
+      record.code &&
+      typeof record.ts === "number" &&
+      record.ts >= cutoff;
+  });
+
+  if (active.length > 0) {
+    props.setProperty(propKey, JSON.stringify(active));
+  } else {
+    props.deleteProperty(propKey);
+  }
+
+  return active;
+}
+
 function doGet(e) {
   if (!e || !e.parameter || e.parameter.token !== SECRET_TOKEN) {
     return jsonOut({ error: "Unauthorized" });
@@ -156,6 +186,13 @@ function doPost(e) {
   }
 
   var action = json.action || "";
+
+  if (action === "refreshCache") {
+    clearCaches();
+    getCachedUsersJson_();
+    return jsonOut({ ok: true });
+  }
+
   var email = (json.email || "").toString().trim().toLowerCase();
   if (!email) return jsonOut({ ok: false, error: "Email required" });
 
@@ -163,16 +200,6 @@ function doPost(e) {
   var propKey = "mfa_" + email;
 
   if (action === "sendMFA") {
-    var existing = props.getProperty(propKey);
-    if (existing) {
-      try {
-        var prev = JSON.parse(existing);
-        if (Date.now() - prev.ts < RATE_LIMIT_MS) {
-          return jsonOut({ ok: false, error: "Please wait before requesting another code." });
-        }
-      } catch (ignore) {}
-    }
-
     var map = getEmailNameMap();
     var userName = map[email];
     if (userName === undefined) {
@@ -180,7 +207,9 @@ function doPost(e) {
     }
 
     var code = Math.floor(100000 + Math.random() * 900000).toString();
-    props.setProperty(propKey, JSON.stringify({ code: code, ts: Date.now() }));
+    var records = readActiveMfaRecords_(props, propKey);
+    records.push({ code: code, ts: Date.now() });
+    props.setProperty(propKey, JSON.stringify(records));
 
     var subject = "UT NROTC Quarterdeck — Your Verification Code";
     var body =
@@ -197,34 +226,20 @@ function doPost(e) {
 
   if (action === "verifyMFA") {
     var inputCode = (json.code || "").toString().trim();
-    var stored = props.getProperty(propKey);
+    var records = readActiveMfaRecords_(props, propKey);
 
-    if (!stored) return jsonOut({ ok: false, error: "No code found. Request a new one." });
-
-    var record;
-    try {
-      record = JSON.parse(stored);
-    } catch (err2) {
-      props.deleteProperty(propKey);
-      return jsonOut({ ok: false, error: "Invalid code record." });
-    }
-
-    if (Date.now() - record.ts > MFA_EXPIRY_MS) {
-      props.deleteProperty(propKey);
+    if (records.length === 0) {
       return jsonOut({ ok: false, error: "Code expired. Request a new one." });
     }
 
-    if (inputCode !== record.code) {
+    var matched = records.some(function(record) {
+      return inputCode === record.code;
+    });
+    if (!matched) {
       return jsonOut({ ok: false, error: "Incorrect code." });
     }
 
     props.deleteProperty(propKey);
-    return jsonOut({ ok: true });
-  }
-
-  if (action === "refreshCache") {
-    clearCaches();
-    getCachedUsersJson_();
     return jsonOut({ ok: true });
   }
 
