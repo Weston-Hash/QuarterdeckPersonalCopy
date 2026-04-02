@@ -763,6 +763,7 @@ const CSS = `
   .nav-btn { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; cursor: pointer; color: #9ab0c4; font-size: 0.88rem; border-left: 3px solid transparent; transition: all 0.15s; background: none; border-top: none; border-right: none; border-bottom: none; width: 100%; text-align: left; }
   .nav-btn:hover { background: rgba(255,255,255,0.05); color: white; }
   .nav-btn.active { background: rgba(191,87,0,0.2); color: #F7941D; border-left-color: #BF5700; font-weight: 600; }
+  .nav-btn.active .nav-structure-icon { color: #9ab0c4; }
   .sidebar-footer { padding: 1rem; border-top: 1px solid rgba(255,255,255,0.08); margin-top: auto; font-size: 0.75rem; color: #6b7e90; line-height: 1.6; }
 
   .content { flex: 1; padding: 1.5rem; overflow-y: auto; min-width: 0; }
@@ -2957,7 +2958,7 @@ export default function App() {
               <div className="sidebar-label">Navigation</div>
               {NAV.map(item => (
                 <button key={item.id} className={`nav-btn ${page === item.id ? "active" : ""}`} onClick={() => setPage(item.id)}>
-                  <span>{item.icon}</span> {item.label}
+                  <span className={item.id === "structure" ? "nav-structure-icon" : undefined}>{item.icon}</span> {item.label}
                 </button>
               ))}
             </div>

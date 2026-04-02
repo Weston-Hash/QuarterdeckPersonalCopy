@@ -76,7 +76,7 @@ function buildEmail(user, password) {
       "Contact ADJ if you have any issues.",
       "",
       "Semper Fi / Fair Winds",
-      "UT NROTC S1",
+      "UT NROTC",
     ].join("\n"),
     html: `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto">
