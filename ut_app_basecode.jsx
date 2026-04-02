@@ -1060,7 +1060,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   const [mfaInfo, setMfaInfo]   = useState("");       // non-error info message
 
   const hasRoster = userList.length > 0;
-  const locked = !sheetSynced && !hasRoster;
+  const locked = !sheetSynced; // block input until live sheet data arrives
 
   // ── Step 1: validate credentials → send MFA code ──────────────────────────
   const go = () => {
@@ -1116,8 +1116,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
         if (data.ok) {
           onLogin(mfaUser);
         } else {
-          setErr(data.error || "Verification failed. Request a new code.");
-          setMfaCode("");
+          setErr(data.error || "Verification failed. Try again or request a new code.");
         }
       })
       .catch(() => {

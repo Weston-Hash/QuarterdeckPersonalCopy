@@ -3614,7 +3614,7 @@
     const [mfaLoading, setMfaLoading] = (0, import_react.useState)(false);
     const [mfaInfo, setMfaInfo] = (0, import_react.useState)("");
     const hasRoster = userList.length > 0;
-    const locked = !sheetSynced && !hasRoster;
+    const locked = !sheetSynced; // block input until live sheet data arrives
     const go = () => {
       if (locked) return;
       const q = name.trim().toLowerCase();
@@ -3669,8 +3669,7 @@
         if (data.ok) {
           onLogin(mfaUser);
         } else {
-          setErr(data.error || "Verification failed. Request a new code.");
-          setMfaCode("");
+          setErr(data.error || "Verification failed. Try again or request a new code.");
         }
       }).catch(() => {
         setMfaLoading(false);
