@@ -22,9 +22,10 @@
 const SECRET_TOKEN = "UT_NROTC";
 const SHEET_NAME   = "MASTER WEBSITE";
 
-// Hardcoded column order: A→J
-// No header row in the sheet — first row is data
-var COLUMNS = ["company", "name", "class", "email", "phone_number", "major", "campus", "eid", "password", "billet"];
+// Column names are read from row 1 of the sheet (header row).
+// Expected headers (exact spelling, any order):
+//   company | name | class | email | phone_number | major | campus | eid | password | billet
+// Adding, removing, or reordering columns is safe as long as the header names stay the same.
 
 function doGet(e) {
   var output;
@@ -44,21 +45,26 @@ function doGet(e) {
   }
 
   var data = sheet.getDataRange().getValues();
-  if (data.length < 1) {
+  if (data.length < 2) {
     output = ContentService.createTextOutput(JSON.stringify({ users: [] }));
     output.setMimeType(ContentService.MimeType.JSON);
     return output;
   }
 
+  // Row 0 is the header row — derive column keys from it
+  var headers = data[0].map(function(h) { return (h || "").toString().trim().toLowerCase().replace(/\s+/g, "_"); });
+
   var users = [];
-  // Start from row 0 — no header row
-  for (var i = 0; i < data.length; i++) {
-    var name = (data[i][1] || "").toString().trim();
+  // Start from row 1 — skip header
+  for (var i = 1; i < data.length; i++) {
+    // Use the "name" column to detect empty rows
+    var nameCol = headers.indexOf("name");
+    var name = nameCol >= 0 ? (data[i][nameCol] || "").toString().trim() : "";
     if (!name) continue; // skip empty rows
 
     var row = {};
-    for (var j = 0; j < COLUMNS.length && j < data[i].length; j++) {
-      row[COLUMNS[j]] = (data[i][j] || "").toString().trim();
+    for (var j = 0; j < headers.length && j < data[i].length; j++) {
+      if (headers[j]) row[headers[j]] = (data[i][j] || "").toString().trim();
     }
     users.push(row);
   }
@@ -108,17 +114,22 @@ function doPost(e) {
     return output;
   }
 
-  // Verify email exists in the roster (column D, index 3)
+  // Verify email exists in the roster — find columns by header row
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
   var data  = sheet ? sheet.getDataRange().getValues() : [];
   var found = false;
   var userName = "";
-  for (var i = 0; i < data.length; i++) {
-    var rowEmail = (data[i][3] || "").toString().trim().toLowerCase();
-    if (rowEmail === email) {
-      found    = true;
-      userName = (data[i][1] || "").toString().trim();
-      break;
+  if (data.length >= 2) {
+    var hdr       = data[0].map(function(h) { return (h || "").toString().trim().toLowerCase().replace(/\s+/g, "_"); });
+    var emailCol  = hdr.indexOf("email");
+    var nameCol   = hdr.indexOf("name");
+    for (var i = 1; i < data.length; i++) {
+      var rowEmail = emailCol >= 0 ? (data[i][emailCol] || "").toString().trim().toLowerCase() : "";
+      if (rowEmail === email) {
+        found    = true;
+        userName = nameCol >= 0 ? (data[i][nameCol] || "").toString().trim() : "";
+        break;
+      }
     }
   }
 

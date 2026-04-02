@@ -592,7 +592,8 @@ function saveCachedRoster(users) {
 }
 const SHEET_ONLY_MODE  = true;
 
-// Sheet columns A→J: company, name, class, email, phone number, major, campus, eid, password, billet
+// Sheet row 1 must be a header row with these exact names (any column order):
+//   company | name | class | email | phone_number | major | campus | eid | password | billet
 // Maps sheet company prefix → app company name
 const COMPANY_MAP = {
   "BN Staff": "BN",
