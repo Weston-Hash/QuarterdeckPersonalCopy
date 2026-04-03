@@ -492,18 +492,18 @@ function guessEventType(title) {
 // ─── STATIC DATA ────────────────────────────────────────────
 const POTW = {
   operations: [
-    { date:"23 MAR", title:"Battalion PT", time:"0700–0800", type:"PT", location:"Caven Lacrosse and Sports Center at Clark Field" },
-    { date:"23 MAR", title:"Digital FITREPs due to PCs", time:"1500–1600", type:"Admin", location:"" },
-    { date:"24 MAR", title:"PNS Inspection", time:"0700–0800", type:"Inspection", location:"" },
-    { date:"24 MAR", title:"Company LL", time:"0800–0900", type:"Leadership", location:"ADM McRaven Classroom" },
-    { date:"24 MAR", title:"Calculus/Physics Tutoring", time:"1900–2000", type:"Academic", location:"ADM McRaven Classroom" },
-    { date:"25 MAR", title:"Alpha Company PT", time:"0530–0630", type:"PT", location:"Lady Bird Lake Trail" },
-    { date:"25 MAR", title:"Bravo/Charlie Company PT", time:"0700–0800", type:"PT", location:"Caven Lacrosse and Sports Center at Clark Field" },
-    { date:"26 MAR", title:"FEP", time:"0700–0800", type:"PT", location:"Caven Lacrosse and Sports Center at Clark Field" },
-    { date:"26 MAR", title:"BN Staff Meeting", time:"1530–1630", type:"Staff", location:"BN Staff Office" },
-    { date:"26-29 MAR", title:"Yale Leadership Conference", time:"All Day", type:"Conference", location:"" },
-    { date:"27 MAR", title:"Drill", time:"0700–0800", type:"Drill", location:"Caven Lacrosse and Sports Center at Clark Field" },
-    { date:"27 MAR", title:"Unit Sync Meeting", time:"1000–1100", type:"Staff", location:"Conference Room" },
+    { date:"03 APR", title:"BN Staff Meeting", time:"1530–1630", type:"Staff", location:"" },
+    { date:"03 APR", title:"Unit Sync Meeting", time:"1000–1100", type:"Staff", location:"" },
+    { date:"06 APR", title:"Battalion PT", time:"0700–0800", type:"PT", location:"" },
+    { date:"07 APR", title:"Navy LL: RADM Oliver Lewis", time:"0700–0800", type:"Leadership", location:"" },
+    { date:"07 APR", title:"FEX Prep", time:"0700–0800", type:"Admin", location:"" },
+    { date:"07 APR", title:"Calculus/Physics Tutoring", time:"1900–2000", type:"Academic", location:"" },
+    { date:"08 APR", title:"Navy Company PT", time:"0700–0800", type:"PT", location:"" },
+    { date:"09 APR", title:"Spring FEX", time:"All Day", type:"Event", location:"" },
+    { date:"09 APR", title:"FEP", time:"0700–0800", type:"PT", location:"" },
+    { date:"09 APR", title:"BN Staff Meeting", time:"1530–1630", type:"Staff", location:"" },
+    { date:"10 APR", title:"Drill", time:"0700–0800", type:"Drill", location:"" },
+    { date:"10 APR", title:"Unit Sync Meeting", time:"1000–1100", type:"Staff", location:"" },
   ],
 };
 
