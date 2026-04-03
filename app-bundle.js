@@ -27027,37 +27027,27 @@
         setSheetSynced(false);
         setSheetError(false);
       }
-      const cbName = "__qd_cb_" + Date.now();
-      const script = document.createElement("script");
-      const onFail = () => {
-        cleanup();
-        if (attempt < 2) {
-          setTimeout(() => fetchRoster(attempt + 1), 1500);
-        } else {
-          setSheetError(true);
-          setSheetSynced(true);
-        }
-      };
-      const timer = setTimeout(onFail, 8e3);
-      function cleanup() {
-        clearTimeout(timer);
-        delete window[cbName];
-        if (script.parentNode) script.parentNode.removeChild(script);
-      }
-      window[cbName] = (data) => {
-        cleanup();
+      const url = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}&_t=${Date.now()}`;
+      fetch(url, { redirect: "follow" }).then((res) => {
+        if (!res.ok) throw new Error(res.status);
+        return res.json();
+      }).then((data) => {
         if (data.users && data.users.length > 0) {
           const nextUsers = data.users.map((row, i) => sheetRowToUser(row, i));
           setUserList(nextUsers);
           saveCachedRoster(nextUsers);
           setSheetSynced(true);
         } else {
-          onFail();
+          throw new Error("Empty roster");
         }
-      };
-      script.onerror = onFail;
-      script.src = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}&callback=${cbName}&_t=${Date.now()}`;
-      document.head.appendChild(script);
+      }).catch(() => {
+        if (attempt < 2) {
+          setTimeout(() => fetchRoster(attempt + 1), 1500);
+        } else {
+          setSheetError(true);
+          setSheetSynced(true);
+        }
+      });
     };
     (0, import_react.useEffect)(fetchRoster, []);
     const handleLogin = (loggedInUser) => {
