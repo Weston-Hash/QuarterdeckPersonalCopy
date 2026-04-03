@@ -7719,7 +7719,7 @@
     else companyKey = companyRaw;
     const company = normalizeCompany(COMPANY_MAP[companyKey] || companyRaw);
     const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i) || billetRaw.match(/(\d+(?:st|nd|rd|th))/i);
-    const platoon = platoonMatch ? `${platoonMatch[1]} PC` : /CC$/i.test(billetRaw) ? "CO" : /SEL$/i.test(billetRaw) ? "SEL" : billetRaw;
+    const platoon = platoonMatch ? `${platoonMatch[1]} PLT` : /CC$/i.test(billetRaw) ? "CO" : /SEL$/i.test(billetRaw) ? "SEL" : billetRaw;
     const name = nameRaw.replace(/^(MIDN|GySgt|GySGT|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
     const rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
     const billetNorm = billetRaw.replace(/^[ABC]\s+/, "");

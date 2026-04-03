@@ -655,7 +655,7 @@ function sheetRowToUser(row, index) {
   // Platoon: extract from company or billet if it has a number (e.g. "A 1st" → "1st PC")
   const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i) || billetRaw.match(/(\d+(?:st|nd|rd|th))/i);
   const platoon = platoonMatch
-    ? `${platoonMatch[1]} PC`
+    ? `${platoonMatch[1]} PLT`
     : /CC$/i.test(billetRaw)
       ? "CO"
       : /SEL$/i.test(billetRaw)
