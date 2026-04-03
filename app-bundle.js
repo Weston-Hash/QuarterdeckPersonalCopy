@@ -25404,11 +25404,14 @@
         ] }),
         err && banner("\u26A0 " + err, "192,57,43"),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Last Name, Email, or EID" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", htmlFor: "login-username", children: "Last Name, Email, or EID" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             "input",
             {
+              id: "login-username",
+              name: "username",
               className: "input",
+              autoComplete: "username",
               placeholder: locked ? "Waiting for roster sync\u2026" : "Last name, email, or EID",
               value: name,
               disabled: locked || mfaLoading,
@@ -25419,12 +25422,15 @@
           )
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Password" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", htmlFor: "login-password", children: "Password" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             "input",
             {
+              id: "login-password",
+              name: "password",
               className: "input",
               type: "password",
+              autoComplete: "current-password",
               placeholder: locked ? "Waiting for roster sync\u2026" : "Your password",
               value: pass,
               disabled: locked || mfaLoading,
@@ -25461,13 +25467,16 @@
         ] }),
         err && banner("\u26A0 " + err, "192,57,43"),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Verification Code" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", htmlFor: "login-mfa", children: "Verification Code" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             "input",
             {
+              id: "login-mfa",
+              name: "mfa-code",
               className: "input",
               type: "text",
               inputMode: "numeric",
+              autoComplete: "one-time-code",
               maxLength: 6,
               placeholder: "Enter 6-digit code",
               value: mfaCode,
