@@ -8466,7 +8466,7 @@
     const mon = getCurrentWeekMonday();
     const weekNum = getWeekNumber(mon);
     const weekLabel = `Week ${weekNum} \u2014 ${SEMESTER_LABEL}`;
-    const calSrc = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(GCAL_CALENDAR_ID)}&ctz=America/Chicago&mode=WEEK&showTitle=0&showNav=1&showPrint=0&showTabs=0&showCalendars=0`;
+    const calSrc = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(GCAL_CALENDAR_ID)}&ctz=America/Chicago&mode=WEEK&showTitle=0&showNav=1&showPrint=0&showTabs=0&showCalendars=0&color=%23BF5700`;
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-title", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "POTW" }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "potw-card", children: [

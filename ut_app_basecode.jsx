@@ -1408,7 +1408,7 @@ function CalendarPage() {
   const mon = getCurrentWeekMonday();
   const weekNum = getWeekNumber(mon);
   const weekLabel = `Week ${weekNum} — ${SEMESTER_LABEL}`;
-  const calSrc = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(GCAL_CALENDAR_ID)}&ctz=America/Chicago&mode=WEEK&showTitle=0&showNav=1&showPrint=0&showTabs=0&showCalendars=0`;
+  const calSrc = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(GCAL_CALENDAR_ID)}&ctz=America/Chicago&mode=WEEK&showTitle=0&showNav=1&showPrint=0&showTabs=0&showCalendars=0&color=%23BF5700`;
 
   return (
     <div>
