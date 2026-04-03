@@ -1417,10 +1417,10 @@ function CalendarPage() {
         <div className="potw-week">📖 {weekLabel}</div>
         <div className="potw-title">{formatWeekRange(mon)}</div>
       </div>
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ background: "#BF5700", borderRadius: "10px", padding: "3px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", marginBottom: "1rem" }}>
         <iframe
           src={calSrc}
-          style={{ border: 0, width: "100%", height: "600px" }}
+          style={{ border: 0, width: "100%", height: "600px", borderRadius: "8px", display: "block" }}
           title="Battalion Calendar"
         />
       </div>

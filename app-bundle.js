@@ -8476,11 +8476,11 @@
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-title", children: formatWeekRange(mon) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "card", style: { padding: 0, overflow: "hidden" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: "#BF5700", borderRadius: "10px", padding: "3px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", marginBottom: "1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
         "iframe",
         {
           src: calSrc,
-          style: { border: 0, width: "100%", height: "600px" },
+          style: { border: 0, width: "100%", height: "600px", borderRadius: "8px", display: "block" },
           title: "Battalion Calendar"
         }
       ) })
