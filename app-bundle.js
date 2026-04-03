@@ -7590,7 +7590,6 @@
   }
   var POTW = {
     operations: [
-      { date: "03 APR", title: "BN Staff Meeting", time: "1530\u20131630", type: "Staff", location: "" },
       { date: "03 APR", title: "Unit Sync Meeting", time: "1000\u20131100", type: "Staff", location: "" },
       { date: "06 APR", title: "Battalion PT", time: "0700\u20130800", type: "PT", location: "" },
       { date: "07 APR", title: "Navy LL: RADM Oliver Lewis", time: "0700\u20130800", type: "Leadership", location: "" },

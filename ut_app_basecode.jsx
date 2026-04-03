@@ -492,7 +492,6 @@ function guessEventType(title) {
 // ─── STATIC DATA ────────────────────────────────────────────
 const POTW = {
   operations: [
-    { date:"03 APR", title:"BN Staff Meeting", time:"1530–1630", type:"Staff", location:"" },
     { date:"03 APR", title:"Unit Sync Meeting", time:"1000–1100", type:"Staff", location:"" },
     { date:"06 APR", title:"Battalion PT", time:"0700–0800", type:"PT", location:"" },
     { date:"07 APR", title:"Navy LL: RADM Oliver Lewis", time:"0700–0800", type:"Leadership", location:"" },
