@@ -37,6 +37,7 @@ class PreviewHandler(http.server.SimpleHTTPRequestHandler):
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "connect-src 'self' https://script.google.com https://script.googleusercontent.com; "
+            "frame-src https://calendar.google.com; "
             "img-src 'self' data:;"
         )
         super().end_headers()

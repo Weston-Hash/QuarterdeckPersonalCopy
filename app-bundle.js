@@ -7565,6 +7565,7 @@
       return !!stage.approverRole && user.role === stage.approverRole;
     });
   }
+  var GCAL_CALENDAR_ID = "8favdaqbd14bfquur8fvil5ecc@group.calendar.google.com";
   var SEMESTER_START = /* @__PURE__ */ new Date("2026-01-19T00:00:00");
   var SEMESTER_LABEL = "Spring 2026";
   function getCurrentWeekMonday() {
@@ -8463,8 +8464,8 @@
   function CalendarPage() {
     const mon = getCurrentWeekMonday();
     const weekNum = getWeekNumber(mon);
-    const weekRange = formatWeekRange(mon);
     const weekLabel = `Week ${weekNum} \u2014 ${SEMESTER_LABEL}`;
+    const calSrc = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(GCAL_CALENDAR_ID)}&ctz=America/Chicago&mode=WEEK&showTitle=0&showNav=1&showPrint=0&showTabs=0&showCalendars=0`;
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-title", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "POTW" }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "potw-card", children: [
@@ -8472,30 +8473,16 @@
           "\u{1F4D6} ",
           weekLabel
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-title", children: weekRange })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-title", children: formatWeekRange(mon) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "card-header", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "card-title", children: [
-          "\u{1F4C5} ",
-          weekRange
-        ] }) }),
-        POTW.operations.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.88rem", color: "#666", padding: "0.5rem 0" }, children: "No events scheduled for this week." }),
-        POTW.operations.map((e, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "event-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "event-date", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "event-day", children: e.date.split(" ")[0] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "event-mo", children: e.date.split(" ")[1] || "" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { flex: 1 }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "event-title", children: e.title }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "event-sub", children: [
-              "\u{1F550} ",
-              e.time,
-              e.location ? ` \xB7 \u{1F4CD} ${e.location}` : ""
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-navy", children: e.type })
-        ] }, i))
-      ] })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "card", style: { padding: 0, overflow: "hidden" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "iframe",
+        {
+          src: calSrc,
+          style: { border: 0, width: "100%", height: "600px" },
+          title: "Battalion Calendar"
+        }
+      ) })
     ] });
   }
   function StructurePage({ userList }) {

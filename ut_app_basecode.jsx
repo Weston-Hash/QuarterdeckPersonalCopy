@@ -1402,39 +1402,26 @@ function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
   );
 }
 
-// CalendarPage: displays the static POTW schedule.
-// Live Google Calendar integration would require a GCAL API key (see GCAL_CALENDAR_ID above).
-// Until that is configured, POTW.operations is the authoritative source.
+// CalendarPage: embeds the live Google Calendar for the battalion.
 function CalendarPage() {
   const mon = getCurrentWeekMonday();
   const weekNum = getWeekNumber(mon);
-  const weekRange = formatWeekRange(mon);
   const weekLabel = `Week ${weekNum} — ${SEMESTER_LABEL}`;
+  const calSrc = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(GCAL_CALENDAR_ID)}&ctz=America/Chicago&mode=WEEK&showTitle=0&showNav=1&showPrint=0&showTabs=0&showCalendars=0`;
 
   return (
     <div>
       <div className="page-title"><span>POTW</span></div>
       <div className="potw-card">
         <div className="potw-week">📖 {weekLabel}</div>
-        <div className="potw-title">{weekRange}</div>
+        <div className="potw-title">{formatWeekRange(mon)}</div>
       </div>
-      <div className="card">
-        <div className="card-header">
-          <span className="card-title">📅 {weekRange}</span>
-        </div>
-        {POTW.operations.length === 0 && (
-          <div style={{fontSize:"0.88rem",color:"#666",padding:"0.5rem 0"}}>No events scheduled for this week.</div>
-        )}
-        {POTW.operations.map((e,i) => (
-          <div className="event-row" key={i}>
-            <div className="event-date"><div className="event-day">{e.date.split(" ")[0]}</div><div className="event-mo">{e.date.split(" ")[1] || ""}</div></div>
-            <div style={{ flex:1 }}>
-              <div className="event-title">{e.title}</div>
-              <div className="event-sub">🕐 {e.time}{e.location ? ` · 📍 ${e.location}` : ""}</div>
-            </div>
-            <span className="badge badge-navy">{e.type}</span>
-          </div>
-        ))}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <iframe
+          src={calSrc}
+          style={{ border: 0, width: "100%", height: "600px" }}
+          title="Battalion Calendar"
+        />
       </div>
     </div>
   );
