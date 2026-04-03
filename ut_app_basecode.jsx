@@ -756,7 +756,7 @@ const CSS = `
   .topbar-title { font-family: 'Rajdhani', Impact, sans-serif; font-weight: 500; font-size: 1.35rem; letter-spacing: 3px; text-transform: uppercase; }
   .topbar-title span { color: #F7941D; }
   .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
-  .rank-pill { background: #BF5700; color: white; padding: 2px 8px; border-radius: 4px; font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; }
+  .rank-pill { background: #BF5700; color: white; padding: 2px 8px; border-radius: 4px; font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
   .role-pill { background: rgba(255,255,255,0.12); color: #ccc; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; text-transform: uppercase; }
   .btn-logout { background: transparent; border: 1.5px solid rgba(255,255,255,0.25); color: #ccc; border-radius: 4px; padding: 3px 10px; font-size: 0.75rem; cursor: pointer; font-family: 'Rajdhani', Impact, sans-serif; letter-spacing: 1px; text-transform: uppercase; }
   .btn-logout:hover { background: rgba(255,255,255,0.1); }
