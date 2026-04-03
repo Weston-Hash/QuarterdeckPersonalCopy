@@ -494,7 +494,7 @@ const POTW = {
   operations: [
     { date:"03 APR", title:"Unit Sync Meeting", time:"1000–1100", type:"Staff", location:"" },
     { date:"06 APR", title:"Battalion PT", time:"0700–0800", type:"PT", location:"" },
-    { date:"07 APR", title:"Navy LL: RADM Oliver Lewis", time:"0700–0800", type:"Leadership", location:"" },
+    { date:"07 APR", title:"Navy LL: RADM Oliver Lewis", time:"0700–0900", type:"Leadership", location:"" },
     { date:"07 APR", title:"FEX Prep", time:"0700–0800", type:"Admin", location:"" },
     { date:"07 APR", title:"Calculus/Physics Tutoring", time:"1900–2000", type:"Academic", location:"" },
     { date:"08 APR", title:"Navy Company PT", time:"0700–0800", type:"PT", location:"" },
