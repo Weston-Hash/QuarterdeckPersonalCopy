@@ -8322,8 +8322,8 @@
   function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
     const { user } = useAuth();
     const canManageReminder = isBigFour(user);
-    const [editingReminder, setEditingReminder] = React.useState(false);
-    const [draftText, setDraftText] = React.useState(reminder.text);
+    const [editingReminder, setEditingReminder] = (0, import_react.useState)(false);
+    const [draftText, setDraftText] = (0, import_react.useState)(reminder.text);
     const saveReminder = () => {
       setReminder({ enabled: draftText.trim().length > 0, text: draftText.trim() });
       setEditingReminder(false);

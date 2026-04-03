@@ -1305,8 +1305,8 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
 function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
   const { user } = useAuth();
   const canManageReminder = isBigFour(user);
-  const [editingReminder, setEditingReminder] = React.useState(false);
-  const [draftText, setDraftText] = React.useState(reminder.text);
+  const [editingReminder, setEditingReminder] = useState(false);
+  const [draftText, setDraftText] = useState(reminder.text);
 
   const saveReminder = () => {
     setReminder({ enabled: draftText.trim().length > 0, text: draftText.trim() });
