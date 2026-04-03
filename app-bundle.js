@@ -7893,7 +7893,7 @@
   .login-card { background: white; border-radius: 14px; padding: 2.75rem 2.5rem; max-width: 480px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
   .login-logo { display: flex; align-items: center; gap: 0.75rem; justify-content: center; margin-bottom: 1.25rem; }
   .login-mark { width: 56px; height: 56px; background: #BF5700; border-radius: 10px; display: grid; place-items: center; font-family: 'Rajdhani', Impact, sans-serif; font-weight: 500; font-size: 1.5rem; color: white; }
-  .login-title { font-family: 'Rajdhani', 'Arial Black', 'Helvetica Neue', Arial, sans-serif; font-size: 1.75rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; }
+  .login-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 1.75rem; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; }
   .login-title span { color: #BF5700; }
   .login-sub { text-align: center; font-size: 0.88rem; color: #888; margin-bottom: 1.5rem; }
   .hint-box { margin-top: 1rem; background: #f5f2ee; border-radius: 8px; padding: 0.75rem; font-size: 0.75rem; color: #666; line-height: 1.6; }
