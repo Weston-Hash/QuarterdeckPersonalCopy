@@ -1196,9 +1196,12 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
             {err && banner("⚠ " + err, "192,57,43")}
 
             <div className="input-group">
-              <label className="input-label">Last Name, Email, or EID</label>
+              <label className="input-label" htmlFor="login-username">Last Name, Email, or EID</label>
               <input
+                id="login-username"
+                name="username"
                 className="input"
+                autoComplete="username"
                 placeholder={locked ? "Waiting for roster sync…" : "Last name, email, or EID"}
                 value={name}
                 disabled={locked || mfaLoading}
@@ -1208,10 +1211,13 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
               />
             </div>
             <div className="input-group">
-              <label className="input-label">Password</label>
+              <label className="input-label" htmlFor="login-password">Password</label>
               <input
+                id="login-password"
+                name="password"
                 className="input"
                 type="password"
+                autoComplete="current-password"
                 placeholder={locked ? "Waiting for roster sync…" : "Your password"}
                 value={pass}
                 disabled={locked || mfaLoading}
@@ -1247,11 +1253,14 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
             {err && banner("⚠ " + err, "192,57,43")}
 
             <div className="input-group">
-              <label className="input-label">Verification Code</label>
+              <label className="input-label" htmlFor="login-mfa">Verification Code</label>
               <input
+                id="login-mfa"
+                name="mfa-code"
                 className="input"
                 type="text"
                 inputMode="numeric"
+                autoComplete="one-time-code"
                 maxLength={6}
                 placeholder="Enter 6-digit code"
                 value={mfaCode}
