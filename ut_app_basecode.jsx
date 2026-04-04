@@ -446,7 +446,7 @@ function canViewChit(user, chit) {
 // ─── GOOGLE CALENDAR CONFIG ──────────────────────────────────
 // To enable live event fetching, create a free API key at console.cloud.google.com
 // (Enable "Google Calendar API", restrict key to Calendar API readonly).
-const GCAL_API_KEY      = "AIzaSyBSMe4RJUxsCc5fYh7wZrIUkqmkGV7gPdc";
+const GCAL_API_KEY      = window.__QD_GCAL_API_KEY || "";
 const GCAL_CALENDAR_ID  = "8favdaqbd14bfquur8fvil5ecc@group.calendar.google.com";
 
 // Spring 2026: Week 1 starts Monday Jan 19 2026.  Change each semester.

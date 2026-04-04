@@ -7565,7 +7565,7 @@
       return !!stage.approverRole && user.role === stage.approverRole;
     });
   }
-  var GCAL_API_KEY = "AIzaSyBSMe4RJUxsCc5fYh7wZrIUkqmkGV7gPdc";
+  var GCAL_API_KEY = window.__QD_GCAL_API_KEY || "";
   var GCAL_CALENDAR_ID = "8favdaqbd14bfquur8fvil5ecc@group.calendar.google.com";
   var SEMESTER_START = /* @__PURE__ */ new Date("2026-01-19T00:00:00");
   var SEMESTER_LABEL = "Spring 2026";
