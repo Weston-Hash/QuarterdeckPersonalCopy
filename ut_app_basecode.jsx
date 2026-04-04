@@ -1879,8 +1879,8 @@ function ChitsPage({ chits, setChits, userList }) {
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
-  const loadChitPDF = (field, file) => {
-    if (!file || file.type !== "application/pdf") { fire("⚠ Please select a PDF file."); return; }
+  const loadChitFile = (field, file, allowedTypes, errorMsg) => {
+    if (!file || !allowedTypes.includes(file.type)) { fire(errorMsg); return; }
     const reader = new FileReader();
     reader.onload = e => setForm(s => ({ ...s, [field]: { fileName: file.name, dataUrl: e.target.result } }));
     reader.readAsDataURL(file);
@@ -1903,8 +1903,11 @@ function ChitsPage({ chits, setChits, userList }) {
     if (!form.date || !form.reason) {
       fire("⚠ Date of Absence and Reason are required."); return;
     }
+    if (form.reason === "Other" && !form.notes.trim()) {
+      fire("⚠ Notes are required when reason is 'Other'."); return;
+    }
     if (!form.routingSheet || !form.chitDoc) {
-      fire("⚠ Both PDFs are required: Routing Sheet and CHIT Document."); return;
+      fire("⚠ Both documents are required: Routing Sheet and CHIT Document."); return;
     }
     if (needsRouteSelect && (!form.routeCompany || !form.routePlatoon)) {
       fire("⚠ Please select your company and platoon."); return;
@@ -2114,16 +2117,15 @@ function ChitsPage({ chits, setChits, userList }) {
             <select className="input" value={form.reason} onChange={e => setForm(s => ({ ...s, reason:e.target.value }))}>
               <option value="">Select reason…</option>
               <option>Medical Appointment</option>
-              <option>Academic Conflict — Exam</option>
-              <option>Academic Conflict — Lab</option>
+              <option>Academic Conflict</option>
               <option>Family Emergency</option>
               <option>Personal Emergency</option>
               <option>Other</option>
             </select>
           </div>
           <div className="input-group">
-            <label className="input-label">Notes (optional)</label>
-            <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} />
+            <label className="input-label">Notes {form.reason === "Other" ? <span style={{ color:"#C0392B" }}>*</span> : "(optional)"}</label>
+            <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} placeholder={form.reason === "Other" ? "Please explain the reason for your absence" : ""} />
           </div>
 
           {/* ── Required PDFs ── */}
@@ -2139,12 +2141,12 @@ function ChitsPage({ chits, setChits, userList }) {
               </label>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
                 <label htmlFor="chit-routing-sheet" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
-                  {form.routingSheet ? "↑ Replace PDF" : "↑ Upload PDF"}
+                  {form.routingSheet ? "↑ Replace DOCX" : "↑ Upload DOCX"}
                 </label>
                 <input
-                  id="chit-routing-sheet" type="file" accept=".pdf,application/pdf"
+                  id="chit-routing-sheet" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   style={{ display:"none" }}
-                  onChange={e => { loadChitPDF("routingSheet", e.target.files[0]); e.target.value = ""; }}
+                  onChange={e => { loadChitFile("routingSheet", e.target.files[0], ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"], "⚠ Please select a DOCX file."); e.target.value = ""; }}
                 />
                 {form.routingSheet
                   ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {form.routingSheet.fileName}</span>
@@ -2165,7 +2167,7 @@ function ChitsPage({ chits, setChits, userList }) {
                 <input
                   id="chit-doc" type="file" accept=".pdf,application/pdf"
                   style={{ display:"none" }}
-                  onChange={e => { loadChitPDF("chitDoc", e.target.files[0]); e.target.value = ""; }}
+                  onChange={e => { loadChitFile("chitDoc", e.target.files[0], ["application/pdf"], "⚠ Please select a PDF file."); e.target.value = ""; }}
                 />
                 {form.chitDoc
                   ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {form.chitDoc.fileName}</span>
@@ -2504,8 +2506,8 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
-  const loadFitrepPDF = (field, file) => {
-    if (!file || file.type !== "application/pdf") { fire("⚠ Please select a PDF file."); return; }
+  const loadFitrepFile = (field, file, allowedTypes, errorMsg) => {
+    if (!file || !allowedTypes.includes(file.type)) { fire(errorMsg); return; }
     const reader = new FileReader();
     reader.onload = e => setSubmitForm(s => ({ ...s, [field]: { fileName: file.name, dataUrl: e.target.result } }));
     reader.readAsDataURL(file);
@@ -2802,7 +2804,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
                 <input
                   id="fitrep-doc" type="file" accept=".pdf,application/pdf"
                   style={{ display:"none" }}
-                  onChange={e => { loadFitrepPDF("fitrepDoc", e.target.files[0]); e.target.value = ""; }}
+                  onChange={e => { loadFitrepFile("fitrepDoc", e.target.files[0], ["application/pdf"], "⚠ Please select a PDF file."); e.target.value = ""; }}
                 />
                 {submitForm.fitrepDoc
                   ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {submitForm.fitrepDoc.fileName}</span>
@@ -2818,12 +2820,12 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
               </label>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
                 <label htmlFor="fitrep-routing-sheet" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
-                  {submitForm.routingSheet ? "↑ Replace PDF" : "↑ Upload PDF"}
+                  {submitForm.routingSheet ? "↑ Replace DOCX" : "↑ Upload DOCX"}
                 </label>
                 <input
-                  id="fitrep-routing-sheet" type="file" accept=".pdf,application/pdf"
+                  id="fitrep-routing-sheet" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   style={{ display:"none" }}
-                  onChange={e => { loadFitrepPDF("routingSheet", e.target.files[0]); e.target.value = ""; }}
+                  onChange={e => { loadFitrepFile("routingSheet", e.target.files[0], ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"], "⚠ Please select a DOCX file."); e.target.value = ""; }}
                 />
                 {submitForm.routingSheet
                   ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {submitForm.routingSheet.fileName}</span>

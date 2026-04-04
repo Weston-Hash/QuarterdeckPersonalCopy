@@ -8880,9 +8880,9 @@
       setToast(msg);
       setTimeout(() => setToast(""), 3500);
     };
-    const loadChitPDF = (field, file) => {
-      if (!file || file.type !== "application/pdf") {
-        fire("\u26A0 Please select a PDF file.");
+    const loadChitFile = (field, file, allowedTypes, errorMsg) => {
+      if (!file || !allowedTypes.includes(file.type)) {
+        fire(errorMsg);
         return;
       }
       const reader = new FileReader();
@@ -8905,8 +8905,12 @@
         fire("\u26A0 Date of Absence and Reason are required.");
         return;
       }
+      if (form.reason === "Other" && !form.notes.trim()) {
+        fire("\u26A0 Notes are required when reason is 'Other'.");
+        return;
+      }
       if (!form.routingSheet || !form.chitDoc) {
-        fire("\u26A0 Both PDFs are required: Routing Sheet and CHIT Document.");
+        fire("\u26A0 Both documents are required: Routing Sheet and CHIT Document.");
         return;
       }
       if (needsRouteSelect && (!form.routeCompany || !form.routePlatoon)) {
@@ -9084,16 +9088,18 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.reason, onChange: (e) => setForm((s) => ({ ...s, reason: e.target.value })), children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select reason\u2026" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Medical Appointment" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Academic Conflict \u2014 Exam" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Academic Conflict \u2014 Lab" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Academic Conflict" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Family Emergency" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Personal Emergency" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Other" })
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Notes (optional)" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, value: form.notes, onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })) })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+            "Notes ",
+            form.reason === "Other" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" }) : "(optional)"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, value: form.notes, onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })), placeholder: form.reason === "Other" ? "Please explain the reason for your absence" : "" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.65rem" }, children: "Required Documents" }),
@@ -9103,16 +9109,16 @@
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "chit-routing-sheet", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: form.routingSheet ? "\u2191 Replace PDF" : "\u2191 Upload PDF" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "chit-routing-sheet", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: form.routingSheet ? "\u2191 Replace DOCX" : "\u2191 Upload DOCX" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                 "input",
                 {
                   id: "chit-routing-sheet",
                   type: "file",
-                  accept: ".pdf,application/pdf",
+                  accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                   style: { display: "none" },
                   onChange: (e) => {
-                    loadChitPDF("routingSheet", e.target.files[0]);
+                    loadChitFile("routingSheet", e.target.files[0], ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"], "\u26A0 Please select a DOCX file.");
                     e.target.value = "";
                   }
                 }
@@ -9138,7 +9144,7 @@
                   accept: ".pdf,application/pdf",
                   style: { display: "none" },
                   onChange: (e) => {
-                    loadChitPDF("chitDoc", e.target.files[0]);
+                    loadChitFile("chitDoc", e.target.files[0], ["application/pdf"], "\u26A0 Please select a PDF file.");
                     e.target.value = "";
                   }
                 }
@@ -9509,9 +9515,9 @@
       setToast(msg);
       setTimeout(() => setToast(""), 3500);
     };
-    const loadFitrepPDF = (field, file) => {
-      if (!file || file.type !== "application/pdf") {
-        fire("\u26A0 Please select a PDF file.");
+    const loadFitrepFile = (field, file, allowedTypes, errorMsg) => {
+      if (!file || !allowedTypes.includes(file.type)) {
+        fire(errorMsg);
         return;
       }
       const reader = new FileReader();
@@ -9769,7 +9775,7 @@
                   accept: ".pdf,application/pdf",
                   style: { display: "none" },
                   onChange: (e) => {
-                    loadFitrepPDF("fitrepDoc", e.target.files[0]);
+                    loadFitrepFile("fitrepDoc", e.target.files[0], ["application/pdf"], "\u26A0 Please select a PDF file.");
                     e.target.value = "";
                   }
                 }
@@ -9786,16 +9792,16 @@
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "fitrep-routing-sheet", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: submitForm.routingSheet ? "\u2191 Replace PDF" : "\u2191 Upload PDF" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "fitrep-routing-sheet", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: submitForm.routingSheet ? "\u2191 Replace DOCX" : "\u2191 Upload DOCX" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                 "input",
                 {
                   id: "fitrep-routing-sheet",
                   type: "file",
-                  accept: ".pdf,application/pdf",
+                  accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                   style: { display: "none" },
                   onChange: (e) => {
-                    loadFitrepPDF("routingSheet", e.target.files[0]);
+                    loadFitrepFile("routingSheet", e.target.files[0], ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"], "\u26A0 Please select a DOCX file.");
                     e.target.value = "";
                   }
                 }
