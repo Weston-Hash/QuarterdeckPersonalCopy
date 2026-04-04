@@ -778,7 +778,7 @@ const CSS = `
   .page-sub { font-size: 0.88rem; color: #6B6B6B; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 2px solid rgba(191,87,0,0.15); }
 
   .card { background: white; border-radius: 10px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid rgba(191,87,0,0.1); margin-bottom: 1rem; }
-  .card-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; color: #1A1209; }
+  .card-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #1A1209; }
   .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
 
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
