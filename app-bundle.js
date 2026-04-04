@@ -6388,6 +6388,13 @@
                     }
                     V = f;
                   }
+                  var x = f.sibling;
+                  if (null !== x) {
+                    x.return = f.return;
+                    V = x;
+                    break b;
+                  }
+                  V = f.return;
                 }
                 if (0 !== (f.subtreeFlags & 2064) && null !== g) g.return = f, V = g;
                 else b: for (; null !== V; ) {
@@ -7497,14 +7504,14 @@
       );
     } else if (user.role === "co_cdr") {
       chain.push(
-        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u{1F5C2}"),
+        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
         makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F396}"),
         makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u2705")
       );
     } else if (user.role === "plt_cdr") {
       chain.push(
         makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
-        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u{1F5C2}"),
+        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
         makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F396}"),
         makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u2705")
       );
@@ -7512,7 +7519,7 @@
       chain.push(
         makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "\u{1F464}"),
         makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
-        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u{1F5C2}"),
+        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
         makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F396}"),
         makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u2705")
       );
@@ -7915,6 +7922,9 @@
   .pt-sets { color: #BF5700; font-weight: 600; font-size: 0.82rem; min-width: 80px; }
   .pt-notes { color: #888; font-size: 0.78rem; }
 
+  .folder-section { margin-bottom: 1rem; }
+  .folder-header { cursor: pointer; padding: 0.65rem 1rem; background: #1A1209; color: white; border-radius: 8px; font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.88rem; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 0.5rem; user-select: none; }
+  .folder-header:hover { background: #2a1f14; }
   .chit-card { border-left: 4px solid #BF5700; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 0.75rem; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
   .chit-route { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.78rem; }
   .chit-node { background: rgba(191,87,0,0.1); border-radius: 4px; padding: 2px 7px; color: #8B3D00; }
@@ -8945,7 +8955,21 @@
       setChitSubmitAttempted(false);
       fire("\u2705 CHIT submitted and routed to your chain of command.");
     };
+    const [reviewDoc, setReviewDoc] = (0, import_react.useState)(null);
+    const loadReviewDoc = (file) => {
+      if (!file || file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+        fire("\u26A0 Please select a DOCX file.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => setReviewDoc({ fileName: file.name, dataUrl: e.target.result });
+      reader.readAsDataURL(file);
+    };
     const advanceStage = (id, action) => {
+      if (action === "approved" && !reviewDoc) {
+        fire("\u26A0 Please upload a signed routing sheet before approving.");
+        return;
+      }
       const comment = commentText.trim();
       setChits((prev) => prev.map((c) => {
         if (c.id !== id) return c;
@@ -8958,11 +8982,121 @@
         };
         const next = action === "returned" ? c.currentStage : Math.min(c.currentStage + 1, c.stages.length - 1);
         const status = action === "returned" ? "Returned" : next === c.stages.length - 1 ? "Approved" : "Pending";
-        return { ...c, currentStage: next, stages: updated, status };
+        const docs = action === "approved" && reviewDoc ? { ...c.docs, routingSheet: reviewDoc } : c.docs;
+        return { ...c, currentStage: next, stages: updated, status, docs };
       }));
       setActiveComment(null);
       setCommentText("");
+      setReviewDoc(null);
       fire("CHIT updated.");
+    };
+    const [chitFolders, setChitFolders] = (0, import_react.useState)({ action: true, pipeline: true, complete: false });
+    const needsAction = visible.filter((c) => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
+    const inPipeline = visible.filter((c) => c.status === "Pending" && !canActOnChit(user, c));
+    const completed = visible.filter((c) => c.status === "Approved" || c.status === "Denied" || c.status === "Returned");
+    const renderChitCard = (c) => {
+      const canAct = canActOnChit(user, c);
+      const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
+      const currentStageName = c.stages?.[c.currentStage]?.name || "";
+      return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chit-card", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.3rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: c.id }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { color: "#888", fontSize: "0.82rem", marginLeft: "0.75rem" }, children: [
+              c.name,
+              " \xB7 ",
+              formatCompanyCoLabel(c.company),
+              ", ",
+              formatPlatoonLabel(c.platoon)
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `badge ${c.status === "Approved" ? "badge-green" : c.status === "Denied" || c.status === "Returned" ? "badge-red" : "badge-orange"}`, children: c.status }),
+            canAct && !isDone && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { background: "rgba(42,125,79,0.15)", color: "#2A7D4F" }, children: "\u25CF Your Action" })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.82rem", color: "#666" }, children: [
+          c.reason,
+          " \xB7 Absent: ",
+          c.date
+        ] }),
+        c.notes && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }, children: c.notes }),
+        c.docs && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.55rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
+          c.docs.routingSheet && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.routingSheet.dataUrl, download: c.docs.routingSheet.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} Routing Sheet" }),
+          c.docs.chitDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.chitDoc.dataUrl, download: c.docs.chitDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} CHIT Document" })
+        ] }),
+        c.stages && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-track", style: { marginTop: "0.75rem" }, children: c.stages.map((s, j) => {
+          const done = j < c.currentStage;
+          const returned = j === c.currentStage && c.status === "Returned";
+          const active = j === c.currentStage && !isDone;
+          return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`, children: done ? "\u2713" : returned ? "\u21A9" : s.icon }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: s.name }),
+            active && canAct && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-approver active", children: "\u25CF You" })
+          ] }, j);
+        }) }),
+        c.stages?.some((s) => s.completedBy && s.comment) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: c.stages.map((s, j) => s.completedBy && s.comment ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment-by", children: [
+            s.name,
+            " \xB7 ",
+            s.completedBy,
+            " \xB7 ",
+            s.completedAt
+          ] }),
+          s.comment
+        ] }, j) : null) }),
+        canAct && !isDone && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", style: { marginTop: "0.75rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-label", children: [
+            "\u2B50 Your Review \u2014 ",
+            currentStageName
+          ] }),
+          activeComment === c.id ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+              "textarea",
+              {
+                className: "input",
+                style: { minHeight: "70px", resize: "vertical", marginBottom: "0.65rem", fontSize: "0.85rem" },
+                placeholder: "Add comments (optional)\u2026",
+                value: commentText,
+                onChange: (e) => setCommentText(e.target.value)
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", style: { marginBottom: "0.65rem" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+                "Signed Routing Sheet ",
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
+                  reviewDoc ? "\u2191 Replace DOCX" : "\u2191 Upload DOCX",
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document", style: { display: "none" }, onChange: (e) => {
+                    loadReviewDoc(e.target.files[0]);
+                    e.target.value = "";
+                  } })
+                ] }),
+                reviewDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
+                  "\u{1F4C4} ",
+                  reviewDoc.fileName
+                ] })
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "approved"), children: "\u2713 Approve" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "returned"), children: "\u21A9 Return to Originator" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
+                setActiveComment(null);
+                setCommentText("");
+                setReviewDoc(null);
+              }, children: "Cancel" })
+            ] })
+          ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => {
+            setActiveComment(c.id);
+            setCommentText("");
+            setReviewDoc(null);
+          }, children: "\u270F Review CHIT" })
+        ] })
+      ] }, c.id);
     };
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-title", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "CHITs" }) }),
@@ -8978,89 +9112,33 @@
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2rem" }, children: "\u{1F4CB}" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: "No CHITs on file." })
       ] }),
-      visible.map((c, i) => {
-        const canAct = canActOnChit(user, c);
-        const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
-        const currentStageName = c.stages?.[c.currentStage]?.name || "";
-        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chit-card", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.3rem" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: c.id }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { color: "#888", fontSize: "0.82rem", marginLeft: "0.75rem" }, children: [
-                c.name,
-                " \xB7 ",
-                formatCompanyCoLabel(c.company),
-                ", ",
-                formatPlatoonLabel(c.platoon)
-              ] })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `badge ${c.status === "Approved" ? "badge-green" : c.status === "Denied" || c.status === "Returned" ? "badge-red" : "badge-orange"}`, children: c.status }),
-              canAct && !isDone && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { background: "rgba(42,125,79,0.15)", color: "#2A7D4F" }, children: "\u25CF Your Action" })
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.82rem", color: "#666" }, children: [
-            c.reason,
-            " \xB7 Absent: ",
-            c.date
-          ] }),
-          c.notes && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }, children: c.notes }),
-          c.docs && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.55rem" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
-            c.docs.routingSheet && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.routingSheet.dataUrl, download: c.docs.routingSheet.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} Routing Sheet" }),
-            c.docs.chitDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.chitDoc.dataUrl, download: c.docs.chitDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} CHIT Document" })
-          ] }),
-          c.stages && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-track", style: { marginTop: "0.75rem" }, children: c.stages.map((s, j) => {
-            const done = j < c.currentStage;
-            const returned = j === c.currentStage && c.status === "Returned";
-            const active = j === c.currentStage && !isDone;
-            return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`, children: done ? "\u2713" : returned ? "\u21A9" : s.icon }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: s.name }),
-              active && canAct && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-approver active", children: "\u25CF You" })
-            ] }, j);
-          }) }),
-          c.stages?.some((s) => s.completedBy && s.comment) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: c.stages.map((s, j) => s.completedBy && s.comment ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment-by", children: [
-              s.name,
-              " \xB7 ",
-              s.completedBy,
-              " \xB7 ",
-              s.completedAt
-            ] }),
-            s.comment
-          ] }, j) : null) }),
-          canAct && !isDone && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", style: { marginTop: "0.75rem" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-label", children: [
-              "\u2B50 Your Review \u2014 ",
-              currentStageName
-            ] }),
-            activeComment === c.id ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "textarea",
-                {
-                  className: "input",
-                  style: { minHeight: "70px", resize: "vertical", marginBottom: "0.65rem", fontSize: "0.85rem" },
-                  placeholder: "Add comments (optional)\u2026",
-                  value: commentText,
-                  onChange: (e) => setCommentText(e.target.value)
-                }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "approved"), children: "\u2713 Approve" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "returned"), children: "\u21A9 Return to Originator" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
-                  setActiveComment(null);
-                  setCommentText("");
-                }, children: "Cancel" })
-              ] })
-            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => {
-              setActiveComment(c.id);
-              setCommentText("");
-            }, children: "\u270F Review CHIT" })
-          ] })
-        ] }, i);
-      }),
+      needsAction.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setChitFolders((f) => ({ ...f, action: !f.action })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+          chitFolders.action ? "\u25BC" : "\u25B6",
+          " Requiring Your Approval (",
+          needsAction.length,
+          ")"
+        ] }) }),
+        chitFolders.action && needsAction.map(renderChitCard)
+      ] }),
+      inPipeline.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setChitFolders((f) => ({ ...f, pipeline: !f.pipeline })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+          chitFolders.pipeline ? "\u25BC" : "\u25B6",
+          " In Pipeline (",
+          inPipeline.length,
+          ")"
+        ] }) }),
+        chitFolders.pipeline && inPipeline.map(renderChitCard)
+      ] }),
+      completed.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setChitFolders((f) => ({ ...f, complete: !f.complete })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+          chitFolders.complete ? "\u25BC" : "\u25B6",
+          " Completed (",
+          completed.length,
+          ")"
+        ] }) }),
+        chitFolders.complete && completed.map(renderChitCard)
+      ] }),
       showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Submit CHIT", onClose: () => setShowModal(false), children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "privacy-note", children: "\u{1F512} Private \u2014 only you and your CoC will see this." }),
         needsRouteSelect && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
@@ -9524,6 +9602,8 @@
     const [commentText, setCommentText] = (0, import_react.useState)("");
     const [toast, setToast] = (0, import_react.useState)("");
     const [filter, setFilter] = (0, import_react.useState)("");
+    const [reviewDoc, setReviewDoc] = (0, import_react.useState)(null);
+    const [fitrepFolders, setFitrepFolders] = (0, import_react.useState)({ action: true, pipeline: true, complete: false });
     const fire = (msg) => {
       setToast(msg);
       setTimeout(() => setToast(""), 3500);
@@ -9586,6 +9666,10 @@
       fire("\u2705 FITREP submitted and routed to your chain of command.");
     };
     const advanceStage = (id, action = "approved") => {
+      if (action === "approved" && !reviewDoc) {
+        fire("\u26A0 Please upload a signed routing sheet before approving.");
+        return;
+      }
       const comment = commentText.trim();
       setFitrebs((prev) => prev.map((f) => {
         if (f.id !== id) return f;
@@ -9598,13 +9682,126 @@
         };
         const next = action === "returned" ? f.currentStage : Math.min(f.currentStage + 1, f.stages.length - 1);
         const status = action === "returned" ? "Returned" : next === f.stages.length - 1 ? "Approved" : "Pending";
-        return { ...f, currentStage: next, stages: updated, status };
+        const docs = action === "approved" && reviewDoc ? { ...f.docs, routingSheet: reviewDoc } : f.docs;
+        return { ...f, currentStage: next, stages: updated, status, docs };
       }));
       setActiveComment(null);
       setCommentText("");
+      setReviewDoc(null);
       fire(action === "returned" ? "FITREP returned to originator." : "\u2705 FITREP advanced. Stage comments saved.");
     };
     const companies = [...new Set(visible.map((f) => normalizeCompany(f.company)))];
+    const needsActionF = filtered.filter((f) => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Returned");
+    const inPipelineF = filtered.filter((f) => f.status === "Pending" && !canActOnFitrep(user, f));
+    const completedF = filtered.filter((f) => f.status === "Approved" || f.status === "Returned");
+    const renderFitrepCard = (f) => {
+      const canAct = canActOnFitrep(user, f);
+      const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
+      const currentStageName = isDone ? f.status === "Returned" ? "Returned" : "Complete" : f.stages?.[f.currentStage]?.name || "";
+      return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-card", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-header", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("strong", { style: { fontSize: "0.95rem" }, children: [
+              f.subjectRank,
+              " ",
+              f.subjectName
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.78rem", color: "#888", marginTop: "1px" }, children: [
+              formatCompanyCoLabel(f.company),
+              " \xB7 ",
+              formatPlatoonLabel(f.platoon),
+              " \xB7 ",
+              f.period
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-navy", children: f.id }),
+            f.status === "Returned" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-red", children: "Returned" }) : isDone ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-green", children: "Complete" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-orange", children: currentStageName }),
+            canAct && !isDone && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { background: "rgba(42,125,79,0.15)", color: "#2A7D4F" }, children: "\u25CF Your Action" })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-body", children: [
+          f.docs && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.75rem" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
+            f.docs.fitrepDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: f.docs.fitrepDoc.dataUrl, download: f.docs.fitrepDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} FITREP Document" }),
+            f.docs.routingSheet && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: f.docs.routingSheet.dataUrl, download: f.docs.routingSheet.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} Routing Sheet" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-track", children: f.stages.map((s, i) => {
+            const done = i < f.currentStage;
+            const returned = i === f.currentStage && f.status === "Returned";
+            const active = i === f.currentStage && !isDone;
+            return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`, children: done ? "\u2713" : returned ? "\u21A9" : s.icon }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: s.name }),
+              active && canAct && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-approver active", children: "\u25CF You" })
+            ] }, i);
+          }) }),
+          f.stages.some((s) => s.completedBy && s.comment) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.75rem" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.7rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.5rem" }, children: "Stage Comments" }),
+            f.stages.map((s, i) => s.completedBy && s.comment ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment-by", children: [
+                s.name,
+                " \xB7 ",
+                s.completedBy,
+                " \xB7 ",
+                s.completedAt
+              ] }),
+              s.comment
+            ] }, i) : null)
+          ] }),
+          canAct && !isDone && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-label", children: [
+              "\u2B50 Your Review \u2014 ",
+              currentStageName
+            ] }),
+            activeComment === f.id ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "textarea",
+                {
+                  className: "input",
+                  style: { minHeight: "80px", resize: "vertical", marginBottom: "0.65rem", fontSize: "0.85rem" },
+                  placeholder: "Add your comments (optional \u2014 describe performance, concerns, or recommendations)\u2026",
+                  value: commentText,
+                  onChange: (e) => setCommentText(e.target.value)
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", style: { marginBottom: "0.65rem" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+                  "Signed Routing Sheet ",
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" }, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
+                    reviewDoc ? "\u2191 Replace DOCX" : "\u2191 Upload DOCX",
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document", style: { display: "none" }, onChange: (e) => {
+                      loadReviewDoc(e.target.files[0]);
+                      e.target.value = "";
+                    } })
+                  ] }),
+                  reviewDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
+                    "\u{1F4C4} ",
+                    reviewDoc.fileName
+                  ] })
+                ] })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(f.id, "approved"), children: "\u2713 Approve & Advance" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(f.id, "returned"), children: "\u21A9 Return to Originator" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
+                  setActiveComment(null);
+                  setCommentText("");
+                  setReviewDoc(null);
+                }, children: "Cancel" })
+              ] })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => {
+              setActiveComment(f.id);
+              setCommentText("");
+              setReviewDoc(null);
+            }, children: "\u270F Review FITREP" })
+          ] })
+        ] })
+      ] }, f.id);
+    };
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-title", children: [
         "FITREP ",
@@ -9654,93 +9851,33 @@
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2rem" }, children: "\u{1F4CA}" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: "No FITREPs on file." })
       ] }),
-      filtered.map((f) => {
-        const canAct = canActOnFitrep(user, f);
-        const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
-        const currentStageName = isDone ? f.status === "Returned" ? "Returned" : "Complete" : f.stages?.[f.currentStage]?.name || "";
-        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-card", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-header", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("strong", { style: { fontSize: "0.95rem" }, children: [
-                f.subjectRank,
-                " ",
-                f.subjectName
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.78rem", color: "#888", marginTop: "1px" }, children: [
-                formatCompanyCoLabel(f.company),
-                " \xB7 ",
-                formatPlatoonLabel(f.platoon),
-                " \xB7 ",
-                f.period
-              ] })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-navy", children: f.id }),
-              f.status === "Returned" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-red", children: "Returned" }) : isDone ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-green", children: "Complete" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-orange", children: currentStageName }),
-              canAct && !isDone && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { background: "rgba(42,125,79,0.15)", color: "#2A7D4F" }, children: "\u25CF Your Action" })
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-body", children: [
-            f.docs && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.75rem" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
-              f.docs.fitrepDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: f.docs.fitrepDoc.dataUrl, download: f.docs.fitrepDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} FITREP Document" }),
-              f.docs.routingSheet && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: f.docs.routingSheet.dataUrl, download: f.docs.routingSheet.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} Routing Sheet" })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-track", children: f.stages.map((s, i) => {
-              const done = i < f.currentStage;
-              const returned = i === f.currentStage && f.status === "Returned";
-              const active = i === f.currentStage && !isDone;
-              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`, children: done ? "\u2713" : returned ? "\u21A9" : s.icon }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: s.name }),
-                active && canAct && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-approver active", children: "\u25CF You" })
-              ] }, i);
-            }) }),
-            f.stages.some((s) => s.completedBy && s.comment) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.75rem" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.7rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.5rem" }, children: "Stage Comments" }),
-              f.stages.map((s, i) => s.completedBy && s.comment ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment-by", children: [
-                  s.name,
-                  " \xB7 ",
-                  s.completedBy,
-                  " \xB7 ",
-                  s.completedAt
-                ] }),
-                s.comment
-              ] }, i) : null)
-            ] }),
-            canAct && !isDone && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-label", children: [
-                "\u2B50 Your Review \u2014 ",
-                currentStageName
-              ] }),
-              activeComment === f.id ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                  "textarea",
-                  {
-                    className: "input",
-                    style: { minHeight: "80px", resize: "vertical", marginBottom: "0.65rem", fontSize: "0.85rem" },
-                    placeholder: "Add your comments (optional \u2014 describe performance, concerns, or recommendations)\u2026",
-                    value: commentText,
-                    onChange: (e) => setCommentText(e.target.value)
-                  }
-                ),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(f.id, "approved"), children: "\u2713 Approve & Advance" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(f.id, "returned"), children: "\u21A9 Return to Originator" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
-                    setActiveComment(null);
-                    setCommentText("");
-                  }, children: "Cancel" })
-                ] })
-              ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => {
-                setActiveComment(f.id);
-                setCommentText("");
-              }, children: "\u270F Review & Add Comments" })
-            ] })
-          ] })
-        ] }, f.id);
-      }),
+      needsActionF.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setFitrepFolders((f) => ({ ...f, action: !f.action })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+          fitrepFolders.action ? "\u25BC" : "\u25B6",
+          " Requiring Your Approval (",
+          needsActionF.length,
+          ")"
+        ] }) }),
+        fitrepFolders.action && needsActionF.map(renderFitrepCard)
+      ] }),
+      inPipelineF.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setFitrepFolders((f) => ({ ...f, pipeline: !f.pipeline })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+          fitrepFolders.pipeline ? "\u25BC" : "\u25B6",
+          " In Pipeline (",
+          inPipelineF.length,
+          ")"
+        ] }) }),
+        fitrepFolders.pipeline && inPipelineF.map(renderFitrepCard)
+      ] }),
+      completedF.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setFitrepFolders((f) => ({ ...f, complete: !f.complete })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+          fitrepFolders.complete ? "\u25BC" : "\u25B6",
+          " Completed (",
+          completedF.length,
+          ")"
+        ] }) }),
+        fitrepFolders.complete && completedF.map(renderFitrepCard)
+      ] }),
       showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Submit FITREP", onClose: () => setShowModal(false), children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "privacy-note", children: "\u{1F512} Private \u2014 only you and your CoC will see this." }),
         needsRouteSelect && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [

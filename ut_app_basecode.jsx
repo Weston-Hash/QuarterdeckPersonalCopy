@@ -357,14 +357,14 @@ function buildChitApprovalChain(userList, user, routeContext) {
     );
   } else if (user.role === "co_cdr") {
     chain.push(
-      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "🗂"),
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
       makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
       makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
     );
   } else if (user.role === "plt_cdr") {
     chain.push(
       makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
-      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "🗂"),
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
       makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
       makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
     );
@@ -372,7 +372,7 @@ function buildChitApprovalChain(userList, user, routeContext) {
     chain.push(
       makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "👤"),
       makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
-      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "🗂"),
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
       makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
       makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
     );
@@ -740,7 +740,7 @@ const FITREP_STAGES = [
   { name:"Submitted",      approverRole:null,      icon:"📝" },
   { name:"PC Review",      approverRole:"plt_cdr", icon:"👤" },
   { name:"Co CDR Review",  approverRole:"co_cdr",  icon:"⭐" },
-  { name:"ADJ Review",     approverRole:"adj",     icon:"🗂" },
+  { name:"ADJ Review",     approverRole:"adj",     icon:"✏️" },
   { name:"BNXO Review",    approverRole:"xo",      icon:"🎖" },
   { name:"BNCO Approval",  approverRole:"bn_cdr",  icon:"✅" },
   { name:"Complete",       approverRole:null,      icon:"🏅" },
@@ -885,6 +885,9 @@ const CSS = `
   .pt-sets { color: #BF5700; font-weight: 600; font-size: 0.82rem; min-width: 80px; }
   .pt-notes { color: #888; font-size: 0.78rem; }
 
+  .folder-section { margin-bottom: 1rem; }
+  .folder-header { cursor: pointer; padding: 0.65rem 1rem; background: #1A1209; color: white; border-radius: 8px; font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.88rem; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 0.5rem; user-select: none; }
+  .folder-header:hover { background: #2a1f14; }
   .chit-card { border-left: 4px solid #BF5700; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 0.75rem; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
   .chit-route { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.78rem; }
   .chit-node { background: rgba(191,87,0,0.1); border-radius: 4px; padding: 2px 7px; color: #8B3D00; }
@@ -1940,7 +1943,17 @@ function ChitsPage({ chits, setChits, userList }) {
     fire("✅ CHIT submitted and routed to your chain of command.");
   };
 
+  const [reviewDoc, setReviewDoc] = useState(null);
+
+  const loadReviewDoc = (file) => {
+    if (!file || file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") { fire("⚠ Please select a DOCX file."); return; }
+    const reader = new FileReader();
+    reader.onload = e => setReviewDoc({ fileName: file.name, dataUrl: e.target.result });
+    reader.readAsDataURL(file);
+  };
+
   const advanceStage = (id, action) => {
+    if (action === "approved" && !reviewDoc) { fire("⚠ Please upload a signed routing sheet before approving."); return; }
     const comment = commentText.trim();
     setChits(prev => prev.map(c => {
       if (c.id !== id) return c;
@@ -1952,16 +1965,128 @@ function ChitsPage({ chits, setChits, userList }) {
         comment,
       };
       const next = action === "returned"
-        ? c.currentStage   // stay at denial stage so audit trail is visible
+        ? c.currentStage
         : Math.min(c.currentStage + 1, c.stages.length - 1);
       const status = action === "returned" ? "Returned"
         : next === c.stages.length - 1 ? "Approved"
         : "Pending";
-      return { ...c, currentStage: next, stages: updated, status };
+      const docs = action === "approved" && reviewDoc
+        ? { ...c.docs, routingSheet: reviewDoc }
+        : c.docs;
+      return { ...c, currentStage: next, stages: updated, status, docs };
     }));
     setActiveComment(null);
     setCommentText("");
+    setReviewDoc(null);
     fire("CHIT updated.");
+  };
+
+  const [chitFolders, setChitFolders] = useState({ action: true, pipeline: true, complete: false });
+  const needsAction = visible.filter(c => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
+  const inPipeline = visible.filter(c => c.status === "Pending" && !canActOnChit(user, c));
+  const completed = visible.filter(c => c.status === "Approved" || c.status === "Denied" || c.status === "Returned");
+
+  const renderChitCard = (c) => {
+    const canAct = canActOnChit(user, c);
+    const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
+    const currentStageName = c.stages?.[c.currentStage]?.name || "";
+
+    return (
+      <div className="chit-card" key={c.id}>
+        <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.3rem" }}>
+          <div>
+            <strong>{c.id}</strong>
+            <span style={{ color:"#888", fontSize:"0.82rem", marginLeft:"0.75rem" }}>
+              {c.name} · {formatCompanyCoLabel(c.company)}, {formatPlatoonLabel(c.platoon)}
+            </span>
+          </div>
+          <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+            <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" || c.status==="Returned" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
+            {canAct && !isDone && <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>}
+          </div>
+        </div>
+        <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · Absent: {c.date}</div>
+        {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", marginTop:"0.2rem" }}>{c.notes}</div>}
+
+        {c.docs && (
+          <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginTop:"0.55rem" }}>
+            <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
+            {c.docs.routingSheet && (
+              <a href={c.docs.routingSheet.dataUrl} download={c.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
+            )}
+            {c.docs.chitDoc && (
+              <a href={c.docs.chitDoc.dataUrl} download={c.docs.chitDoc.fileName} className="btn btn-outline btn-sm">📄 CHIT Document</a>
+            )}
+          </div>
+        )}
+
+        {c.stages && (
+          <div className="stage-track" style={{ marginTop:"0.75rem" }}>
+            {c.stages.map((s, j) => {
+              const done     = j < c.currentStage;
+              const returned = j === c.currentStage && c.status === "Returned";
+              const active   = j === c.currentStage && !isDone;
+              return (
+                <div key={j} className={`stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>
+                  <div className={`stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`}>
+                    {done ? "✓" : returned ? "↩" : s.icon}
+                  </div>
+                  <div className={`stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>{s.name}</div>
+                  {active && canAct && <div className="stage-approver active">● You</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {c.stages?.some(s => s.completedBy && s.comment) && (
+          <div style={{ marginTop:"0.5rem" }}>
+            {c.stages.map((s, j) => s.completedBy && s.comment ? (
+              <div className="stage-comment" key={j}>
+                <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
+                {s.comment}
+              </div>
+            ) : null)}
+          </div>
+        )}
+
+        {canAct && !isDone && (
+          <div className="stage-action-box" style={{ marginTop:"0.75rem" }}>
+            <div className="stage-action-label">⭐ Your Review — {currentStageName}</div>
+            {activeComment === c.id ? (
+              <>
+                <textarea
+                  className="input"
+                  style={{ minHeight:"70px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
+                  placeholder="Add comments (optional)…"
+                  value={commentText}
+                  onChange={e => setCommentText(e.target.value)}
+                />
+                <div className="input-group" style={{ marginBottom:"0.65rem" }}>
+                  <label className="input-label">Signed Routing Sheet <span style={{ color:"#C0392B" }}>*</span></label>
+                  <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+                    <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                      {reviewDoc ? "↑ Replace DOCX" : "↑ Upload DOCX"}
+                      <input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display:"none" }} onChange={e => { loadReviewDoc(e.target.files[0]); e.target.value = ""; }} />
+                    </label>
+                    {reviewDoc && <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {reviewDoc.fileName}</span>}
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                  <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
+                  <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return to Originator</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); setReviewDoc(null); }}>Cancel</button>
+                </div>
+              </>
+            ) : (
+              <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(c.id); setCommentText(""); setReviewDoc(null); }}>
+                ✏ Review CHIT
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -1988,102 +2113,32 @@ function ChitsPage({ chits, setChits, userList }) {
         </div>
       )}
 
-      {visible.map((c, i) => {
-        const canAct = canActOnChit(user, c);
-        const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
-        const currentStageName = c.stages?.[c.currentStage]?.name || "";
-
-        return (
-          <div className="chit-card" key={i}>
-            <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.3rem" }}>
-              <div>
-                <strong>{c.id}</strong>
-                <span style={{ color:"#888", fontSize:"0.82rem", marginLeft:"0.75rem" }}>
-                  {c.name} · {formatCompanyCoLabel(c.company)}, {formatPlatoonLabel(c.platoon)}
-                </span>
-              </div>
-              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
-                <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" || c.status==="Returned" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
-                {canAct && !isDone && <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>}
-              </div>
-            </div>
-            <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · Absent: {c.date}</div>
-            {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", marginTop:"0.2rem" }}>{c.notes}</div>}
-
-            {/* Attached documents */}
-            {c.docs && (
-              <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginTop:"0.55rem" }}>
-                <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
-                {c.docs.routingSheet && (
-                  <a href={c.docs.routingSheet.dataUrl} download={c.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
-                )}
-                {c.docs.chitDoc && (
-                  <a href={c.docs.chitDoc.dataUrl} download={c.docs.chitDoc.fileName} className="btn btn-outline btn-sm">📄 CHIT Document</a>
-                )}
-              </div>
-            )}
-
-            {/* Stage tracker */}
-            {c.stages && (
-              <div className="stage-track" style={{ marginTop:"0.75rem" }}>
-                {c.stages.map((s, j) => {
-                  const done     = j < c.currentStage;
-                  const returned = j === c.currentStage && c.status === "Returned";
-                  const active   = j === c.currentStage && !isDone;
-                  return (
-                    <div key={j} className={`stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>
-                      <div className={`stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`}>
-                        {done ? "✓" : returned ? "↩" : s.icon}
-                      </div>
-                      <div className={`stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>{s.name}</div>
-                      {active && canAct && <div className="stage-approver active">● You</div>}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Completed stage comments */}
-            {c.stages?.some(s => s.completedBy && s.comment) && (
-              <div style={{ marginTop:"0.5rem" }}>
-                {c.stages.map((s, j) => s.completedBy && s.comment ? (
-                  <div className="stage-comment" key={j}>
-                    <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
-                    {s.comment}
-                  </div>
-                ) : null)}
-              </div>
-            )}
-
-            {/* Action box for current approver */}
-            {canAct && !isDone && (
-              <div className="stage-action-box" style={{ marginTop:"0.75rem" }}>
-                <div className="stage-action-label">⭐ Your Review — {currentStageName}</div>
-                {activeComment === c.id ? (
-                  <>
-                    <textarea
-                      className="input"
-                      style={{ minHeight:"70px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
-                      placeholder="Add comments (optional)…"
-                      value={commentText}
-                      onChange={e => setCommentText(e.target.value)}
-                    />
-                    <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-                      <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
-                      <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return to Originator</button>
-                      <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>Cancel</button>
-                    </div>
-                  </>
-                ) : (
-                  <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(c.id); setCommentText(""); }}>
-                    ✏ Review CHIT
-                  </button>
-                )}
-              </div>
-            )}
+      {needsAction.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setChitFolders(f => ({ ...f, action: !f.action }))}>
+            <span>{chitFolders.action ? "▼" : "▶"} Requiring Your Approval ({needsAction.length})</span>
           </div>
-        );
-      })}
+          {chitFolders.action && needsAction.map(renderChitCard)}
+        </div>
+      )}
+
+      {inPipeline.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setChitFolders(f => ({ ...f, pipeline: !f.pipeline }))}>
+            <span>{chitFolders.pipeline ? "▼" : "▶"} In Pipeline ({inPipeline.length})</span>
+          </div>
+          {chitFolders.pipeline && inPipeline.map(renderChitCard)}
+        </div>
+      )}
+
+      {completed.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setChitFolders(f => ({ ...f, complete: !f.complete }))}>
+            <span>{chitFolders.complete ? "▼" : "▶"} Completed ({completed.length})</span>
+          </div>
+          {chitFolders.complete && completed.map(renderChitCard)}
+        </div>
+      )}
 
       {showModal && (
         <Modal title="Submit CHIT" onClose={() => setShowModal(false)}>
@@ -2507,6 +2562,8 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   const [commentText, setCommentText]     = useState("");
   const [toast, setToast]                 = useState("");
   const [filter, setFilter]               = useState("");
+  const [reviewDoc, setReviewDoc]         = useState(null);
+  const [fitrepFolders, setFitrepFolders] = useState({ action: true, pipeline: true, complete: false });
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
@@ -2568,6 +2625,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   };
 
   const advanceStage = (id, action = "approved") => {
+    if (action === "approved" && !reviewDoc) { fire("⚠ Please upload a signed routing sheet before approving."); return; }
     const comment = commentText.trim();
     setFitrebs(prev => prev.map(f => {
       if (f.id !== id) return f;
@@ -2584,14 +2642,131 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
       const status = action === "returned" ? "Returned"
         : next === f.stages.length - 1 ? "Approved"
         : "Pending";
-      return { ...f, currentStage: next, stages: updated, status };
+      const docs = action === "approved" && reviewDoc
+        ? { ...f.docs, routingSheet: reviewDoc }
+        : f.docs;
+      return { ...f, currentStage: next, stages: updated, status, docs };
     }));
     setActiveComment(null);
     setCommentText("");
+    setReviewDoc(null);
     fire(action === "returned" ? "FITREP returned to originator." : "✅ FITREP advanced. Stage comments saved.");
   };
 
   const companies = [...new Set(visible.map(f => normalizeCompany(f.company)))];
+
+  const needsActionF = filtered.filter(f => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Returned");
+  const inPipelineF = filtered.filter(f => f.status === "Pending" && !canActOnFitrep(user, f));
+  const completedF = filtered.filter(f => f.status === "Approved" || f.status === "Returned");
+
+  const renderFitrepCard = (f) => {
+    const canAct = canActOnFitrep(user, f);
+    const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
+    const currentStageName = isDone ? (f.status === "Returned" ? "Returned" : "Complete") : (f.stages?.[f.currentStage]?.name || "");
+
+    return (
+      <div className="fitrep-card" key={f.id}>
+        <div className="fitrep-header">
+          <div>
+            <strong style={{ fontSize:"0.95rem" }}>{f.subjectRank} {f.subjectName}</strong>
+            <div style={{ fontSize:"0.78rem", color:"#888", marginTop:"1px" }}>
+              {formatCompanyCoLabel(f.company)} · {formatPlatoonLabel(f.platoon)} · {f.period}
+            </div>
+          </div>
+          <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+            <span className="badge badge-navy">{f.id}</span>
+            {f.status === "Returned"
+              ? <span className="badge badge-red">Returned</span>
+              : isDone
+                ? <span className="badge badge-green">Complete</span>
+                : <span className="badge badge-orange">{currentStageName}</span>
+            }
+            {canAct && !isDone && (
+              <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>
+            )}
+          </div>
+        </div>
+
+        <div className="fitrep-body">
+          {f.docs && (
+            <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginBottom:"0.75rem" }}>
+              <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
+              {f.docs.fitrepDoc && (
+                <a href={f.docs.fitrepDoc.dataUrl} download={f.docs.fitrepDoc.fileName} className="btn btn-outline btn-sm">📄 FITREP Document</a>
+              )}
+              {f.docs.routingSheet && (
+                <a href={f.docs.routingSheet.dataUrl} download={f.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
+              )}
+            </div>
+          )}
+          <div className="stage-track">
+            {f.stages.map((s, i) => {
+              const done     = i < f.currentStage;
+              const returned = i === f.currentStage && f.status === "Returned";
+              const active   = i === f.currentStage && !isDone;
+              return (
+                <div key={i} className={`stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>
+                  <div className={`stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`}>
+                    {done ? "✓" : returned ? "↩" : s.icon}
+                  </div>
+                  <div className={`stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>{s.name}</div>
+                  {active && canAct && <div className="stage-approver active">● You</div>}
+                </div>
+              );
+            })}
+          </div>
+
+          {f.stages.some(s => s.completedBy && s.comment) && (
+            <div style={{ marginTop:"0.75rem" }}>
+              <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>Stage Comments</div>
+              {f.stages.map((s, i) => s.completedBy && s.comment ? (
+                <div className="stage-comment" key={i}>
+                  <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
+                  {s.comment}
+                </div>
+              ) : null)}
+            </div>
+          )}
+
+          {canAct && !isDone && (
+            <div className="stage-action-box">
+              <div className="stage-action-label">⭐ Your Review — {currentStageName}</div>
+              {activeComment === f.id ? (
+                <>
+                  <textarea
+                    className="input"
+                    style={{ minHeight:"80px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
+                    placeholder="Add your comments (optional — describe performance, concerns, or recommendations)…"
+                    value={commentText}
+                    onChange={e => setCommentText(e.target.value)}
+                  />
+                  <div className="input-group" style={{ marginBottom:"0.65rem" }}>
+                    <label className="input-label">Signed Routing Sheet <span style={{ color:"#C0392B" }}>*</span></label>
+                    <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+                      <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                        {reviewDoc ? "↑ Replace DOCX" : "↑ Upload DOCX"}
+                        <input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display:"none" }} onChange={e => { loadReviewDoc(e.target.files[0]); e.target.value = ""; }} />
+                      </label>
+                      {reviewDoc && <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {reviewDoc.fileName}</span>}
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                    <button className="btn btn-green btn-sm" onClick={() => advanceStage(f.id, "approved")}>✓ Approve & Advance</button>
+                    <button className="btn btn-red btn-sm" onClick={() => advanceStage(f.id, "returned")}>↩ Return to Originator</button>
+                    <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); setReviewDoc(null); }}>Cancel</button>
+                  </div>
+                </>
+              ) : (
+                <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(f.id); setCommentText(""); setReviewDoc(null); }}>
+                  ✏ Review FITREP
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -2643,115 +2818,32 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         </div>
       )}
 
-      {filtered.map(f => {
-        const canAct = canActOnFitrep(user, f);
-        const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
-        const currentStageName = isDone ? (f.status === "Returned" ? "Returned" : "Complete") : (f.stages?.[f.currentStage]?.name || "");
-
-        return (
-          <div className="fitrep-card" key={f.id}>
-            {/* Card header */}
-            <div className="fitrep-header">
-              <div>
-                <strong style={{ fontSize:"0.95rem" }}>{f.subjectRank} {f.subjectName}</strong>
-                <div style={{ fontSize:"0.78rem", color:"#888", marginTop:"1px" }}>
-                  {formatCompanyCoLabel(f.company)} · {formatPlatoonLabel(f.platoon)} · {f.period}
-                </div>
-              </div>
-              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
-                <span className="badge badge-navy">{f.id}</span>
-                {f.status === "Returned"
-                  ? <span className="badge badge-red">Returned</span>
-                  : isDone
-                    ? <span className="badge badge-green">Complete</span>
-                    : <span className="badge badge-orange">{currentStageName}</span>
-                }
-                {canAct && !isDone && (
-                  <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>
-                )}
-              </div>
-            </div>
-
-            {/* Stage tracker — uses per-fitrep stages */}
-            <div className="fitrep-body">
-              {/* Attached documents */}
-              {f.docs && (
-                <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginBottom:"0.75rem" }}>
-                  <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
-                  {f.docs.fitrepDoc && (
-                    <a href={f.docs.fitrepDoc.dataUrl} download={f.docs.fitrepDoc.fileName} className="btn btn-outline btn-sm">📄 FITREP Document</a>
-                  )}
-                  {f.docs.routingSheet && (
-                    <a href={f.docs.routingSheet.dataUrl} download={f.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
-                  )}
-                </div>
-              )}
-              <div className="stage-track">
-                {f.stages.map((s, i) => {
-                  const done     = i < f.currentStage;
-                  const returned = i === f.currentStage && f.status === "Returned";
-                  const active   = i === f.currentStage && !isDone;
-                  return (
-                    <div key={i} className={`stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>
-                      <div className={`stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`}>
-                        {done ? "✓" : returned ? "↩" : s.icon}
-                      </div>
-                      <div className={`stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>{s.name}</div>
-                      {active && canAct && <div className="stage-approver active">● You</div>}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Completed stage comments */}
-              {f.stages.some(s => s.completedBy && s.comment) && (
-                <div style={{ marginTop:"0.75rem" }}>
-                  <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>Stage Comments</div>
-                  {f.stages.map((s, i) => s.completedBy && s.comment ? (
-                    <div className="stage-comment" key={i}>
-                      <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
-                      {s.comment}
-                    </div>
-                  ) : null)}
-                </div>
-              )}
-
-              {/* Action box for current approver */}
-              {canAct && !isDone && (
-                <div className="stage-action-box">
-                  <div className="stage-action-label">⭐ Your Review — {currentStageName}</div>
-                  {activeComment === f.id ? (
-                    <>
-                      <textarea
-                        className="input"
-                        style={{ minHeight:"80px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
-                        placeholder="Add your comments (optional — describe performance, concerns, or recommendations)…"
-                        value={commentText}
-                        onChange={e => setCommentText(e.target.value)}
-                      />
-                      <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-                        <button className="btn btn-green btn-sm" onClick={() => advanceStage(f.id, "approved")}>
-                          ✓ Approve & Advance
-                        </button>
-                        <button className="btn btn-red btn-sm" onClick={() => advanceStage(f.id, "returned")}>
-                          ↩ Return to Originator
-                        </button>
-                        <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>
-                          Cancel
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(f.id); setCommentText(""); }}>
-                      ✏ Review & Add Comments
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+      {needsActionF.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setFitrepFolders(f => ({ ...f, action: !f.action }))}>
+            <span>{fitrepFolders.action ? "▼" : "▶"} Requiring Your Approval ({needsActionF.length})</span>
           </div>
-        );
-      })}
+          {fitrepFolders.action && needsActionF.map(renderFitrepCard)}
+        </div>
+      )}
+
+      {inPipelineF.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setFitrepFolders(f => ({ ...f, pipeline: !f.pipeline }))}>
+            <span>{fitrepFolders.pipeline ? "▼" : "▶"} In Pipeline ({inPipelineF.length})</span>
+          </div>
+          {fitrepFolders.pipeline && inPipelineF.map(renderFitrepCard)}
+        </div>
+      )}
+
+      {completedF.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setFitrepFolders(f => ({ ...f, complete: !f.complete }))}>
+            <span>{fitrepFolders.complete ? "▼" : "▶"} Completed ({completedF.length})</span>
+          </div>
+          {fitrepFolders.complete && completedF.map(renderFitrepCard)}
+        </div>
+      )}
 
       {/* Submit FITREP modal */}
       {showModal && (
