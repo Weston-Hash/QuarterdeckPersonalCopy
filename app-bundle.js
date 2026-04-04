@@ -8871,7 +8871,7 @@
     const needsRouteSelect = requiresChitRouteSelection(user);
     const [showModal, setShowModal] = (0, import_react.useState)(false);
     const [toast, setToast] = (0, import_react.useState)("");
-    const [form, setForm] = (0, import_react.useState)({ date: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", routingSheet: null, chitDoc: null });
+    const [form, setForm] = (0, import_react.useState)({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", routingSheet: null, chitDoc: null });
     const [chitSubmitAttempted, setChitSubmitAttempted] = (0, import_react.useState)(false);
     const [activeComment, setActiveComment] = (0, import_react.useState)(null);
     const [commentText, setCommentText] = (0, import_react.useState)("");
@@ -8901,8 +8901,8 @@
     };
     const submit = () => {
       setChitSubmitAttempted(true);
-      if (!form.date || !form.reason) {
-        fire("\u26A0 Date of Absence and Reason are required.");
+      if (!form.startDate || !form.reason) {
+        fire("\u26A0 Start Date and Reason are required.");
         return;
       }
       if (form.reason === "Other" && !form.notes.trim()) {
@@ -8931,7 +8931,7 @@
         name: user.name,
         company: routeContext.company,
         platoon: routeContext.platoon,
-        date: form.date,
+        date: form.endDate && form.endDate !== form.startDate ? `${form.startDate} \u2013 ${form.endDate}` : form.startDate,
         reason: form.reason,
         notes: form.notes,
         status: "Pending",
@@ -8941,7 +8941,7 @@
       };
       setChits((prev) => [...prev, c]);
       setShowModal(false);
-      setForm({ date: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", routingSheet: null, chitDoc: null });
+      setForm({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", routingSheet: null, chitDoc: null });
       setChitSubmitAttempted(false);
       fire("\u2705 CHIT submitted and routed to your chain of command.");
     };
@@ -9080,11 +9080,24 @@
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Date of Absence" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "date", value: form.date, onChange: (e) => setForm((s) => ({ ...s, date: e.target.value })) })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+            "Start Date ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "date", value: form.startDate, onChange: (e) => setForm((s) => ({ ...s, startDate: e.target.value })) })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Reason" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+            "End Date ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#888" }, children: "(leave blank if single day)" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "date", value: form.endDate, min: form.startDate, onChange: (e) => setForm((s) => ({ ...s, endDate: e.target.value })) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+            "Reason ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+          ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.reason, onChange: (e) => setForm((s) => ({ ...s, reason: e.target.value })), children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select reason\u2026" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Medical Appointment" }),

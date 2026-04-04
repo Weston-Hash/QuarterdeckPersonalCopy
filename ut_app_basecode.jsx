@@ -1869,7 +1869,7 @@ function ChitsPage({ chits, setChits, userList }) {
   const needsRouteSelect = requiresChitRouteSelection(user);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState("");
-  const [form, setForm] = useState({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
+  const [form, setForm] = useState({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
   const [chitSubmitAttempted, setChitSubmitAttempted] = useState(false);
   const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText] = useState("");
@@ -1900,8 +1900,8 @@ function ChitsPage({ chits, setChits, userList }) {
 
   const submit = () => {
     setChitSubmitAttempted(true);
-    if (!form.date || !form.reason) {
-      fire("⚠ Date of Absence and Reason are required."); return;
+    if (!form.startDate || !form.reason) {
+      fire("⚠ Start Date and Reason are required."); return;
     }
     if (form.reason === "Other" && !form.notes.trim()) {
       fire("⚠ Notes are required when reason is 'Other'."); return;
@@ -1925,7 +1925,7 @@ function ChitsPage({ chits, setChits, userList }) {
       name: user.name,
       company: routeContext.company,
       platoon: routeContext.platoon,
-      date: form.date,
+      date: form.endDate && form.endDate !== form.startDate ? `${form.startDate} – ${form.endDate}` : form.startDate,
       reason: form.reason,
       notes: form.notes,
       status: "Pending",
@@ -1935,7 +1935,7 @@ function ChitsPage({ chits, setChits, userList }) {
     };
     setChits(prev => [...prev, c]);
     setShowModal(false);
-    setForm({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
+    setForm({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
     setChitSubmitAttempted(false);
     fire("✅ CHIT submitted and routed to your chain of command.");
   };
@@ -2109,11 +2109,15 @@ function ChitsPage({ chits, setChits, userList }) {
             </>
           )}
           <div className="input-group">
-            <label className="input-label">Date of Absence</label>
-            <input className="input" type="date" value={form.date} onChange={e => setForm(s => ({ ...s, date:e.target.value }))} />
+            <label className="input-label">Start Date <span style={{ color:"#C0392B" }}>*</span></label>
+            <input className="input" type="date" value={form.startDate} onChange={e => setForm(s => ({ ...s, startDate:e.target.value }))} />
           </div>
           <div className="input-group">
-            <label className="input-label">Reason</label>
+            <label className="input-label">End Date <span style={{ fontSize:"0.75rem", color:"#888" }}>(leave blank if single day)</span></label>
+            <input className="input" type="date" value={form.endDate} min={form.startDate} onChange={e => setForm(s => ({ ...s, endDate:e.target.value }))} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Reason <span style={{ color:"#C0392B" }}>*</span></label>
             <select className="input" value={form.reason} onChange={e => setForm(s => ({ ...s, reason:e.target.value }))}>
               <option value="">Select reason…</option>
               <option>Medical Appointment</option>
