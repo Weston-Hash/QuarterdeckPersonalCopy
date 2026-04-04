@@ -95,7 +95,7 @@ function getRosterDescriptor(user) {
   if (user.role === "co_cdr") return `${coLabel} · CC`;
   if (user.role === "sel")    return `${coLabel} · SEL`;
   // Platoon ordinal: platoon field is "1st PC" / "2nd PC" — strip the " PC" suffix
-  const pltOrdinal = (user.platoon || "").replace(/\s*PC$/i, "").trim();
+  const pltOrdinal = (user.platoon || "").replace(/\s*(?:PC|PLT)$/i, "").trim();
   // PC
   if (user.role === "plt_cdr") {
     return pltOrdinal ? `${coLabel} · ${pltOrdinal} PLT PC` : `${coLabel} · PC`;
@@ -357,14 +357,14 @@ function buildChitApprovalChain(userList, user, routeContext) {
     );
   } else if (user.role === "co_cdr") {
     chain.push(
-      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "🗂"),
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
       makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
       makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
     );
   } else if (user.role === "plt_cdr") {
     chain.push(
       makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
-      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "🗂"),
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
       makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
       makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
     );
@@ -372,7 +372,7 @@ function buildChitApprovalChain(userList, user, routeContext) {
     chain.push(
       makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "👤"),
       makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
-      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "🗂"),
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
       makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖"),
       makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
     );
@@ -446,7 +446,7 @@ function canViewChit(user, chit) {
 // ─── GOOGLE CALENDAR CONFIG ──────────────────────────────────
 // To enable live event fetching, create a free API key at console.cloud.google.com
 // (Enable "Google Calendar API", restrict key to Calendar API readonly).
-const GCAL_API_KEY      = "";  // ← paste your key here
+const GCAL_API_KEY      = window.__QD_GCAL_API_KEY || "";
 const GCAL_CALENDAR_ID  = "8favdaqbd14bfquur8fvil5ecc@group.calendar.google.com";
 
 // Spring 2026: Week 1 starts Monday Jan 19 2026.  Change each semester.
@@ -489,21 +489,63 @@ function guessEventType(title) {
   return "Event";
 }
 
+const MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
+function fetchCalendarEvents() {
+  if (!GCAL_API_KEY || !GCAL_CALENDAR_ID) return Promise.resolve([]);
+  const now = new Date();
+  const maxDate = new Date(now);
+  maxDate.setDate(maxDate.getDate() + 14);
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(GCAL_CALENDAR_ID)}/events`
+    + `?key=${GCAL_API_KEY}`
+    + `&timeMin=${now.toISOString()}`
+    + `&timeMax=${maxDate.toISOString()}`
+    + `&singleEvents=true`
+    + `&orderBy=startTime`
+    + `&maxResults=20`;
+  return fetch(url)
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(data => (data.items || [])
+      .filter(ev => !/^potw$/i.test((ev.summary || "").trim()))
+      .map(ev => {
+        const allDay = !!ev.start.date;
+        const start = new Date(ev.start.dateTime || ev.start.date);
+        const end = ev.end ? new Date(ev.end.dateTime || ev.end.date) : null;
+        const dd = String(start.getDate()).padStart(2, "0");
+        const mo = MONTHS[start.getMonth()];
+        const time = allDay ? "All Day"
+          : `${formatEventTime(ev.start.dateTime)}–${end ? formatEventTime(ev.end.dateTime) : ""}`;
+        return {
+          date: `${dd} ${mo}`,
+          title: ev.summary || "(No title)",
+          time,
+          type: guessEventType(ev.summary),
+          location: ev.location || "",
+        };
+      })
+    )
+    .catch(() => []);
+}
+
+function useCalendarEvents() {
+  const [events, setEvents] = useState([]);
+  useEffect(() => { fetchCalendarEvents().then(setEvents); }, []);
+  return events;
+}
+
 // ─── STATIC DATA ────────────────────────────────────────────
 const POTW = {
   operations: [
-    { date:"23 MAR", title:"Battalion PT", time:"0700–0800", type:"PT", location:"Caven Lacrosse and Sports Center at Clark Field" },
-    { date:"23 MAR", title:"Digital FITREPs due to PCs", time:"1500–1600", type:"Admin", location:"" },
-    { date:"24 MAR", title:"PNS Inspection", time:"0700–0800", type:"Inspection", location:"" },
-    { date:"24 MAR", title:"Company LL", time:"0800–0900", type:"Leadership", location:"ADM McRaven Classroom" },
-    { date:"24 MAR", title:"Calculus/Physics Tutoring", time:"1900–2000", type:"Academic", location:"ADM McRaven Classroom" },
-    { date:"25 MAR", title:"Alpha Company PT", time:"0530–0630", type:"PT", location:"Lady Bird Lake Trail" },
-    { date:"25 MAR", title:"Bravo/Charlie Company PT", time:"0700–0800", type:"PT", location:"Caven Lacrosse and Sports Center at Clark Field" },
-    { date:"26 MAR", title:"FEP", time:"0700–0800", type:"PT", location:"Caven Lacrosse and Sports Center at Clark Field" },
-    { date:"26 MAR", title:"BN Staff Meeting", time:"1530–1630", type:"Staff", location:"BN Staff Office" },
-    { date:"26-29 MAR", title:"Yale Leadership Conference", time:"All Day", type:"Conference", location:"" },
-    { date:"27 MAR", title:"Drill", time:"0700–0800", type:"Drill", location:"Caven Lacrosse and Sports Center at Clark Field" },
-    { date:"27 MAR", title:"Unit Sync Meeting", time:"1000–1100", type:"Staff", location:"Conference Room" },
+    { date:"06 APR", title:"Battalion PT", time:"0700–0800", type:"PT", location:"" },
+    { date:"07 APR", title:"Navy LL: RADM Oliver Lewis", time:"0700–0900", type:"Leadership", location:"" },
+    { date:"07 APR", title:"FEX Prep", time:"0700–0800", type:"Admin", location:"" },
+    { date:"07 APR", title:"Calculus/Physics Tutoring", time:"1900–2000", type:"Academic", location:"" },
+    { date:"08 APR", title:"Navy Company PT", time:"0700–0800", type:"PT", location:"" },
+    { date:"09 APR", title:"Spring FEX", time:"All Day", type:"Event", location:"" },
+    { date:"09 APR", title:"FEP", time:"0700–0800", type:"PT", location:"" },
+    { date:"09 APR", title:"BN Staff Meeting", time:"1530–1630", type:"Staff", location:"" },
+    { date:"10 APR", title:"Drill", time:"0700–0800", type:"Drill", location:"" },
+    { date:"10 APR", title:"Unit Sync Meeting", time:"1000–1100", type:"Staff", location:"" },
   ],
 };
 
@@ -566,7 +608,7 @@ const INIT_QS = [
 //   6. Set the same token below
 //   7. Save — the app will pull live data on each page load.
 //      In sheet-only mode, the app stays locked until this feed loads successfully.
-const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbxXVDVKiyCgY4e4BaQmcVNTZEJffw5HEDJ2qjAHeb1jlGS5Iw-HzOt3fDBNHavqmzww/exec";
+const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbzCHnTg4UmmYFaTlJf8_MP8TZU9fe1RsGmaRQ-X-2EwxdVluowDjkPjMPnG82tjlYun/exec";
 const SHEETS_API_TOKEN = "UT_NROTC";
 const ROSTER_CACHE_KEY = "quarterdeck_roster_cache_v1";
 
@@ -656,7 +698,7 @@ function sheetRowToUser(row, index) {
   // Platoon: extract from company or billet if it has a number (e.g. "A 1st" → "1st PC")
   const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i) || billetRaw.match(/(\d+(?:st|nd|rd|th))/i);
   const platoon = platoonMatch
-    ? `${platoonMatch[1]} PC`
+    ? `${platoonMatch[1]} PLT`
     : /CC$/i.test(billetRaw)
       ? "CO"
       : /SEL$/i.test(billetRaw)
@@ -698,7 +740,7 @@ const FITREP_STAGES = [
   { name:"Submitted",      approverRole:null,      icon:"📝" },
   { name:"PC Review",      approverRole:"plt_cdr", icon:"👤" },
   { name:"Co CDR Review",  approverRole:"co_cdr",  icon:"⭐" },
-  { name:"ADJ Review",     approverRole:"adj",     icon:"🗂" },
+  { name:"ADJ Review",     approverRole:"adj",     icon:"✏️" },
   { name:"BNXO Review",    approverRole:"xo",      icon:"🎖" },
   { name:"BNCO Approval",  approverRole:"bn_cdr",  icon:"✅" },
   { name:"Complete",       approverRole:null,      icon:"🏅" },
@@ -748,15 +790,16 @@ const INIT_FITREBS = [];
 
 // ─── STYLES ─────────────────────────────────────────────────
 const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Barlow:wght@400;500;600&family=Oswald:wght@700&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Barlow', "Segoe UI", sans-serif; font-size: 1rem; background: #FFF8F0; color: #1A1209; }
 
   .topbar { background: #1A1209; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; height: 58px; border-bottom: 3px solid #BF5700; position: sticky; top: 0; z-index: 50; }
-  .topbar-logo { width: 40px; height: 40px; background: #BF5700; border-radius: 6px; display: grid; place-items: center; font-family: 'Rajdhani', Impact, sans-serif; font-weight: 500; font-size: 1.1rem; color: white; margin-right: 0.7rem; }
+  .topbar-logo { width: 40px; height: 40px; background: #BF5700; border-radius: 6px; display: grid; place-items: center; font-family: 'Rajdhani', Impact, sans-serif; font-weight: 700; font-size: 1.1rem; color: white; margin-right: 0.7rem; }
   .topbar-title { font-family: 'Rajdhani', Impact, sans-serif; font-weight: 500; font-size: 1.35rem; letter-spacing: 3px; text-transform: uppercase; }
   .topbar-title span { color: #F7941D; }
   .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
-  .rank-pill { background: #BF5700; color: white; padding: 2px 8px; border-radius: 4px; font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; }
+  .rank-pill { background: #BF5700; color: white; padding: 2px 8px; border-radius: 4px; font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
   .role-pill { background: rgba(255,255,255,0.12); color: #ccc; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; text-transform: uppercase; }
   .btn-logout { background: transparent; border: 1.5px solid rgba(255,255,255,0.25); color: #ccc; border-radius: 4px; padding: 3px 10px; font-size: 0.75rem; cursor: pointer; font-family: 'Rajdhani', Impact, sans-serif; letter-spacing: 1px; text-transform: uppercase; }
   .btn-logout:hover { background: rgba(255,255,255,0.1); }
@@ -778,7 +821,7 @@ const CSS = `
   .page-sub { font-size: 0.88rem; color: #6B6B6B; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 2px solid rgba(191,87,0,0.15); }
 
   .card { background: white; border-radius: 10px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid rgba(191,87,0,0.1); margin-bottom: 1rem; }
-  .card-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; color: #1A1209; }
+  .card-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #1A1209; }
   .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
 
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -842,6 +885,9 @@ const CSS = `
   .pt-sets { color: #BF5700; font-weight: 600; font-size: 0.82rem; min-width: 80px; }
   .pt-notes { color: #888; font-size: 0.78rem; }
 
+  .folder-section { margin-bottom: 1rem; }
+  .folder-header { cursor: pointer; padding: 0.65rem 1rem; background: #1A1209; color: white; border-radius: 8px; font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.88rem; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 0.5rem; user-select: none; }
+  .folder-header:hover { background: #2a1f14; }
   .chit-card { border-left: 4px solid #BF5700; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 0.75rem; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
   .chit-route { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.78rem; }
   .chit-node { background: rgba(191,87,0,0.1); border-radius: 4px; padding: 2px 7px; color: #8B3D00; }
@@ -870,8 +916,8 @@ const CSS = `
   .login-wrap { min-height: 100vh; background: #1A1209; display: flex; align-items: center; justify-content: center; padding: 1rem; }
   .login-card { background: white; border-radius: 14px; padding: 2.75rem 2.5rem; max-width: 480px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
   .login-logo { display: flex; align-items: center; gap: 0.75rem; justify-content: center; margin-bottom: 1.25rem; }
-  .login-mark { width: 56px; height: 56px; background: #BF5700; border-radius: 10px; display: grid; place-items: center; font-family: 'Rajdhani', Impact, sans-serif; font-weight: 500; font-size: 1.5rem; color: white; }
-  .login-title { font-family: 'Rajdhani', Impact, sans-serif; font-size: 1.75rem; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; }
+  .login-mark { width: 56px; height: 56px; background: #BF5700; border-radius: 10px; display: grid; place-items: center; font-family: 'Oswald', Impact, sans-serif; font-weight: 700; font-size: 1.5rem; color: white; }
+  .login-title { font-family: 'Oswald', Impact, sans-serif; font-size: 1.75rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; }
   .login-title span { color: #BF5700; }
   .login-sub { text-align: center; font-size: 0.88rem; color: #888; margin-bottom: 1.5rem; }
   .hint-box { margin-top: 1rem; background: #f5f2ee; border-radius: 8px; padding: 0.75rem; font-size: 0.75rem; color: #666; line-height: 1.6; }
@@ -1305,8 +1351,10 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
 function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
   const { user } = useAuth();
   const canManageReminder = isBigFour(user);
-  const [editingReminder, setEditingReminder] = React.useState(false);
-  const [draftText, setDraftText] = React.useState(reminder.text);
+  const [editingReminder, setEditingReminder] = useState(false);
+  const [draftText, setDraftText] = useState(reminder.text);
+  const liveEvents = useCalendarEvents();
+  const upcomingEvents = liveEvents.length > 0 ? liveEvents : POTW.operations;
 
   const saveReminder = () => {
     setReminder({ enabled: draftText.trim().length > 0, text: draftText.trim() });
@@ -1371,7 +1419,7 @@ function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
               <span className="card-title">📅 Upcoming Events</span>
               <button className="btn btn-outline btn-sm" onClick={() => onNav("calendar")}>View All</button>
             </div>
-            {POTW.operations.slice(0,4).map((e,i) => (
+            {upcomingEvents.slice(0,4).map((e,i) => (
               <div className="event-row" key={i}>
                 <div className="event-date"><div className="event-day">{e.date.split(" ")[0]}</div><div className="event-mo">{e.date.split(" ")[1] || ""}</div></div>
                 <div style={{ flex:1 }}>
@@ -1402,39 +1450,26 @@ function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
   );
 }
 
-// CalendarPage: displays the static POTW schedule.
-// Live Google Calendar integration would require a GCAL API key (see GCAL_CALENDAR_ID above).
-// Until that is configured, POTW.operations is the authoritative source.
+// CalendarPage: embeds the live Google Calendar for the battalion.
 function CalendarPage() {
   const mon = getCurrentWeekMonday();
   const weekNum = getWeekNumber(mon);
-  const weekRange = formatWeekRange(mon);
   const weekLabel = `Week ${weekNum} — ${SEMESTER_LABEL}`;
+  const calSrc = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(GCAL_CALENDAR_ID)}&ctz=America/Chicago&mode=WEEK&showTitle=0&showNav=1&showPrint=0&showTabs=0&showCalendars=0&color=%23BF5700`;
 
   return (
     <div>
       <div className="page-title"><span>POTW</span></div>
       <div className="potw-card">
         <div className="potw-week">📖 {weekLabel}</div>
-        <div className="potw-title">{weekRange}</div>
+        <div className="potw-title">{formatWeekRange(mon)}</div>
       </div>
-      <div className="card">
-        <div className="card-header">
-          <span className="card-title">📅 {weekRange}</span>
-        </div>
-        {POTW.operations.length === 0 && (
-          <div style={{fontSize:"0.88rem",color:"#666",padding:"0.5rem 0"}}>No events scheduled for this week.</div>
-        )}
-        {POTW.operations.map((e,i) => (
-          <div className="event-row" key={i}>
-            <div className="event-date"><div className="event-day">{e.date.split(" ")[0]}</div><div className="event-mo">{e.date.split(" ")[1] || ""}</div></div>
-            <div style={{ flex:1 }}>
-              <div className="event-title">{e.title}</div>
-              <div className="event-sub">🕐 {e.time}{e.location ? ` · 📍 ${e.location}` : ""}</div>
-            </div>
-            <span className="badge badge-navy">{e.type}</span>
-          </div>
-        ))}
+      <div style={{ background: "#BF5700", borderRadius: "10px", padding: "3px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", marginBottom: "1rem" }}>
+        <iframe
+          src={calSrc}
+          style={{ border: 0, width: "100%", height: "600px", borderRadius: "8px", display: "block" }}
+          title="Battalion Calendar"
+        />
       </div>
     </div>
   );
@@ -1837,7 +1872,7 @@ function ChitsPage({ chits, setChits, userList }) {
   const needsRouteSelect = requiresChitRouteSelection(user);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState("");
-  const [form, setForm] = useState({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
+  const [form, setForm] = useState({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
   const [chitSubmitAttempted, setChitSubmitAttempted] = useState(false);
   const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText] = useState("");
@@ -1847,8 +1882,8 @@ function ChitsPage({ chits, setChits, userList }) {
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
-  const loadChitPDF = (field, file) => {
-    if (!file || file.type !== "application/pdf") { fire("⚠ Please select a PDF file."); return; }
+  const loadChitFile = (field, file, allowedTypes, errorMsg) => {
+    if (!file || !allowedTypes.includes(file.type)) { fire(errorMsg); return; }
     const reader = new FileReader();
     reader.onload = e => setForm(s => ({ ...s, [field]: { fileName: file.name, dataUrl: e.target.result } }));
     reader.readAsDataURL(file);
@@ -1868,11 +1903,14 @@ function ChitsPage({ chits, setChits, userList }) {
 
   const submit = () => {
     setChitSubmitAttempted(true);
-    if (!form.date || !form.reason) {
-      fire("⚠ Date of Absence and Reason are required."); return;
+    if (!form.startDate || !form.reason) {
+      fire("⚠ Start Date and Reason are required."); return;
+    }
+    if (form.reason === "Other" && !form.notes.trim()) {
+      fire("⚠ Notes are required when reason is 'Other'."); return;
     }
     if (!form.routingSheet || !form.chitDoc) {
-      fire("⚠ Both PDFs are required: Routing Sheet and CHIT Document."); return;
+      fire("⚠ Both documents are required: Routing Sheet and CHIT Document."); return;
     }
     if (needsRouteSelect && (!form.routeCompany || !form.routePlatoon)) {
       fire("⚠ Please select your company and platoon."); return;
@@ -1890,7 +1928,7 @@ function ChitsPage({ chits, setChits, userList }) {
       name: user.name,
       company: routeContext.company,
       platoon: routeContext.platoon,
-      date: form.date,
+      date: form.endDate && form.endDate !== form.startDate ? `${form.startDate} – ${form.endDate}` : form.startDate,
       reason: form.reason,
       notes: form.notes,
       status: "Pending",
@@ -1900,12 +1938,22 @@ function ChitsPage({ chits, setChits, userList }) {
     };
     setChits(prev => [...prev, c]);
     setShowModal(false);
-    setForm({ date:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
+    setForm({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
     setChitSubmitAttempted(false);
     fire("✅ CHIT submitted and routed to your chain of command.");
   };
 
+  const [reviewDoc, setReviewDoc] = useState(null);
+
+  const loadReviewDoc = (file) => {
+    if (!file || file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") { fire("⚠ Please select a DOCX file."); return; }
+    const reader = new FileReader();
+    reader.onload = e => setReviewDoc({ fileName: file.name, dataUrl: e.target.result });
+    reader.readAsDataURL(file);
+  };
+
   const advanceStage = (id, action) => {
+    if (action === "approved" && !reviewDoc) { fire("⚠ Please upload a signed routing sheet before approving."); return; }
     const comment = commentText.trim();
     setChits(prev => prev.map(c => {
       if (c.id !== id) return c;
@@ -1917,16 +1965,128 @@ function ChitsPage({ chits, setChits, userList }) {
         comment,
       };
       const next = action === "returned"
-        ? c.currentStage   // stay at denial stage so audit trail is visible
+        ? c.currentStage
         : Math.min(c.currentStage + 1, c.stages.length - 1);
       const status = action === "returned" ? "Returned"
         : next === c.stages.length - 1 ? "Approved"
         : "Pending";
-      return { ...c, currentStage: next, stages: updated, status };
+      const docs = action === "approved" && reviewDoc
+        ? { ...c.docs, routingSheet: reviewDoc }
+        : c.docs;
+      return { ...c, currentStage: next, stages: updated, status, docs };
     }));
     setActiveComment(null);
     setCommentText("");
+    setReviewDoc(null);
     fire("CHIT updated.");
+  };
+
+  const [chitFolders, setChitFolders] = useState({ action: true, pipeline: true, complete: false });
+  const needsAction = visible.filter(c => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
+  const inPipeline = visible.filter(c => c.status === "Pending" && !canActOnChit(user, c));
+  const completed = visible.filter(c => c.status === "Approved" || c.status === "Denied" || c.status === "Returned");
+
+  const renderChitCard = (c) => {
+    const canAct = canActOnChit(user, c);
+    const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
+    const currentStageName = c.stages?.[c.currentStage]?.name || "";
+
+    return (
+      <div className="chit-card" key={c.id}>
+        <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.3rem" }}>
+          <div>
+            <strong>{c.id}</strong>
+            <span style={{ color:"#888", fontSize:"0.82rem", marginLeft:"0.75rem" }}>
+              {c.name} · {formatCompanyCoLabel(c.company)}, {formatPlatoonLabel(c.platoon)}
+            </span>
+          </div>
+          <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+            <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" || c.status==="Returned" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
+            {canAct && !isDone && <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>}
+          </div>
+        </div>
+        <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · Absent: {c.date}</div>
+        {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", marginTop:"0.2rem" }}>{c.notes}</div>}
+
+        {c.docs && (
+          <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginTop:"0.55rem" }}>
+            <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
+            {c.docs.routingSheet && (
+              <a href={c.docs.routingSheet.dataUrl} download={c.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
+            )}
+            {c.docs.chitDoc && (
+              <a href={c.docs.chitDoc.dataUrl} download={c.docs.chitDoc.fileName} className="btn btn-outline btn-sm">📄 CHIT Document</a>
+            )}
+          </div>
+        )}
+
+        {c.stages && (
+          <div className="stage-track" style={{ marginTop:"0.75rem" }}>
+            {c.stages.map((s, j) => {
+              const done     = j < c.currentStage;
+              const returned = j === c.currentStage && c.status === "Returned";
+              const active   = j === c.currentStage && !isDone;
+              return (
+                <div key={j} className={`stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>
+                  <div className={`stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`}>
+                    {done ? "✓" : returned ? "↩" : s.icon}
+                  </div>
+                  <div className={`stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>{s.name}</div>
+                  {active && canAct && <div className="stage-approver active">● You</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {c.stages?.some(s => s.completedBy && s.comment) && (
+          <div style={{ marginTop:"0.5rem" }}>
+            {c.stages.map((s, j) => s.completedBy && s.comment ? (
+              <div className="stage-comment" key={j}>
+                <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
+                {s.comment}
+              </div>
+            ) : null)}
+          </div>
+        )}
+
+        {canAct && !isDone && (
+          <div className="stage-action-box" style={{ marginTop:"0.75rem" }}>
+            <div className="stage-action-label">⭐ Your Review — {currentStageName}</div>
+            {activeComment === c.id ? (
+              <>
+                <textarea
+                  className="input"
+                  style={{ minHeight:"70px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
+                  placeholder="Add comments (optional)…"
+                  value={commentText}
+                  onChange={e => setCommentText(e.target.value)}
+                />
+                <div className="input-group" style={{ marginBottom:"0.65rem" }}>
+                  <label className="input-label">Signed Routing Sheet <span style={{ color:"#C0392B" }}>*</span></label>
+                  <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+                    <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                      {reviewDoc ? "↑ Replace DOCX" : "↑ Upload DOCX"}
+                      <input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display:"none" }} onChange={e => { loadReviewDoc(e.target.files[0]); e.target.value = ""; }} />
+                    </label>
+                    {reviewDoc && <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {reviewDoc.fileName}</span>}
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                  <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
+                  <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return to Originator</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); setReviewDoc(null); }}>Cancel</button>
+                </div>
+              </>
+            ) : (
+              <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(c.id); setCommentText(""); setReviewDoc(null); }}>
+                ✏ Review CHIT
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -1953,102 +2113,32 @@ function ChitsPage({ chits, setChits, userList }) {
         </div>
       )}
 
-      {visible.map((c, i) => {
-        const canAct = canActOnChit(user, c);
-        const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
-        const currentStageName = c.stages?.[c.currentStage]?.name || "";
-
-        return (
-          <div className="chit-card" key={i}>
-            <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.3rem" }}>
-              <div>
-                <strong>{c.id}</strong>
-                <span style={{ color:"#888", fontSize:"0.82rem", marginLeft:"0.75rem" }}>
-                  {c.name} · {formatCompanyCoLabel(c.company)}, {formatPlatoonLabel(c.platoon)}
-                </span>
-              </div>
-              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
-                <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" || c.status==="Returned" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
-                {canAct && !isDone && <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>}
-              </div>
-            </div>
-            <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · Absent: {c.date}</div>
-            {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", marginTop:"0.2rem" }}>{c.notes}</div>}
-
-            {/* Attached documents */}
-            {c.docs && (
-              <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginTop:"0.55rem" }}>
-                <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
-                {c.docs.routingSheet && (
-                  <a href={c.docs.routingSheet.dataUrl} download={c.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
-                )}
-                {c.docs.chitDoc && (
-                  <a href={c.docs.chitDoc.dataUrl} download={c.docs.chitDoc.fileName} className="btn btn-outline btn-sm">📄 CHIT Document</a>
-                )}
-              </div>
-            )}
-
-            {/* Stage tracker */}
-            {c.stages && (
-              <div className="stage-track" style={{ marginTop:"0.75rem" }}>
-                {c.stages.map((s, j) => {
-                  const done     = j < c.currentStage;
-                  const returned = j === c.currentStage && c.status === "Returned";
-                  const active   = j === c.currentStage && !isDone;
-                  return (
-                    <div key={j} className={`stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>
-                      <div className={`stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`}>
-                        {done ? "✓" : returned ? "↩" : s.icon}
-                      </div>
-                      <div className={`stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>{s.name}</div>
-                      {active && canAct && <div className="stage-approver active">● You</div>}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Completed stage comments */}
-            {c.stages?.some(s => s.completedBy && s.comment) && (
-              <div style={{ marginTop:"0.5rem" }}>
-                {c.stages.map((s, j) => s.completedBy && s.comment ? (
-                  <div className="stage-comment" key={j}>
-                    <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
-                    {s.comment}
-                  </div>
-                ) : null)}
-              </div>
-            )}
-
-            {/* Action box for current approver */}
-            {canAct && !isDone && (
-              <div className="stage-action-box" style={{ marginTop:"0.75rem" }}>
-                <div className="stage-action-label">⭐ Your Review — {currentStageName}</div>
-                {activeComment === c.id ? (
-                  <>
-                    <textarea
-                      className="input"
-                      style={{ minHeight:"70px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
-                      placeholder="Add comments (optional)…"
-                      value={commentText}
-                      onChange={e => setCommentText(e.target.value)}
-                    />
-                    <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-                      <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
-                      <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return to Originator</button>
-                      <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>Cancel</button>
-                    </div>
-                  </>
-                ) : (
-                  <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(c.id); setCommentText(""); }}>
-                    ✏ Review CHIT
-                  </button>
-                )}
-              </div>
-            )}
+      {needsAction.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setChitFolders(f => ({ ...f, action: !f.action }))}>
+            <span>{chitFolders.action ? "▼" : "▶"} Requiring Your Approval ({needsAction.length})</span>
           </div>
-        );
-      })}
+          {chitFolders.action && needsAction.map(renderChitCard)}
+        </div>
+      )}
+
+      {inPipeline.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setChitFolders(f => ({ ...f, pipeline: !f.pipeline }))}>
+            <span>{chitFolders.pipeline ? "▼" : "▶"} In Pipeline ({inPipeline.length})</span>
+          </div>
+          {chitFolders.pipeline && inPipeline.map(renderChitCard)}
+        </div>
+      )}
+
+      {completed.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setChitFolders(f => ({ ...f, complete: !f.complete }))}>
+            <span>{chitFolders.complete ? "▼" : "▶"} Completed ({completed.length})</span>
+          </div>
+          {chitFolders.complete && completed.map(renderChitCard)}
+        </div>
+      )}
 
       {showModal && (
         <Modal title="Submit CHIT" onClose={() => setShowModal(false)}>
@@ -2074,24 +2164,27 @@ function ChitsPage({ chits, setChits, userList }) {
             </>
           )}
           <div className="input-group">
-            <label className="input-label">Date of Absence</label>
-            <input className="input" type="date" value={form.date} onChange={e => setForm(s => ({ ...s, date:e.target.value }))} />
+            <label className="input-label">Start Date <span style={{ color:"#C0392B" }}>*</span></label>
+            <input className="input" type="date" value={form.startDate} onChange={e => setForm(s => ({ ...s, startDate:e.target.value }))} />
           </div>
           <div className="input-group">
-            <label className="input-label">Reason</label>
+            <label className="input-label">End Date <span style={{ fontSize:"0.75rem", color:"#888" }}>(leave blank if single day)</span></label>
+            <input className="input" type="date" value={form.endDate} min={form.startDate} onChange={e => setForm(s => ({ ...s, endDate:e.target.value }))} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Reason <span style={{ color:"#C0392B" }}>*</span></label>
             <select className="input" value={form.reason} onChange={e => setForm(s => ({ ...s, reason:e.target.value }))}>
               <option value="">Select reason…</option>
               <option>Medical Appointment</option>
-              <option>Academic Conflict — Exam</option>
-              <option>Academic Conflict — Lab</option>
+              <option>Academic Conflict</option>
               <option>Family Emergency</option>
               <option>Personal Emergency</option>
               <option>Other</option>
             </select>
           </div>
           <div className="input-group">
-            <label className="input-label">Notes (optional)</label>
-            <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} />
+            <label className="input-label">Notes {form.reason === "Other" ? <span style={{ color:"#C0392B" }}>*</span> : "(optional)"}</label>
+            <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} placeholder={form.reason === "Other" ? "Please explain the reason for your absence" : ""} />
           </div>
 
           {/* ── Required PDFs ── */}
@@ -2107,12 +2200,12 @@ function ChitsPage({ chits, setChits, userList }) {
               </label>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
                 <label htmlFor="chit-routing-sheet" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
-                  {form.routingSheet ? "↑ Replace PDF" : "↑ Upload PDF"}
+                  {form.routingSheet ? "↑ Replace DOCX" : "↑ Upload DOCX"}
                 </label>
                 <input
-                  id="chit-routing-sheet" type="file" accept=".pdf,application/pdf"
+                  id="chit-routing-sheet" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   style={{ display:"none" }}
-                  onChange={e => { loadChitPDF("routingSheet", e.target.files[0]); e.target.value = ""; }}
+                  onChange={e => { loadChitFile("routingSheet", e.target.files[0], ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"], "⚠ Please select a DOCX file."); e.target.value = ""; }}
                 />
                 {form.routingSheet
                   ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {form.routingSheet.fileName}</span>
@@ -2133,7 +2226,7 @@ function ChitsPage({ chits, setChits, userList }) {
                 <input
                   id="chit-doc" type="file" accept=".pdf,application/pdf"
                   style={{ display:"none" }}
-                  onChange={e => { loadChitPDF("chitDoc", e.target.files[0]); e.target.value = ""; }}
+                  onChange={e => { loadChitFile("chitDoc", e.target.files[0], ["application/pdf"], "⚠ Please select a PDF file."); e.target.value = ""; }}
                 />
                 {form.chitDoc
                   ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {form.chitDoc.fileName}</span>
@@ -2469,11 +2562,20 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   const [commentText, setCommentText]     = useState("");
   const [toast, setToast]                 = useState("");
   const [filter, setFilter]               = useState("");
+  const [reviewDoc, setReviewDoc]         = useState(null);
+  const [fitrepFolders, setFitrepFolders] = useState({ action: true, pipeline: true, complete: false });
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
-  const loadFitrepPDF = (field, file) => {
-    if (!file || file.type !== "application/pdf") { fire("⚠ Please select a PDF file."); return; }
+  const loadReviewDoc = (file) => {
+    if (!file || file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") { fire("⚠ Please select a DOCX file."); return; }
+    const reader = new FileReader();
+    reader.onload = e => setReviewDoc({ fileName: file.name, dataUrl: e.target.result });
+    reader.readAsDataURL(file);
+  };
+
+  const loadFitrepFile = (field, file, allowedTypes, errorMsg) => {
+    if (!file || !allowedTypes.includes(file.type)) { fire(errorMsg); return; }
     const reader = new FileReader();
     reader.onload = e => setSubmitForm(s => ({ ...s, [field]: { fileName: file.name, dataUrl: e.target.result } }));
     reader.readAsDataURL(file);
@@ -2530,6 +2632,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   };
 
   const advanceStage = (id, action = "approved") => {
+    if (action === "approved" && !reviewDoc) { fire("⚠ Please upload a signed routing sheet before approving."); return; }
     const comment = commentText.trim();
     setFitrebs(prev => prev.map(f => {
       if (f.id !== id) return f;
@@ -2546,14 +2649,131 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
       const status = action === "returned" ? "Returned"
         : next === f.stages.length - 1 ? "Approved"
         : "Pending";
-      return { ...f, currentStage: next, stages: updated, status };
+      const docs = action === "approved" && reviewDoc
+        ? { ...f.docs, routingSheet: reviewDoc }
+        : f.docs;
+      return { ...f, currentStage: next, stages: updated, status, docs };
     }));
     setActiveComment(null);
     setCommentText("");
+    setReviewDoc(null);
     fire(action === "returned" ? "FITREP returned to originator." : "✅ FITREP advanced. Stage comments saved.");
   };
 
   const companies = [...new Set(visible.map(f => normalizeCompany(f.company)))];
+
+  const needsActionF = filtered.filter(f => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Returned");
+  const inPipelineF = filtered.filter(f => f.status === "Pending" && !canActOnFitrep(user, f));
+  const completedF = filtered.filter(f => f.status === "Approved" || f.status === "Returned");
+
+  const renderFitrepCard = (f) => {
+    const canAct = canActOnFitrep(user, f);
+    const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
+    const currentStageName = isDone ? (f.status === "Returned" ? "Returned" : "Complete") : (f.stages?.[f.currentStage]?.name || "");
+
+    return (
+      <div className="fitrep-card" key={f.id}>
+        <div className="fitrep-header">
+          <div>
+            <strong style={{ fontSize:"0.95rem" }}>{f.subjectRank} {f.subjectName}</strong>
+            <div style={{ fontSize:"0.78rem", color:"#888", marginTop:"1px" }}>
+              {formatCompanyCoLabel(f.company)} · {formatPlatoonLabel(f.platoon)} · {f.period}
+            </div>
+          </div>
+          <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+            <span className="badge badge-navy">{f.id}</span>
+            {f.status === "Returned"
+              ? <span className="badge badge-red">Returned</span>
+              : isDone
+                ? <span className="badge badge-green">Complete</span>
+                : <span className="badge badge-orange">{currentStageName}</span>
+            }
+            {canAct && !isDone && (
+              <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>
+            )}
+          </div>
+        </div>
+
+        <div className="fitrep-body">
+          {f.docs && (
+            <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginBottom:"0.75rem" }}>
+              <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
+              {f.docs.fitrepDoc && (
+                <a href={f.docs.fitrepDoc.dataUrl} download={f.docs.fitrepDoc.fileName} className="btn btn-outline btn-sm">📄 FITREP Document</a>
+              )}
+              {f.docs.routingSheet && (
+                <a href={f.docs.routingSheet.dataUrl} download={f.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
+              )}
+            </div>
+          )}
+          <div className="stage-track">
+            {f.stages.map((s, i) => {
+              const done     = i < f.currentStage;
+              const returned = i === f.currentStage && f.status === "Returned";
+              const active   = i === f.currentStage && !isDone;
+              return (
+                <div key={i} className={`stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>
+                  <div className={`stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`}>
+                    {done ? "✓" : returned ? "↩" : s.icon}
+                  </div>
+                  <div className={`stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>{s.name}</div>
+                  {active && canAct && <div className="stage-approver active">● You</div>}
+                </div>
+              );
+            })}
+          </div>
+
+          {f.stages.some(s => s.completedBy && s.comment) && (
+            <div style={{ marginTop:"0.75rem" }}>
+              <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>Stage Comments</div>
+              {f.stages.map((s, i) => s.completedBy && s.comment ? (
+                <div className="stage-comment" key={i}>
+                  <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
+                  {s.comment}
+                </div>
+              ) : null)}
+            </div>
+          )}
+
+          {canAct && !isDone && (
+            <div className="stage-action-box">
+              <div className="stage-action-label">⭐ Your Review — {currentStageName}</div>
+              {activeComment === f.id ? (
+                <>
+                  <textarea
+                    className="input"
+                    style={{ minHeight:"80px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
+                    placeholder="Add your comments (optional — describe performance, concerns, or recommendations)…"
+                    value={commentText}
+                    onChange={e => setCommentText(e.target.value)}
+                  />
+                  <div className="input-group" style={{ marginBottom:"0.65rem" }}>
+                    <label className="input-label">Signed Routing Sheet <span style={{ color:"#C0392B" }}>*</span></label>
+                    <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+                      <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                        {reviewDoc ? "↑ Replace DOCX" : "↑ Upload DOCX"}
+                        <input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display:"none" }} onChange={e => { loadReviewDoc(e.target.files[0]); e.target.value = ""; }} />
+                      </label>
+                      {reviewDoc && <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {reviewDoc.fileName}</span>}
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                    <button className="btn btn-green btn-sm" onClick={() => advanceStage(f.id, "approved")}>✓ Approve & Advance</button>
+                    <button className="btn btn-red btn-sm" onClick={() => advanceStage(f.id, "returned")}>↩ Return to Originator</button>
+                    <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); setReviewDoc(null); }}>Cancel</button>
+                  </div>
+                </>
+              ) : (
+                <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(f.id); setCommentText(""); setReviewDoc(null); }}>
+                  ✏ Review FITREP
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -2605,115 +2825,32 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         </div>
       )}
 
-      {filtered.map(f => {
-        const canAct = canActOnFitrep(user, f);
-        const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
-        const currentStageName = isDone ? (f.status === "Returned" ? "Returned" : "Complete") : (f.stages?.[f.currentStage]?.name || "");
-
-        return (
-          <div className="fitrep-card" key={f.id}>
-            {/* Card header */}
-            <div className="fitrep-header">
-              <div>
-                <strong style={{ fontSize:"0.95rem" }}>{f.subjectRank} {f.subjectName}</strong>
-                <div style={{ fontSize:"0.78rem", color:"#888", marginTop:"1px" }}>
-                  {formatCompanyCoLabel(f.company)} · {formatPlatoonLabel(f.platoon)} · {f.period}
-                </div>
-              </div>
-              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
-                <span className="badge badge-navy">{f.id}</span>
-                {f.status === "Returned"
-                  ? <span className="badge badge-red">Returned</span>
-                  : isDone
-                    ? <span className="badge badge-green">Complete</span>
-                    : <span className="badge badge-orange">{currentStageName}</span>
-                }
-                {canAct && !isDone && (
-                  <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>
-                )}
-              </div>
-            </div>
-
-            {/* Stage tracker — uses per-fitrep stages */}
-            <div className="fitrep-body">
-              {/* Attached documents */}
-              {f.docs && (
-                <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginBottom:"0.75rem" }}>
-                  <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
-                  {f.docs.fitrepDoc && (
-                    <a href={f.docs.fitrepDoc.dataUrl} download={f.docs.fitrepDoc.fileName} className="btn btn-outline btn-sm">📄 FITREP Document</a>
-                  )}
-                  {f.docs.routingSheet && (
-                    <a href={f.docs.routingSheet.dataUrl} download={f.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
-                  )}
-                </div>
-              )}
-              <div className="stage-track">
-                {f.stages.map((s, i) => {
-                  const done     = i < f.currentStage;
-                  const returned = i === f.currentStage && f.status === "Returned";
-                  const active   = i === f.currentStage && !isDone;
-                  return (
-                    <div key={i} className={`stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>
-                      <div className={`stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`}>
-                        {done ? "✓" : returned ? "↩" : s.icon}
-                      </div>
-                      <div className={`stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>{s.name}</div>
-                      {active && canAct && <div className="stage-approver active">● You</div>}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Completed stage comments */}
-              {f.stages.some(s => s.completedBy && s.comment) && (
-                <div style={{ marginTop:"0.75rem" }}>
-                  <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>Stage Comments</div>
-                  {f.stages.map((s, i) => s.completedBy && s.comment ? (
-                    <div className="stage-comment" key={i}>
-                      <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
-                      {s.comment}
-                    </div>
-                  ) : null)}
-                </div>
-              )}
-
-              {/* Action box for current approver */}
-              {canAct && !isDone && (
-                <div className="stage-action-box">
-                  <div className="stage-action-label">⭐ Your Review — {currentStageName}</div>
-                  {activeComment === f.id ? (
-                    <>
-                      <textarea
-                        className="input"
-                        style={{ minHeight:"80px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
-                        placeholder="Add your comments (optional — describe performance, concerns, or recommendations)…"
-                        value={commentText}
-                        onChange={e => setCommentText(e.target.value)}
-                      />
-                      <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-                        <button className="btn btn-green btn-sm" onClick={() => advanceStage(f.id, "approved")}>
-                          ✓ Approve & Advance
-                        </button>
-                        <button className="btn btn-red btn-sm" onClick={() => advanceStage(f.id, "returned")}>
-                          ↩ Return to Originator
-                        </button>
-                        <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>
-                          Cancel
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(f.id); setCommentText(""); }}>
-                      ✏ Review & Add Comments
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+      {needsActionF.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setFitrepFolders(f => ({ ...f, action: !f.action }))}>
+            <span>{fitrepFolders.action ? "▼" : "▶"} Requiring Your Approval ({needsActionF.length})</span>
           </div>
-        );
-      })}
+          {fitrepFolders.action && needsActionF.map(renderFitrepCard)}
+        </div>
+      )}
+
+      {inPipelineF.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setFitrepFolders(f => ({ ...f, pipeline: !f.pipeline }))}>
+            <span>{fitrepFolders.pipeline ? "▼" : "▶"} In Pipeline ({inPipelineF.length})</span>
+          </div>
+          {fitrepFolders.pipeline && inPipelineF.map(renderFitrepCard)}
+        </div>
+      )}
+
+      {completedF.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setFitrepFolders(f => ({ ...f, complete: !f.complete }))}>
+            <span>{fitrepFolders.complete ? "▼" : "▶"} Completed ({completedF.length})</span>
+          </div>
+          {fitrepFolders.complete && completedF.map(renderFitrepCard)}
+        </div>
+      )}
 
       {/* Submit FITREP modal */}
       {showModal && (
@@ -2770,7 +2907,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
                 <input
                   id="fitrep-doc" type="file" accept=".pdf,application/pdf"
                   style={{ display:"none" }}
-                  onChange={e => { loadFitrepPDF("fitrepDoc", e.target.files[0]); e.target.value = ""; }}
+                  onChange={e => { loadFitrepFile("fitrepDoc", e.target.files[0], ["application/pdf"], "⚠ Please select a PDF file."); e.target.value = ""; }}
                 />
                 {submitForm.fitrepDoc
                   ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {submitForm.fitrepDoc.fileName}</span>
@@ -2786,12 +2923,12 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
               </label>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
                 <label htmlFor="fitrep-routing-sheet" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
-                  {submitForm.routingSheet ? "↑ Replace PDF" : "↑ Upload PDF"}
+                  {submitForm.routingSheet ? "↑ Replace DOCX" : "↑ Upload DOCX"}
                 </label>
                 <input
-                  id="fitrep-routing-sheet" type="file" accept=".pdf,application/pdf"
+                  id="fitrep-routing-sheet" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   style={{ display:"none" }}
-                  onChange={e => { loadFitrepPDF("routingSheet", e.target.files[0]); e.target.value = ""; }}
+                  onChange={e => { loadFitrepFile("routingSheet", e.target.files[0], ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"], "⚠ Please select a DOCX file."); e.target.value = ""; }}
                 />
                 {submitForm.routingSheet
                   ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {submitForm.routingSheet.fileName}</span>
@@ -2858,37 +2995,27 @@ export default function App() {
   const fetchRoster = (attempt = 0) => {
     if (!SHEETS_API_URL) { setSheetSynced(true); return; }
     if (attempt === 0) { setSheetSynced(false); setSheetError(false); }
-    const cbName = "__qd_cb_" + Date.now();
-    const script = document.createElement("script");
-    const onFail = () => {
-      cleanup();
-      if (attempt < 2) {
-        setTimeout(() => fetchRoster(attempt + 1), 1500);
-      } else {
-        setSheetError(true);
-        setSheetSynced(true);
-      }
-    };
-    const timer = setTimeout(onFail, 8000);
-    function cleanup() {
-      clearTimeout(timer);
-      delete window[cbName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-    }
-    window[cbName] = (data) => {
-      cleanup();
-      if (data.users && data.users.length > 0) {
-        const nextUsers = data.users.map((row, i) => sheetRowToUser(row, i));
-        setUserList(nextUsers);
-        saveCachedRoster(nextUsers);
-        setSheetSynced(true);
-      } else {
-        onFail();
-      }
-    };
-    script.onerror = onFail;
-    script.src = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}&callback=${cbName}&_t=${Date.now()}`;
-    document.head.appendChild(script);
+    const url = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}&_t=${Date.now()}`;
+    fetch(url, { redirect: "follow" })
+      .then(res => { if (!res.ok) throw new Error(res.status); return res.json(); })
+      .then(data => {
+        if (data.users && data.users.length > 0) {
+          const nextUsers = data.users.map((row, i) => sheetRowToUser(row, i));
+          setUserList(nextUsers);
+          saveCachedRoster(nextUsers);
+          setSheetSynced(true);
+        } else {
+          throw new Error("Empty roster");
+        }
+      })
+      .catch(() => {
+        if (attempt < 2) {
+          setTimeout(() => fetchRoster(attempt + 1), 1500);
+        } else {
+          setSheetError(true);
+          setSheetSynced(true);
+        }
+      });
   };
 
   // Fetch roster from private Google Sheet via Apps Script on mount
