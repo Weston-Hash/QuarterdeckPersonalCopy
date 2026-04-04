@@ -8543,7 +8543,7 @@
   }
   function StructurePage({ userList }) {
     const [open, setOpen] = (0, import_react.useState)({});
-    const [billetsOpen, setBilletsOpen] = (0, import_react.useState)(true);
+    const [billetsOpen, setBilletsOpen] = (0, import_react.useState)(false);
     const byRole = (role) => userList.filter((u) => u.role === role);
     const fmt = (u) => u ? `${u.rank} ${u.name}` : "\u2014";
     const bnco = byRole("bn_cdr")[0];
@@ -10103,7 +10103,7 @@
                 children: [
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "rank-pill", children: user.rank.split(" ")[0] || user.rank }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#ccc", fontSize: "0.85rem" }, children: user.name.split(",")[0] }),
-                  isCoC(user) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "role-pill", children: user.role.replace("_", " ") })
+                  (isCoC(user) || getBilletLabel(user)) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "role-pill", children: isCoC(user) ? user.role.replace("_", " ") : getBilletLabel(user) })
                 ]
               }
             ),

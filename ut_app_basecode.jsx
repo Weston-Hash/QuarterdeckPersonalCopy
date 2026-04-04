@@ -1478,7 +1478,7 @@ function CalendarPage() {
 
 function StructurePage({ userList }) {
   const [open, setOpen] = useState({});
-  const [billetsOpen, setBilletsOpen] = useState(true);
+  const [billetsOpen, setBilletsOpen] = useState(false);
 
   // Helper: find user(s) by role/billet
   const byRole = (role) => userList.filter(u => u.role === role);
@@ -3090,7 +3090,7 @@ export default function App() {
             >
               <span className="rank-pill">{user.rank.split(" ")[0] || user.rank}</span>
               <span style={{ color:"#ccc", fontSize:"0.85rem" }}>{user.name.split(",")[0]}</span>
-              {isCoC(user) && <span className="role-pill">{user.role.replace("_"," ")}</span>}
+              {(isCoC(user) || getBilletLabel(user)) && <span className="role-pill">{isCoC(user) ? user.role.replace("_"," ") : getBilletLabel(user)}</span>}
             </div>
             <button className="btn-logout" onClick={() => { setUser(null); setPage("dashboard"); }}>Sign Out</button>
           </div>
