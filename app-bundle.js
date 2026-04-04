@@ -7565,6 +7565,7 @@
       return !!stage.approverRole && user.role === stage.approverRole;
     });
   }
+  var GCAL_API_KEY = "AIzaSyBSMe4RJUxsCc5fYh7wZrIUkqmkGV7gPdc";
   var GCAL_CALENDAR_ID = "8favdaqbd14bfquur8fvil5ecc@group.calendar.google.com";
   var SEMESTER_START = /* @__PURE__ */ new Date("2026-01-19T00:00:00");
   var SEMESTER_LABEL = "Spring 2026";
@@ -7587,6 +7588,56 @@
     const M = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
     const f = (d) => `${String(d.getDate()).padStart(2, "0")}${M[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
     return `${f(mon)} - ${f(fri)}`;
+  }
+  function formatEventTime(isoStr) {
+    if (!isoStr) return "";
+    const d = new Date(isoStr);
+    return `${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+  function guessEventType(title) {
+    const t = (title || "").toLowerCase();
+    if (/\bpt\b|run|fep|drill/.test(t)) return "PT";
+    if (/fitrep|chit|inspection/.test(t)) return "Admin";
+    if (/leadership|leadlab|\bll\b/.test(t)) return "Leadership";
+    if (/tutor|calculus|physics/.test(t)) return "Academic";
+    if (/staff|meeting|sync/.test(t)) return "Staff";
+    if (/conference/.test(t)) return "Conference";
+    return "Event";
+  }
+  var MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  function fetchCalendarEvents() {
+    if (!GCAL_API_KEY || !GCAL_CALENDAR_ID) return Promise.resolve([]);
+    const now = /* @__PURE__ */ new Date();
+    const maxDate = new Date(now);
+    maxDate.setDate(maxDate.getDate() + 14);
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(GCAL_CALENDAR_ID)}/events?key=${GCAL_API_KEY}&timeMin=${now.toISOString()}&timeMax=${maxDate.toISOString()}&singleEvents=true&orderBy=startTime&maxResults=20`;
+    return fetch(url).then((r) => {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }).then(
+      (data) => (data.items || []).filter((ev) => !/^potw$/i.test((ev.summary || "").trim())).map((ev) => {
+        const allDay = !!ev.start.date;
+        const start = new Date(ev.start.dateTime || ev.start.date);
+        const end = ev.end ? new Date(ev.end.dateTime || ev.end.date) : null;
+        const dd = String(start.getDate()).padStart(2, "0");
+        const mo = MONTHS[start.getMonth()];
+        const time = allDay ? "All Day" : `${formatEventTime(ev.start.dateTime)}\u2013${end ? formatEventTime(ev.end.dateTime) : ""}`;
+        return {
+          date: `${dd} ${mo}`,
+          title: ev.summary || "(No title)",
+          time,
+          type: guessEventType(ev.summary),
+          location: ev.location || ""
+        };
+      })
+    ).catch(() => []);
+  }
+  function useCalendarEvents() {
+    const [events, setEvents] = (0, import_react.useState)([]);
+    (0, import_react.useEffect)(() => {
+      fetchCalendarEvents().then(setEvents);
+    }, []);
+    return events;
   }
   var POTW = {
     operations: [
@@ -8324,6 +8375,8 @@
     const canManageReminder = isBigFour(user);
     const [editingReminder, setEditingReminder] = (0, import_react.useState)(false);
     const [draftText, setDraftText] = (0, import_react.useState)(reminder.text);
+    const liveEvents = useCalendarEvents();
+    const upcomingEvents = liveEvents.length > 0 ? liveEvents : POTW.operations;
     const saveReminder = () => {
       setReminder({ enabled: draftText.trim().length > 0, text: draftText.trim() });
       setEditingReminder(false);
@@ -8410,7 +8463,7 @@
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "card-title", children: "\u{1F4C5} Upcoming Events" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => onNav("calendar"), children: "View All" })
             ] }),
-            POTW.operations.slice(0, 4).map((e, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "event-row", children: [
+            upcomingEvents.slice(0, 4).map((e, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "event-row", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "event-date", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "event-day", children: e.date.split(" ")[0] }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "event-mo", children: e.date.split(" ")[1] || "" })

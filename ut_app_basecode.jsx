@@ -446,7 +446,7 @@ function canViewChit(user, chit) {
 // ─── GOOGLE CALENDAR CONFIG ──────────────────────────────────
 // To enable live event fetching, create a free API key at console.cloud.google.com
 // (Enable "Google Calendar API", restrict key to Calendar API readonly).
-const GCAL_API_KEY      = "";  // ← paste your key here
+const GCAL_API_KEY      = "AIzaSyBSMe4RJUxsCc5fYh7wZrIUkqmkGV7gPdc";
 const GCAL_CALENDAR_ID  = "8favdaqbd14bfquur8fvil5ecc@group.calendar.google.com";
 
 // Spring 2026: Week 1 starts Monday Jan 19 2026.  Change each semester.
@@ -487,6 +487,50 @@ function guessEventType(title) {
   if (/staff|meeting|sync/.test(t)) return "Staff";
   if (/conference/.test(t)) return "Conference";
   return "Event";
+}
+
+const MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
+function fetchCalendarEvents() {
+  if (!GCAL_API_KEY || !GCAL_CALENDAR_ID) return Promise.resolve([]);
+  const now = new Date();
+  const maxDate = new Date(now);
+  maxDate.setDate(maxDate.getDate() + 14);
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(GCAL_CALENDAR_ID)}/events`
+    + `?key=${GCAL_API_KEY}`
+    + `&timeMin=${now.toISOString()}`
+    + `&timeMax=${maxDate.toISOString()}`
+    + `&singleEvents=true`
+    + `&orderBy=startTime`
+    + `&maxResults=20`;
+  return fetch(url)
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(data => (data.items || [])
+      .filter(ev => !/^potw$/i.test((ev.summary || "").trim()))
+      .map(ev => {
+        const allDay = !!ev.start.date;
+        const start = new Date(ev.start.dateTime || ev.start.date);
+        const end = ev.end ? new Date(ev.end.dateTime || ev.end.date) : null;
+        const dd = String(start.getDate()).padStart(2, "0");
+        const mo = MONTHS[start.getMonth()];
+        const time = allDay ? "All Day"
+          : `${formatEventTime(ev.start.dateTime)}–${end ? formatEventTime(ev.end.dateTime) : ""}`;
+        return {
+          date: `${dd} ${mo}`,
+          title: ev.summary || "(No title)",
+          time,
+          type: guessEventType(ev.summary),
+          location: ev.location || "",
+        };
+      })
+    )
+    .catch(() => []);
+}
+
+function useCalendarEvents() {
+  const [events, setEvents] = useState([]);
+  useEffect(() => { fetchCalendarEvents().then(setEvents); }, []);
+  return events;
 }
 
 // ─── STATIC DATA ────────────────────────────────────────────
@@ -1306,6 +1350,8 @@ function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
   const canManageReminder = isBigFour(user);
   const [editingReminder, setEditingReminder] = useState(false);
   const [draftText, setDraftText] = useState(reminder.text);
+  const liveEvents = useCalendarEvents();
+  const upcomingEvents = liveEvents.length > 0 ? liveEvents : POTW.operations;
 
   const saveReminder = () => {
     setReminder({ enabled: draftText.trim().length > 0, text: draftText.trim() });
@@ -1370,7 +1416,7 @@ function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
               <span className="card-title">📅 Upcoming Events</span>
               <button className="btn btn-outline btn-sm" onClick={() => onNav("calendar")}>View All</button>
             </div>
-            {POTW.operations.slice(0,4).map((e,i) => (
+            {upcomingEvents.slice(0,4).map((e,i) => (
               <div className="event-row" key={i}>
                 <div className="event-date"><div className="event-day">{e.date.split(" ")[0]}</div><div className="event-mo">{e.date.split(" ")[1] || ""}</div></div>
                 <div style={{ flex:1 }}>
