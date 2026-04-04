@@ -2567,6 +2567,13 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
+  const loadReviewDoc = (file) => {
+    if (!file || file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") { fire("⚠ Please select a DOCX file."); return; }
+    const reader = new FileReader();
+    reader.onload = e => setReviewDoc({ fileName: file.name, dataUrl: e.target.result });
+    reader.readAsDataURL(file);
+  };
+
   const loadFitrepFile = (field, file, allowedTypes, errorMsg) => {
     if (!file || !allowedTypes.includes(file.type)) { fire(errorMsg); return; }
     const reader = new FileReader();

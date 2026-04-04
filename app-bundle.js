@@ -6388,13 +6388,6 @@
                     }
                     V = f;
                   }
-                  var x = f.sibling;
-                  if (null !== x) {
-                    x.return = f.return;
-                    V = x;
-                    break b;
-                  }
-                  V = f.return;
                 }
                 if (0 !== (f.subtreeFlags & 2064) && null !== g) g.return = f, V = g;
                 else b: for (; null !== V; ) {
@@ -9607,6 +9600,15 @@
     const fire = (msg) => {
       setToast(msg);
       setTimeout(() => setToast(""), 3500);
+    };
+    const loadReviewDoc = (file) => {
+      if (!file || file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+        fire("\u26A0 Please select a DOCX file.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => setReviewDoc({ fileName: file.name, dataUrl: e.target.result });
+      reader.readAsDataURL(file);
     };
     const loadFitrepFile = (field, file, allowedTypes, errorMsg) => {
       if (!file || !allowedTypes.includes(file.type)) {
