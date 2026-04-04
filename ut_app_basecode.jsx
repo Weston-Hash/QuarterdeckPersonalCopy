@@ -586,13 +586,13 @@ const PT_SESSIONS = [
 const INIT_CHITS = [];
 
 const INIT_QS = [
-  { id:1, authorId:"u009", author:"Wilson, Ryan",   rank:"CDT/PVT", subject:"Calculus II", time:"2h ago", answered:true,
+  { id:1, authorId:"u009", author:"Wilson, Ryan",   rank:"CDT/PVT", subject:"Calculus 2", time:"2h ago", answered:true,
     text:"Struggling with integration by parts — when to use it vs u-substitution. Any tips for the LIATE rule?",
     answers:[{ author:"Davis, Kyle", rank:"CDT/2LT", text:"LIATE = Logarithm, Inverse trig, Algebraic, Trig, Exponential. Pick your u from whichever type comes first in that list. Use IBP when you have a product of two different function types." }] },
-  { id:2, authorId:"u012", author:"Nguyen, Lily",   rank:"CDT/PFC", subject:"Physics I",   time:"5h ago", answered:true,
+  { id:2, authorId:"u012", author:"Nguyen, Lily",   rank:"CDT/PFC", subject:"Physics 1",   time:"5h ago", answered:true,
     text:"Do we account for air resistance in PHY 301 projectile motion problems?",
     answers:[{ author:"Peterson, Chris", rank:"CDT/MAJ", text:"Ignore air resistance unless explicitly stated. For max range on flat ground, 45 degrees is always your answer." }] },
-  { id:3, authorId:"u011", author:"Jackson, Tyler", rank:"CDT/SPC", subject:"Calculus III",time:"1d ago", answered:false,
+  { id:3, authorId:"u011", author:"Jackson, Tyler", rank:"CDT/SPC", subject:"Calculus 2",time:"1d ago", answered:false,
     text:"What is the best way to set up triple integrals? I keep confusing the order of integration.",
     answers:[] },
 ];
@@ -2441,7 +2441,7 @@ function AcademicPage() {
   const [showModal, setShowModal] = useState(false);
   const [ansFor, setAnsFor] = useState(null);
   const [filter, setFilter] = useState("");
-  const [newQ, setNewQ] = useState({ subject:"", text:"" });
+  const [newQ, setNewQ] = useState({ subject:"", customSubject:"", text:"" });
   const [ansText, setAnsText] = useState("");
 
   const subjects = [...new Set(qs.map(q => q.subject))];
@@ -2449,13 +2449,15 @@ function AcademicPage() {
 
   const postQ = () => {
     if (!newQ.subject || !newQ.text) return;
+    if (newQ.subject === "Other" && !newQ.customSubject.trim()) return;
+    const finalSubject = newQ.subject === "Other" ? newQ.customSubject.trim() : newQ.subject;
     setQs(prev => [{
       id: Date.now(), authorId: user.id, author: user.name,
-      rank: user.rank, subject: newQ.subject, time: "Just now",
+      rank: user.rank, subject: finalSubject, time: "Just now",
       answered: false, text: newQ.text, answers: []
     }, ...prev]);
     setShowModal(false);
-    setNewQ({ subject:"", text:"" });
+    setNewQ({ subject:"", customSubject:"", text:"" });
   };
 
   const postAns = (qid) => {
@@ -2530,12 +2532,20 @@ function AcademicPage() {
         <Modal title="Ask a Question" onClose={() => setShowModal(false)}>
           <div className="input-group">
             <label className="input-label">Subject</label>
-            <select className="input" value={newQ.subject} onChange={e => setNewQ(s => ({ ...s, subject:e.target.value }))}>
+            <select className="input" value={newQ.subject} onChange={e => setNewQ(s => ({ ...s, subject:e.target.value, customSubject:"" }))}>
               <option value="">Select subject…</option>
-              <option>Calculus I</option><option>Calculus II</option><option>Calculus III</option>
-              <option>Physics I</option><option>Physics II</option><option>Chemistry</option>
-              <option>Statics</option><option>Naval Science</option><option>Other</option>
+              <option>Calculus 1</option><option>Calculus 2</option>
+              <option>Physics 1</option><option>Physics 2</option>
+              <option>Naval Science</option><option>Other</option>
             </select>
+          </div>
+          {newQ.subject === "Other" && (
+            <div className="input-group">
+              <label className="input-label">Class Name <span style={{ color:"#C0392B" }}>*</span></label>
+              <input className="input" placeholder="e.g. Chemistry, Statics…"
+                value={newQ.customSubject} onChange={e => setNewQ(s => ({ ...s, customSubject:e.target.value }))} />
+            </div>
+          )}
           </div>
           <div className="input-group">
             <label className="input-label">Your Question</label>
