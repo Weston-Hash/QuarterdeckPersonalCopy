@@ -95,7 +95,7 @@ function getRosterDescriptor(user) {
   if (user.role === "co_cdr") return `${coLabel} · CC`;
   if (user.role === "sel")    return `${coLabel} · SEL`;
   // Platoon ordinal: platoon field is "1st PC" / "2nd PC" — strip the " PC" suffix
-  const pltOrdinal = (user.platoon || "").replace(/\s*PC$/i, "").trim();
+  const pltOrdinal = (user.platoon || "").replace(/\s*(?:PC|PLT)$/i, "").trim();
   // PC
   if (user.role === "plt_cdr") {
     return pltOrdinal ? `${coLabel} · ${pltOrdinal} PLT PC` : `${coLabel} · PC`;

@@ -7360,7 +7360,7 @@
     }
     if (user.role === "co_cdr") return `${coLabel} \xB7 CC`;
     if (user.role === "sel") return `${coLabel} \xB7 SEL`;
-    const pltOrdinal = (user.platoon || "").replace(/\s*PC$/i, "").trim();
+    const pltOrdinal = (user.platoon || "").replace(/\s*(?:PC|PLT)$/i, "").trim();
     if (user.role === "plt_cdr") {
       return pltOrdinal ? `${coLabel} \xB7 ${pltOrdinal} PLT PC` : `${coLabel} \xB7 PC`;
     }
