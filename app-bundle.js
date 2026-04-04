@@ -9824,20 +9824,6 @@
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Private." }),
         " Only you and your chain of command can see your FITREPs."
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "grid3", style: { marginBottom: "1rem" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", children: visible.filter((f) => f.currentStage > 0 && f.currentStage < f.stages.length - 1).length }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "In Progress" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#2A7D4F" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#2A7D4F" }, children: visible.filter((f) => f.currentStage === f.stages.length - 1).length }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "Complete" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#0D1B2A" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#0D1B2A" }, children: visible.filter((f) => f.currentStage === 1).length }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "Awaiting PC" })
-        ] })
-      ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap", alignItems: "center" }, children: [
         companies.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", style: { maxWidth: "200px" }, value: filter, onChange: (e) => setFilter(e.target.value), children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "All Companies" }),

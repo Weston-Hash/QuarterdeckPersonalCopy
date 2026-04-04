@@ -2788,22 +2788,6 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         🔒 <strong>Private.</strong> Only you and your chain of command can see your FITREPs.
       </div>
 
-      {/* Summary stats (based on what user can see) */}
-      <div className="grid3" style={{ marginBottom:"1rem" }}>
-        <div className="stat">
-          <div className="stat-n">{visible.filter(f => f.currentStage > 0 && f.currentStage < f.stages.length - 1).length}</div>
-          <div className="stat-l">In Progress</div>
-        </div>
-        <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}>
-          <div className="stat-n" style={{ color:"#2A7D4F" }}>{visible.filter(f => f.currentStage === f.stages.length - 1).length}</div>
-          <div className="stat-l">Complete</div>
-        </div>
-        <div className="stat" style={{ borderLeftColor:"#0D1B2A" }}>
-          <div className="stat-n" style={{ color:"#0D1B2A" }}>{visible.filter(f => f.currentStage === 1).length}</div>
-          <div className="stat-l">Awaiting PC</div>
-        </div>
-      </div>
-
       <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap", alignItems:"center" }}>
         {/* Company filter — only show if user can see multiple companies */}
         {companies.length > 1 && (
