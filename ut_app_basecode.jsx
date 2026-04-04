@@ -855,6 +855,7 @@ const CSS = `
 
   .alert { background: rgba(191,87,0,0.08); border: 1.5px solid #BF5700; border-radius: 8px; padding: 0.65rem 1rem; font-size: 0.85rem; color: #8B3D00; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
   .alert-green { background: rgba(42,125,79,0.1); border-color: #2A7D4F; color: #2A7D4F; }
+  .alert-red { background: rgba(192,57,43,0.1); border-color: #C0392B; color: #C0392B; }
   .privacy-note { background: rgba(13,27,42,0.05); border: 1.5px solid rgba(13,27,42,0.15); border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.82rem; color: #0D1B2A; margin-bottom: 1rem; }
 
   .potw-card { background: linear-gradient(135deg, #1A1209 0%, #0D1B2A 100%); color: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
@@ -2094,7 +2095,7 @@ function ChitsPage({ chits, setChits, userList }) {
       <div className="page-title"><span>CHITs</span></div>
       <div className="page-sub">Submit and track absence requests</div>
 
-      {toast && <div className="alert alert-green">{toast}</div>}
+      {toast && !showModal && <div className={`alert ${toast.startsWith("⚠") ? "alert-red" : "alert-green"}`}>{toast}</div>}
 
       <div className="privacy-note">
         🔒 <strong>Private.</strong> Only you and your chain of command can see your CHITs.
@@ -2143,6 +2144,7 @@ function ChitsPage({ chits, setChits, userList }) {
       {showModal && (
         <Modal title="Submit CHIT" onClose={() => setShowModal(false)}>
           <div className="privacy-note">🔒 Private — only you and your CoC will see this.</div>
+          {toast && <div className={`alert ${toast.startsWith("⚠") ? "alert-red" : "alert-green"}`}>{toast}</div>}
           {needsRouteSelect && (
             <>
               <div className="input-group">
@@ -2780,7 +2782,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
       <div className="page-title">FITREP <span>Tracker</span></div>
       <div className="page-sub">Fitness Report pipeline — {visible.length} report{visible.length !== 1 ? "s" : ""} visible to you</div>
 
-      {toast && <div className="alert alert-green">{toast}</div>}
+      {toast && !showModal && <div className={`alert ${toast.startsWith("⚠") ? "alert-red" : "alert-green"}`}>{toast}</div>}
 
       <div className="privacy-note">
         🔒 <strong>Private.</strong> Only you and your chain of command can see your FITREPs.
@@ -2856,6 +2858,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
       {showModal && (
         <Modal title="Submit FITREP" onClose={() => setShowModal(false)}>
           <div className="privacy-note">🔒 Private — only you and your CoC will see this.</div>
+          {toast && <div className={`alert ${toast.startsWith("⚠") ? "alert-red" : "alert-green"}`}>{toast}</div>}
           {needsRouteSelect && (
             <>
               <div className="input-group">

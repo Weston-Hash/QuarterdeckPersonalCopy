@@ -7885,6 +7885,7 @@
 
   .alert { background: rgba(191,87,0,0.08); border: 1.5px solid #BF5700; border-radius: 8px; padding: 0.65rem 1rem; font-size: 0.85rem; color: #8B3D00; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
   .alert-green { background: rgba(42,125,79,0.1); border-color: #2A7D4F; color: #2A7D4F; }
+  .alert-red { background: rgba(192,57,43,0.1); border-color: #C0392B; color: #C0392B; }
   .privacy-note { background: rgba(13,27,42,0.05); border: 1.5px solid rgba(13,27,42,0.15); border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.82rem; color: #0D1B2A; margin-bottom: 1rem; }
 
   .potw-card { background: linear-gradient(135deg, #1A1209 0%, #0D1B2A 100%); color: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
@@ -9094,7 +9095,7 @@
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-title", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "CHITs" }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-sub", children: "Submit and track absence requests" }),
-      toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "alert alert-green", children: toast }),
+      toast && !showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `alert ${toast.startsWith("\u26A0") ? "alert-red" : "alert-green"}`, children: toast }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "privacy-note", children: [
         "\u{1F512} ",
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Private." }),
@@ -9134,6 +9135,7 @@
       ] }),
       showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Submit CHIT", onClose: () => setShowModal(false), children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "privacy-note", children: "\u{1F512} Private \u2014 only you and your CoC will see this." }),
+        toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `alert ${toast.startsWith("\u26A0") ? "alert-red" : "alert-green"}`, children: toast }),
         needsRouteSelect && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Your Company" }),
@@ -9816,7 +9818,7 @@
         visible.length !== 1 ? "s" : "",
         " visible to you"
       ] }),
-      toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "alert alert-green", children: toast }),
+      toast && !showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `alert ${toast.startsWith("\u26A0") ? "alert-red" : "alert-green"}`, children: toast }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "privacy-note", children: [
         "\u{1F512} ",
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Private." }),
@@ -9882,6 +9884,7 @@
       ] }),
       showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Submit FITREP", onClose: () => setShowModal(false), children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "privacy-note", children: "\u{1F512} Private \u2014 only you and your CoC will see this." }),
+        toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `alert ${toast.startsWith("\u26A0") ? "alert-red" : "alert-green"}`, children: toast }),
         needsRouteSelect && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Your Company" }),
