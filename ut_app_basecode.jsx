@@ -570,11 +570,7 @@ const PT = [
   ]},
 ];
 
-const LEADLAB_INIT = [
-  { id:1, title:"Land Navigation",          date:"Mar 12", notes:"Bring protractor, compass, pencil. MGRS map issued at 1345." },
-  { id:2, title:"React to Contact",         date:"Mar 26", notes:"ACU/camouflage required. No live ammo." },
-  { id:3, title:"Leadership Reaction Course", date:"Apr 9",  notes:"Teams assigned day prior." },
-];
+const LEADLAB_INIT = [];
 
 // Three fixed PT sessions per week. OPS (and other seniors) upload PDFs here.
 const PT_SESSIONS = [
@@ -585,17 +581,7 @@ const PT_SESSIONS = [
 
 const INIT_CHITS = [];
 
-const INIT_QS = [
-  { id:1, authorId:"u009", author:"Wilson, Ryan",   rank:"CDT/PVT", subject:"Calculus 2", time:"2h ago", answered:true,
-    text:"Struggling with integration by parts — when to use it vs u-substitution. Any tips for the LIATE rule?",
-    answers:[{ author:"Davis, Kyle", rank:"CDT/2LT", text:"LIATE = Logarithm, Inverse trig, Algebraic, Trig, Exponential. Pick your u from whichever type comes first in that list. Use IBP when you have a product of two different function types." }] },
-  { id:2, authorId:"u012", author:"Nguyen, Lily",   rank:"CDT/PFC", subject:"Physics 1",   time:"5h ago", answered:true,
-    text:"Do we account for air resistance in PHY 301 projectile motion problems?",
-    answers:[{ author:"Peterson, Chris", rank:"CDT/MAJ", text:"Ignore air resistance unless explicitly stated. For max range on flat ground, 45 degrees is always your answer." }] },
-  { id:3, authorId:"u011", author:"Jackson, Tyler", rank:"CDT/SPC", subject:"Calculus 2",time:"1d ago", answered:false,
-    text:"What is the best way to set up triple integrals? I keep confusing the order of integration.",
-    answers:[] },
-];
+const INIT_QS = [];
 
 
 // ─── GOOGLE SHEETS CONFIG (Option B — Private Sheet via Apps Script) ──
@@ -2546,7 +2532,6 @@ function AcademicPage() {
                 value={newQ.customSubject} onChange={e => setNewQ(s => ({ ...s, customSubject:e.target.value }))} />
             </div>
           )}
-          </div>
           <div className="input-group">
             <label className="input-label">Your Question</label>
             <textarea className="input" style={{ minHeight:"100px", resize:"vertical" }}

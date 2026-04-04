@@ -7653,52 +7653,14 @@
       { date: "10 APR", title: "Unit Sync Meeting", time: "1000\u20131100", type: "Staff", location: "" }
     ]
   };
-  var LEADLAB_INIT = [
-    { id: 1, title: "Land Navigation", date: "Mar 12", notes: "Bring protractor, compass, pencil. MGRS map issued at 1345." },
-    { id: 2, title: "React to Contact", date: "Mar 26", notes: "ACU/camouflage required. No live ammo." },
-    { id: 3, title: "Leadership Reaction Course", date: "Apr 9", notes: "Teams assigned day prior." }
-  ];
+  var LEADLAB_INIT = [];
   var PT_SESSIONS = [
     { key: "monday", day: "Monday", type: "BN PT", desc: "Battalion-wide formation PT", color: "#BF5700" },
     { key: "wednesday", day: "Wednesday", type: "Company PT", desc: "Company-level physical training", color: "#003087" },
     { key: "thursday", day: "Thursday", type: "FEP", desc: "Fitness Enhancement Program", color: "#2A7D4F" }
   ];
   var INIT_CHITS = [];
-  var INIT_QS = [
-    {
-      id: 1,
-      authorId: "u009",
-      author: "Wilson, Ryan",
-      rank: "CDT/PVT",
-      subject: "Calculus II",
-      time: "2h ago",
-      answered: true,
-      text: "Struggling with integration by parts \u2014 when to use it vs u-substitution. Any tips for the LIATE rule?",
-      answers: [{ author: "Davis, Kyle", rank: "CDT/2LT", text: "LIATE = Logarithm, Inverse trig, Algebraic, Trig, Exponential. Pick your u from whichever type comes first in that list. Use IBP when you have a product of two different function types." }]
-    },
-    {
-      id: 2,
-      authorId: "u012",
-      author: "Nguyen, Lily",
-      rank: "CDT/PFC",
-      subject: "Physics I",
-      time: "5h ago",
-      answered: true,
-      text: "Do we account for air resistance in PHY 301 projectile motion problems?",
-      answers: [{ author: "Peterson, Chris", rank: "CDT/MAJ", text: "Ignore air resistance unless explicitly stated. For max range on flat ground, 45 degrees is always your answer." }]
-    },
-    {
-      id: 3,
-      authorId: "u011",
-      author: "Jackson, Tyler",
-      rank: "CDT/SPC",
-      subject: "Calculus III",
-      time: "1d ago",
-      answered: false,
-      text: "What is the best way to set up triple integrals? I keep confusing the order of integration.",
-      answers: []
-    }
-  ];
+  var INIT_QS = [];
   var SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbzCHnTg4UmmYFaTlJf8_MP8TZU9fe1RsGmaRQ-X-2EwxdVluowDjkPjMPnG82tjlYun/exec";
   var SHEETS_API_TOKEN = "UT_NROTC";
   var ROSTER_CACHE_KEY = "quarterdeck_roster_cache_v1";
@@ -9459,25 +9421,27 @@
     const [showModal, setShowModal] = (0, import_react.useState)(false);
     const [ansFor, setAnsFor] = (0, import_react.useState)(null);
     const [filter, setFilter] = (0, import_react.useState)("");
-    const [newQ, setNewQ] = (0, import_react.useState)({ subject: "", text: "" });
+    const [newQ, setNewQ] = (0, import_react.useState)({ subject: "", customSubject: "", text: "" });
     const [ansText, setAnsText] = (0, import_react.useState)("");
     const subjects = [...new Set(qs.map((q) => q.subject))];
     const visible = qs.filter((q) => !filter || q.subject === filter);
     const postQ = () => {
       if (!newQ.subject || !newQ.text) return;
+      if (newQ.subject === "Other" && !newQ.customSubject.trim()) return;
+      const finalSubject = newQ.subject === "Other" ? newQ.customSubject.trim() : newQ.subject;
       setQs((prev) => [{
         id: Date.now(),
         authorId: user.id,
         author: user.name,
         rank: user.rank,
-        subject: newQ.subject,
+        subject: finalSubject,
         time: "Just now",
         answered: false,
         text: newQ.text,
         answers: []
       }, ...prev]);
       setShowModal(false);
-      setNewQ({ subject: "", text: "" });
+      setNewQ({ subject: "", customSubject: "", text: "" });
     };
     const postAns = (qid) => {
       if (!ansText.trim()) return;
@@ -9554,18 +9518,30 @@
       showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Ask a Question", onClose: () => setShowModal(false), children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Subject" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: newQ.subject, onChange: (e) => setNewQ((s) => ({ ...s, subject: e.target.value })), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: newQ.subject, onChange: (e) => setNewQ((s) => ({ ...s, subject: e.target.value, customSubject: "" })), children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select subject\u2026" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Calculus I" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Calculus II" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Calculus III" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Physics I" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Physics II" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Chemistry" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Statics" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Calculus 1" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Calculus 2" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Physics 1" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Physics 2" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Naval Science" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Other" })
           ] })
+        ] }),
+        newQ.subject === "Other" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+            "Class Name ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "input",
+            {
+              className: "input",
+              placeholder: "e.g. Chemistry, Statics\u2026",
+              value: newQ.customSubject,
+              onChange: (e) => setNewQ((s) => ({ ...s, customSubject: e.target.value }))
+            }
+          )
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Your Question" }),
