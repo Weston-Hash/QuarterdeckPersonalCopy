@@ -1982,7 +1982,7 @@ function ChitsPage({ chits, setChits, userList }) {
     fire("CHIT updated.");
   };
 
-  const [chitFolders, setChitFolders] = useState({ action: true, pipeline: true, complete: false });
+  const [chitFolders, setChitFolders] = useState({ action: false, pipeline: false, complete: false });
   const needsAction = visible.filter(c => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
   const inPipeline = visible.filter(c => c.status === "Pending" && !canActOnChit(user, c));
   const completed = visible.filter(c => c.status === "Approved" || c.status === "Denied" || c.status === "Returned");
@@ -2565,7 +2565,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   const [toast, setToast]                 = useState("");
   const [filter, setFilter]               = useState("");
   const [reviewDoc, setReviewDoc]         = useState(null);
-  const [fitrepFolders, setFitrepFolders] = useState({ action: true, pipeline: true, complete: false });
+  const [fitrepFolders, setFitrepFolders] = useState({ action: false, pipeline: false, complete: false });
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 

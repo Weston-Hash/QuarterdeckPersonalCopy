@@ -8984,7 +8984,7 @@
       setReviewDoc(null);
       fire("CHIT updated.");
     };
-    const [chitFolders, setChitFolders] = (0, import_react.useState)({ action: true, pipeline: true, complete: false });
+    const [chitFolders, setChitFolders] = (0, import_react.useState)({ action: false, pipeline: false, complete: false });
     const needsAction = visible.filter((c) => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
     const inPipeline = visible.filter((c) => c.status === "Pending" && !canActOnChit(user, c));
     const completed = visible.filter((c) => c.status === "Approved" || c.status === "Denied" || c.status === "Returned");
@@ -9598,7 +9598,7 @@
     const [toast, setToast] = (0, import_react.useState)("");
     const [filter, setFilter] = (0, import_react.useState)("");
     const [reviewDoc, setReviewDoc] = (0, import_react.useState)(null);
-    const [fitrepFolders, setFitrepFolders] = (0, import_react.useState)({ action: true, pipeline: true, complete: false });
+    const [fitrepFolders, setFitrepFolders] = (0, import_react.useState)({ action: false, pipeline: false, complete: false });
     const fire = (msg) => {
       setToast(msg);
       setTimeout(() => setToast(""), 3500);
