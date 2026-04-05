@@ -352,29 +352,29 @@ function buildChitApprovalChain(userList, user, routeContext) {
 
   if (user.role === "adj") {
     chain.push(
-      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖️️️️"),
-      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈️️️️"),
+      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
     );
   } else if (user.role === "co_cdr") {
     chain.push(
       makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖️️️️"),
-      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈️️️️"),
+      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
     );
   } else if (user.role === "plt_cdr") {
     chain.push(
       makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
       makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖️️️️"),
-      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈️️️️"),
+      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
     );
   } else {
     chain.push(
       makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "👤"),
       makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
       makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🎖️️️️"),
-      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "✅"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈️️️️"),
+      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
     );
   }
 
@@ -798,8 +798,8 @@ const FITREP_STAGES = [
   { name:"PC Review",      approverRole:"plt_cdr", icon:"👤" },
   { name:"Co CDR Review",  approverRole:"co_cdr",  icon:"⭐" },
   { name:"ADJ Review",     approverRole:"adj",     icon:"✏️" },
-  { name:"BNXO Review",    approverRole:"xo",      icon:"🎖️️️️" },
-  { name:"BNCO Approval",  approverRole:"bn_cdr",  icon:"✅" },
+  { name:"BNXO Review",    approverRole:"xo",      icon:"🥈️️️️" },
+  { name:"BNCO Approval",  approverRole:"bn_cdr",  icon:"🥇" },
   { name:"Complete",       approverRole:null,      icon:"🏅" },
 ];
 
