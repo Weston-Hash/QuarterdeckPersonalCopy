@@ -8175,7 +8175,7 @@
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.25rem" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Rajdhani', Impact, sans-serif", fontSize: "0.85rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "0.6rem" }, children: "Appearance" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", style: { width: "100%", justifyContent: "center", padding: "0.6rem 1rem", fontSize: "0.85rem" }, onClick: toggleDark, children: darkMode ? "\u2600 Switch to Light Mode" : "\u{1F319} Switch to Dark Mode" })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", style: { width: "100%", justifyContent: "center", padding: "0.6rem 1rem", fontSize: "0.85rem" }, onClick: toggleDark, children: darkMode ? "\u2600\uFE0F Switch to Light Mode" : "\u{1F319} Switch to Dark Mode" })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.25rem", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { className: "btn btn-outline", href: "https://docs.google.com/forms/d/e/1FAIpQLSfNKcFJ1qBd6HTxpnBxTFOY8Y0N3YZ0DkTN6BYmMA9QaE3_0w/viewform?usp=publish-editor", target: "_blank", rel: "noopener noreferrer", children: "Update My Email" }),

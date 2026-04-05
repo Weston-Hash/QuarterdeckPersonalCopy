@@ -1179,7 +1179,7 @@ function AccountModal({ onClose, darkMode, toggleDark }) {
       <div style={{ marginTop:"1.25rem" }}>
         <div style={{ fontFamily:"'Rajdhani', Impact, sans-serif", fontSize:"0.85rem", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase", marginBottom:"0.6rem" }}>Appearance</div>
         <button className="btn btn-outline" style={{ width:"100%", justifyContent:"center", padding:"0.6rem 1rem", fontSize:"0.85rem" }} onClick={toggleDark}>
-          {darkMode ? "☀ Switch to Light Mode" : "🌙 Switch to Dark Mode"}
+          {darkMode ? "☀️ Switch to Light Mode" : "🌙 Switch to Dark Mode"}
         </button>
       </div>
 
