@@ -1069,7 +1069,7 @@ const CSS = `
   .dark .route-hint { background:#15161e; color:#8b8b96; }
   .dark .bn-leader-card { background:#15161e; }
   .dark .billet-card { background:#15161e; color:#d4d4d8; }
-  .dark .platoon-detail { color:#8b8b96; }
+  .dark .platoon-detail { color:#d4d4d8; }
   .dark .platoon-name { color:#e8a065; }
   .dark .stat-company-alpha { border-left-color:#c45555 !important; }
   .dark .stat-company-alpha .stat-n { color:#c45555 !important; }
