@@ -1002,9 +1002,17 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   const [name, setName] = useState("");
   const [err, setErr]   = useState("");
 
+  // MFA state
+  const [mfaStep, setMfaStep]     = useState(false);
+  const [mfaUser, setMfaUser]     = useState(null);
+  const [mfaCode, setMfaCode]     = useState("");
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [mfaInfo, setMfaInfo]     = useState("");
+
   const hasRoster = userList.length > 0;
   const locked = !sheetSynced;
 
+  // Step 1: look up user → send MFA code
   const go = () => {
     if (locked) return;
     const q = name.trim().toLowerCase();
@@ -1015,9 +1023,87 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
       (u.eid && u.eid.toLowerCase() === q)
     );
     if (!user) { setErr("Name not found. Try your last name, email, or EID."); return; }
+    if (!user.email) { setErr("No email on file. Contact ADJ to add your email."); return; }
+
     setErr("");
-    onLogin(user);
+    setMfaLoading(true);
+    fetch(SHEETS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: user.email }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        setMfaLoading(false);
+        if (data.ok) {
+          setMfaUser(user);
+          setMfaStep(true);
+          setMfaInfo("A 6-digit code was sent to " + user.email + ". It expires in 5 minutes.");
+        } else {
+          setErr(data.error || "Failed to send verification code. Try again.");
+        }
+      })
+      .catch(() => {
+        setMfaLoading(false);
+        setErr("Network error sending verification code. Check your connection.");
+      });
   };
+
+  // Step 2: verify MFA code
+  const verifyCode = () => {
+    if (!mfaCode.trim()) { setErr("Enter the 6-digit code from your email."); return; }
+    setErr("");
+    setMfaLoading(true);
+    fetch(SHEETS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "verifyMFA", email: mfaUser.email, code: mfaCode.trim() }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        setMfaLoading(false);
+        if (data.ok) {
+          onLogin(mfaUser);
+        } else {
+          setErr(data.error || "Verification failed. Try again or request a new code.");
+        }
+      })
+      .catch(() => {
+        setMfaLoading(false);
+        setErr("Network error verifying code. Check your connection.");
+      });
+  };
+
+  // Resend code
+  const resendCode = () => {
+    setErr("");
+    setMfaCode("");
+    setMfaLoading(true);
+    fetch(SHEETS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: mfaUser.email }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        setMfaLoading(false);
+        if (data.ok) {
+          setMfaInfo("A new code was sent to " + mfaUser.email + ".");
+        } else {
+          setErr(data.error || "Failed to resend code.");
+        }
+      })
+      .catch(() => {
+        setMfaLoading(false);
+        setErr("Network error. Check your connection.");
+      });
+  };
+
+  const errorBanner = (msg) => (
+    <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid rgb(192,57,43)", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"rgb(192,57,43)", marginBottom:"0.9rem" }}>
+      ⚠ {msg}
+    </div>
+  );
 
   return (
     <div className="login-wrap">
@@ -1027,59 +1113,115 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
           <div className="login-title">The <span>Quarterdeck</span></div>
         </div>
 
-        <div className="login-sub">Sign in with your battalion credentials</div>
+        {!mfaStep ? (
+          <>
+            <div className="login-sub">Sign in with your battalion credentials</div>
 
-        {!sheetSynced && !hasRoster && (
-          <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem", display:"flex", alignItems:"center", gap:"0.6rem" }}>
-            <span style={{ fontSize:"1.1rem" }}>⏳</span>
-            <span>Syncing roster from Google Sheets… please wait.</span>
-          </div>
-        )}
-        {!sheetSynced && hasRoster && (
-          <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem" }}>
-            ⏳ Pulling login details…
-          </div>
-        )}
-        {sheetSynced && sheetError && (
-          <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>
-            ⚠ Could not reach Google Sheets{hasRoster ? ". Using cached roster for now" : ""}. Check your connection and{" "}
-            <button onClick={onRetry} style={{ background:"none", border:"none", color:"#C0392B", fontWeight:700, textDecoration:"underline", cursor:"pointer", fontSize:"inherit", padding:0 }}>retry</button>.
-          </div>
-        )}
+            {!sheetSynced && !hasRoster && (
+              <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem", display:"flex", alignItems:"center", gap:"0.6rem" }}>
+                <span style={{ fontSize:"1.1rem" }}>⏳</span>
+                <span>Syncing roster from Google Sheets… please wait.</span>
+              </div>
+            )}
+            {!sheetSynced && hasRoster && (
+              <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem" }}>
+                ⏳ Pulling login details…
+              </div>
+            )}
+            {sheetSynced && sheetError && (
+              <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>
+                ⚠ Could not reach Google Sheets{hasRoster ? ". Using cached roster for now" : ""}. Check your connection and{" "}
+                <button onClick={onRetry} style={{ background:"none", border:"none", color:"#C0392B", fontWeight:700, textDecoration:"underline", cursor:"pointer", fontSize:"inherit", padding:0 }}>retry</button>.
+              </div>
+            )}
 
-        {err && (
-          <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid rgb(192,57,43)", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"rgb(192,57,43)", marginBottom:"0.9rem" }}>
-            ⚠ {err}
-          </div>
+            {err && errorBanner(err)}
+
+            <div className="input-group">
+              <label className="input-label" htmlFor="login-username">Last Name, Email, or EID</label>
+              <input
+                id="login-username"
+                name="username"
+                className="input"
+                autoComplete="username"
+                placeholder={locked ? "Waiting for roster sync…" : "Last name, email, or EID"}
+                value={name}
+                disabled={locked || mfaLoading}
+                style={(locked || mfaLoading) ? { opacity:0.45, cursor:"not-allowed" } : {}}
+                onChange={e => setName(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && go()}
+              />
+            </div>
+            <button
+              className="btn btn-orange"
+              style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:(locked || mfaLoading) ? 0.45 : 1, cursor:(locked || mfaLoading) ? "not-allowed" : "pointer", fontFamily:"'Barlow', 'Segoe UI', sans-serif", letterSpacing:"normal", textTransform:"none" }}
+              disabled={locked || mfaLoading}
+              onClick={go}
+            >
+              {mfaLoading ? "⏳ Sending code…" : locked ? "⏳ Syncing…" : "Sign In →"}
+            </button>
+
+            <div className="hint-box">
+              <strong>Username:</strong> your last name, full email, or EID.<br />
+              A verification code will be sent to your email on file.
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="login-sub">Email verification</div>
+
+            {mfaInfo && (
+              <div style={{ background:"rgba(39,174,96,0.1)", border:"1.5px solid #27AE60", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"#1e8449", marginBottom:"0.9rem" }}>
+                ✉ {mfaInfo}
+              </div>
+            )}
+            {err && errorBanner(err)}
+
+            <div className="input-group">
+              <label className="input-label" htmlFor="login-mfa">Verification Code</label>
+              <input
+                id="login-mfa"
+                name="mfa-code"
+                className="input"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                placeholder="Enter 6-digit code"
+                value={mfaCode}
+                disabled={mfaLoading}
+                style={mfaLoading ? { opacity:0.45, cursor:"not-allowed" } : {}}
+                onChange={e => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                onKeyDown={e => e.key === "Enter" && verifyCode()}
+                autoFocus
+              />
+            </div>
+            <button
+              className="btn btn-orange"
+              style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:mfaLoading ? 0.45 : 1, cursor:mfaLoading ? "not-allowed" : "pointer", fontFamily:"'Barlow', 'Segoe UI', sans-serif", letterSpacing:"normal", textTransform:"none" }}
+              disabled={mfaLoading}
+              onClick={verifyCode}
+            >
+              {mfaLoading ? "⏳ Verifying…" : "Verify & Sign In →"}
+            </button>
+
+            <div style={{ display:"flex", justifyContent:"space-between", marginTop:"0.75rem", fontSize:"0.83rem" }}>
+              <button
+                onClick={() => { setMfaStep(false); setMfaUser(null); setMfaCode(""); setErr(""); setMfaInfo(""); }}
+                style={{ background:"none", border:"none", color:"#666", cursor:"pointer", padding:0, textDecoration:"underline" }}
+              >
+                ← Back
+              </button>
+              <button
+                onClick={resendCode}
+                disabled={mfaLoading}
+                style={{ background:"none", border:"none", color:"#BF5700", cursor:mfaLoading ? "not-allowed" : "pointer", padding:0, textDecoration:"underline", opacity:mfaLoading ? 0.45 : 1 }}
+              >
+                Resend code
+              </button>
+            </div>
+          </>
         )}
-
-        <div className="input-group">
-          <label className="input-label" htmlFor="login-username">Last Name, Email, or EID</label>
-          <input
-            id="login-username"
-            name="username"
-            className="input"
-            autoComplete="username"
-            placeholder={locked ? "Waiting for roster sync…" : "Last name, email, or EID"}
-            value={name}
-            disabled={locked}
-            style={locked ? { opacity:0.45, cursor:"not-allowed" } : {}}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && go()}
-          />
-        </div>
-        <button
-          className="btn btn-orange"
-          style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:locked ? 0.45 : 1, cursor:locked ? "not-allowed" : "pointer", fontFamily:"'Barlow', 'Segoe UI', sans-serif", letterSpacing:"normal", textTransform:"none" }}
-          disabled={locked}
-          onClick={go}
-        >
-          {locked ? "⏳ Syncing…" : "Sign In →"}
-        </button>
-
-        <div className="hint-box">
-          <strong>Username:</strong> your last name, full email, or EID.
-        </div>
       </div>
     </div>
   );
@@ -1175,7 +1317,7 @@ function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
           </div>
           <div className="card">
             <div className="card-header"><span className="card-title">❓ Academic Board</span><button className="btn btn-outline btn-sm" onClick={() => onNav("academic")}>Open</button></div>
-            <div style={{ fontSize:"0.88rem" }}>Questions needing answers: <strong style={{ color:"#BF5700" }}>1</strong></div>
+            <div style={{ fontSize:"0.88rem" }}>Post questions and get answers from upperclassmen.</div>
           </div>
           <div className="card">
             <div className="card-header"><span className="card-title">📝 Open Forms</span><button className="btn btn-outline btn-sm" onClick={() => onNav("forms")}>View</button></div>
@@ -1999,7 +2141,7 @@ function RosterPage({ userList }) {
   return (
     <div>
       <div className="page-title">Recall <span>Roster</span></div>
-      <div className="page-sub">BN contact directory — sourced live from Google Sheets</div>
+      <div className="page-sub">BN contact directory</div>
       <div style={{ display:"flex", gap:"0.75rem", marginBottom:"1rem", flexWrap:"wrap" }}>
         <div style={{ position:"relative", flex:1, minWidth:"180px" }}>
           <span style={{ position:"absolute", left:"0.7rem", top:"50%", transform:"translateY(-50%)", color:"#aaa" }}>🔍</span>
