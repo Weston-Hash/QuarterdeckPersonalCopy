@@ -7930,6 +7930,8 @@
   .platoon-name { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.82rem; font-weight: 700; font-style: normal; letter-spacing: 1.5px; color: #BF5700; margin-bottom: 0.35rem; }
   .platoon-detail { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.78rem; font-style: normal; color: #6B6B6B; }
 
+  .pt-session-card { background:white; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06); border:1px solid rgba(191,87,0,0.1); padding:1.25rem; margin-bottom:1.25rem; }
+  .pt-empty-state { text-align:center; padding:2.5rem 1rem; background:#faf8f5; border-radius:8px; border:2px dashed #e0d8d0; }
   .route-hint { background:#f5f2ee; border-radius:8px; padding:0.65rem; font-size:0.8rem; color:#666; margin-bottom:1rem; }
   .bn-leader-card { background:#f8f8f8; border-radius:8px; padding:0.6rem 0.8rem; border-left:3px solid #BF5700; }
   .billet-card { display:flex; justify-content:space-between; align-items:center; padding:0.45rem 0.7rem; background:#f8f8f8; border-radius:6px; font-size:0.82rem; }
@@ -8060,6 +8062,8 @@
   .dark .badge-gray { background:#2a2b35; color:#8b8b96; }
   .dark .tag { background:rgba(191,87,0,0.15); color:#e8a065; }
   .dark .fitrep-header { border-bottom-color:#2a2b35; }
+  .dark .pt-session-card { background:#1a1b23; border-color:#2a2b35; }
+  .dark .pt-empty-state { background:#15161e; border-color:#2a2b35; }
   .dark .route-hint { background:#15161e; color:#8b8b96; }
   .dark .bn-leader-card { background:#15161e; }
   .dark .billet-card { background:#15161e; color:#d4d4d8; }
@@ -8823,7 +8827,7 @@
         PT_SESSIONS.map((s) => {
           const plan = ptPlans[s.key];
           const inputId = `pt-file-${s.key}`;
-          return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "white", borderRadius: "10px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", border: "1px solid rgba(191,87,0,0.1)", borderTop: `4px solid ${s.color}`, padding: "1.25rem", marginBottom: "1.25rem" }, children: [
+          return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pt-session-card", style: { borderTop: `4px solid ${s.color}` }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.9rem" }, children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "1.05rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px" }, children: [
@@ -8876,7 +8880,7 @@
                   style: { width: "100%", height: "620px", border: "1px solid #eee", borderRadius: "6px", display: "block" }
                 }
               )
-            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { textAlign: "center", padding: "2.5rem 1rem", background: "#faf8f5", borderRadius: "8px", border: "2px dashed #e0d8d0" }, children: [
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "pt-empty-state", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2.2rem", marginBottom: "0.4rem" }, children: "\u{1F4CB}" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.82rem", letterSpacing: "1px", textTransform: "uppercase", color: "#bbb" }, children: "No plan uploaded for this week" }),
               canUploadPT && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#BF5700", marginTop: "0.4rem" }, children: "Use the Upload PDF button above." })
