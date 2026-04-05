@@ -1066,7 +1066,7 @@ const CSS = `
   .dark .tag { background:rgba(191,87,0,0.15); color:#e8a065; }
   .dark .fitrep-header { border-bottom-color:#2a2b35; }
   .dark .bn-leader-card { background:#15161e; }
-  .dark .billet-card { background:#15161e; }
+  .dark .billet-card { background:#15161e; color:#d4d4d8; }
   .dark .platoon-detail { color:#8b8b96; }
   .dark .platoon-name { color:#e8a065; }
   .dark .stat-company-alpha { border-left-color:#c45555 !important; }
