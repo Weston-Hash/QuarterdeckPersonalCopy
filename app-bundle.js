@@ -8061,6 +8061,8 @@
   .dark .fitrep-header { border-bottom-color:#2a2b35; }
   .dark .stage-dot { background:#1a1b23; border-color:#2a2b35; }
   .dark .stage-dot.pending { background:#15161e; border-color:#2a2b35; color:#555; }
+  .dark .stat-chits { border-left-color:#9ab0c4 !important; }
+  .dark .stat-chits .stat-n { color:#9ab0c4 !important; }
 
   @media (max-width: 768px) {
     .sidebar { display: none; }
@@ -8497,7 +8499,7 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", children: userList.length }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "BN Strength" })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#0D1B2A" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat stat-chits", style: { borderLeftColor: "#0D1B2A" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#0D1B2A" }, children: chits.filter((c) => c.status !== "Complete").length }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "Open CHITs" })
         ] }),

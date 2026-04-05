@@ -1067,6 +1067,8 @@ const CSS = `
   .dark .fitrep-header { border-bottom-color:#2a2b35; }
   .dark .stage-dot { background:#1a1b23; border-color:#2a2b35; }
   .dark .stage-dot.pending { background:#15161e; border-color:#2a2b35; color:#555; }
+  .dark .stat-chits { border-left-color:#9ab0c4 !important; }
+  .dark .stat-chits .stat-n { color:#9ab0c4 !important; }
 
   @media (max-width: 768px) {
     .sidebar { display: none; }
@@ -1518,7 +1520,7 @@ function Dashboard({ onNav, userList, chits, fitrebs, forms, reminder, setRemind
 
       <div className="grid3" style={{ marginBottom:"1rem" }}>
         <div className="stat"><div className="stat-n">{userList.length}</div><div className="stat-l">BN Strength</div></div>
-        <div className="stat" style={{ borderLeftColor:"#0D1B2A" }}><div className="stat-n" style={{ color:"#0D1B2A" }}>{chits.filter(c => c.status !== "Complete").length}</div><div className="stat-l">Open CHITs</div></div>
+        <div className="stat stat-chits" style={{ borderLeftColor:"#0D1B2A" }}><div className="stat-n" style={{ color:"#0D1B2A" }}>{chits.filter(c => c.status !== "Complete").length}</div><div className="stat-l">Open CHITs</div></div>
         <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}><div className="stat-n" style={{ color:"#2A7D4F" }}>{forms.length}</div><div className="stat-l">Active Forms</div></div>
       </div>
 
