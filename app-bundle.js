@@ -8645,11 +8645,11 @@
       const members = userList.filter((u) => normalizeCompany(u.company) === def.key);
       const co = members.find((u) => u.role === "co_cdr");
       const sel2 = members.find((u) => u.role === "sel");
-      const platoonNames = [...new Set(members.map((u) => u.platoon).filter((p) => /\d+(st|nd|rd|th) PC/i.test(p)))].sort();
+      const platoonNames = [...new Set(members.map((u) => u.platoon).filter((p) => /\d+(st|nd|rd|th)\s*(PLT|PC)/i.test(p)))].sort();
       const platoons = platoonNames.map((pName) => {
         const pMembers = members.filter((u) => u.platoon === pName);
         const pc = pMembers.find((u) => u.role === "plt_cdr");
-        const displayName = pName.replace(/ PC$/i, " PLT");
+        const displayName = pName.replace(/\s*PC$/i, " PLT");
         return { name: displayName, pc, total: pMembers.length };
       });
       return { ...def, co, sel: sel2, platoons, total: members.length };

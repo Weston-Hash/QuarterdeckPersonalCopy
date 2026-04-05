@@ -1646,13 +1646,12 @@ function StructurePage({ userList }) {
     const co  = members.find(u => u.role === "co_cdr");
     const sel = members.find(u => u.role === "sel");
 
-    // Group platoons by platoon field matching "Xst/nd/rd/th PC"
-    const platoonNames = [...new Set(members.map(u => u.platoon).filter(p => /\d+(st|nd|rd|th) PC/i.test(p)))].sort();
+    // Group platoons by platoon field matching "Xst/nd/rd/th PLT" or "Xst/nd/rd/th PC"
+    const platoonNames = [...new Set(members.map(u => u.platoon).filter(p => /\d+(st|nd|rd|th)\s*(PLT|PC)/i.test(p)))].sort();
     const platoons = platoonNames.map(pName => {
       const pMembers = members.filter(u => u.platoon === pName);
       const pc = pMembers.find(u => u.role === "plt_cdr");
-      // Display name: "1st PC" → "1st PLT"
-      const displayName = pName.replace(/ PC$/i, " PLT");
+      const displayName = pName.replace(/\s*PC$/i, " PLT");
       return { name: displayName, pc, total: pMembers.length };
     });
 
