@@ -7930,6 +7930,9 @@
   .platoon-name { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.82rem; font-weight: 700; font-style: normal; letter-spacing: 1.5px; color: #BF5700; margin-bottom: 0.35rem; }
   .platoon-detail { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.78rem; font-style: normal; color: #6B6B6B; }
 
+  .bn-leader-card { background:#f8f8f8; border-radius:8px; padding:0.6rem 0.8rem; border-left:3px solid #BF5700; }
+  .billet-card { display:flex; justify-content:space-between; align-items:center; padding:0.45rem 0.7rem; background:#f8f8f8; border-radius:6px; font-size:0.82rem; }
+
   .pt-block { background: white; border-radius: 8px; overflow: hidden; margin-bottom: 0.75rem; border: 1px solid #eee; }
   .pt-header { background: #BF5700; color: white; padding: 0.55rem 1rem; display: flex; align-items: center; justify-content: space-between; font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.9rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
   .pt-row { display: flex; align-items: center; gap: 1rem; padding: 0.4rem 1rem; border-bottom: 1px solid #faf7f4; font-size: 0.85rem; }
@@ -8056,6 +8059,16 @@
   .dark .badge-gray { background:#2a2b35; color:#8b8b96; }
   .dark .tag { background:rgba(191,87,0,0.15); color:#e8a065; }
   .dark .fitrep-header { border-bottom-color:#2a2b35; }
+  .dark .bn-leader-card { background:#15161e; }
+  .dark .billet-card { background:#15161e; }
+  .dark .platoon-detail { color:#8b8b96; }
+  .dark .platoon-name { color:#e8a065; }
+  .dark .stat-company-alpha { border-left-color:#c45555 !important; }
+  .dark .stat-company-alpha .stat-n { color:#c45555 !important; }
+  .dark .stat-company-bravo { border-left-color:#5580cc !important; }
+  .dark .stat-company-bravo .stat-n { color:#5580cc !important; }
+  .dark .stat-company-charlie { border-left-color:#d4a84b !important; }
+  .dark .stat-company-charlie .stat-n { color:#d4a84b !important; }
   .dark .stage-dot { background:#1a1b23; border-color:#2a2b35; }
   .dark .stage-dot.pending { background:#15161e; border-color:#2a2b35; color:#555; }
   .dark .stat-chits { border-left-color:#9ab0c4 !important; }
@@ -8673,12 +8686,12 @@
           { label: "BNXO", user: bnxo },
           { label: "OPS", user: ops },
           { label: "SEL", user: sel }
-        ].map(({ label, user: u }) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "#f8f8f8", borderRadius: "8px", padding: "0.6rem 0.8rem", borderLeft: "3px solid #BF5700" }, children: [
+        ].map(({ label, user: u }) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "bn-leader-card", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "1px", color: "#BF5700", fontWeight: 700 }, children: label }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.88rem", fontWeight: 600, marginTop: "0.15rem" }, children: u ? fmt(u) : "\u2014" })
         ] }, label)) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "grid3", style: { marginBottom: "1rem" }, children: companies.map((co, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: co.color }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "grid3", style: { marginBottom: "1rem" }, children: companies.map((co, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `stat stat-company-${co.key.toLowerCase()}`, style: { borderLeftColor: co.color }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: co.color }, children: co.total }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: co.name })
       ] }, i)) }),
@@ -8693,7 +8706,7 @@
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: billetsOpen ? "\u25B2" : "\u25BC" })
         ] }),
-        billetsOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "0.75rem 1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.5rem" }, children: billetHolders.map((u, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.45rem 0.7rem", background: "#f8f8f8", borderRadius: "6px", fontSize: "0.82rem" }, children: [
+        billetsOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "0.75rem 1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.5rem" }, children: billetHolders.map((u, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "billet-card", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontWeight: 600 }, children: fmt(u) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-orange", style: { fontSize: "0.68rem" }, children: getBilletLabel(u) })
         ] }, i)) }) })
