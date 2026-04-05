@@ -201,8 +201,11 @@ function checkPendingReminders() {
 
   for (var i = 0; i < pending.length; i++) {
     var p = pending[i];
+    var threshold = (typeof p.reminderDays === "number") ? p.reminderDays : 1;
+    // reminderDays=0 means reminders are disabled for this approver
+    if (threshold <= 0) { remaining.push(p); continue; }
     var bizDays = businessDaysSince_(p.createdAt);
-    if (bizDays >= 1) {
+    if (bizDays >= threshold) {
       toRemind.push(p);
       // Keep in list — will be reminded again tomorrow if still pending
       remaining.push(p);
@@ -286,12 +289,15 @@ function doPost(e) {
 
   // ── Track a pending approval (for reminder emails) ───────────────────────
   if (action === "trackApproval") {
+    var reminderDays = parseInt(json.reminderDays);
+    if (isNaN(reminderDays) || reminderDays < 0) reminderDays = 1;
     var entry = {
       id: (json.id || "").toString().trim(),
       type: (json.type || "CHIT").toString().trim(),
       approverEmail: (json.approverEmail || "").toString().trim().toLowerCase(),
       approverName: (json.approverName || "").toString().trim(),
       submitterName: (json.submitterName || "").toString().trim(),
+      reminderDays: reminderDays,
       createdAt: new Date().toISOString()
     };
     if (!entry.id || !entry.approverEmail) {

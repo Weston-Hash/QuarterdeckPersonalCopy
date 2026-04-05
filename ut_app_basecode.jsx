@@ -403,10 +403,42 @@ function buildChitStages(submitterName, submittedAt, approvalChain) {
   ];
 }
 
+// ─── NOTIFICATION PREFERENCES ──────────────────────────────
+// Stored per-user in localStorage. Only CoC members see these settings.
+// Keys: notif_submission, notif_approval, notif_return, notif_complete, notif_announcement, reminder_days
+const DEFAULT_NOTIF_PREFS = {
+  notif_submission: true,   // "A new CHIT/FITREP was submitted and needs your review"
+  notif_approval: true,     // "A CHIT/FITREP has advanced and now needs your review"
+  notif_return: true,       // "Your CHIT/FITREP was returned"
+  notif_complete: true,     // "Your CHIT/FITREP was fully approved"
+  notif_announcement: true, // BN announcements
+  reminder_days: 1,         // Business days before follow-up reminder
+};
+
+function loadNotifPrefs(userId) {
+  try {
+    const raw = localStorage.getItem("qd_notif_" + userId);
+    if (raw) return { ...DEFAULT_NOTIF_PREFS, ...JSON.parse(raw) };
+  } catch (e) {}
+  return { ...DEFAULT_NOTIF_PREFS };
+}
+
+function saveNotifPrefs(userId, prefs) {
+  localStorage.setItem("qd_notif_" + userId, JSON.stringify(prefs));
+}
+
 // ─── EMAIL NOTIFICATION HELPERS ─────────────────────────────
 // Fire-and-forget: send notification via Apps Script. Failures are silent.
-function sendNotification(to, subject, body) {
+// notifType: "submission" | "approval" | "return" | "complete" | "announcement"
+// recipientId: the user ID of the recipient (to check their prefs). Pass null to skip pref check.
+function sendNotification(to, subject, body, notifType, recipientId) {
   if (!to || !SHEETS_API_URL) return;
+  // Check recipient's notification preferences if we have their ID
+  if (recipientId && notifType) {
+    const prefs = loadNotifPrefs(recipientId);
+    const key = "notif_" + notifType;
+    if (prefs[key] === false) return;
+  }
   fetch(SHEETS_API_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain" },
@@ -414,12 +446,12 @@ function sendNotification(to, subject, body) {
   }).catch(() => {});
 }
 
-function trackApproval(id, type, approverEmail, approverName, submitterName) {
+function trackApproval(id, type, approverEmail, approverName, submitterName, reminderDays) {
   if (!SHEETS_API_URL) return;
   fetch(SHEETS_API_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "trackApproval", id, type, approverEmail, approverName, submitterName }),
+    body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "trackApproval", id, type, approverEmail, approverName, submitterName, reminderDays: reminderDays || 1 }),
   }).catch(() => {});
 }
 
@@ -436,6 +468,12 @@ function clearApproval(id) {
 function getUserEmail(userList, userId) {
   const u = userList.find(u => u.id === userId);
   return u?.email || "";
+}
+
+// Look up a user's ID from userList by their email
+function getUserIdByEmail(userList, email) {
+  const u = userList.find(u => u.email === email);
+  return u?.id || null;
 }
 
 function canActOnChit(user, chit) {
@@ -629,7 +667,7 @@ const INIT_QS = [];
 //   6. Set the same token below
 //   7. Save — the app will pull live data on each page load.
 //      In sheet-only mode, the app stays locked until this feed loads successfully.
-const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbw7SQeWAvJPnsxNo-2dkJRSYlwbjM9euz--2D0PmjyPxSNO7BztyBPrSMHqlnr1lZGY/exec";
+const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbyqwVsMOM2xrE7pJUCOEOEDT4g_npnI30NcZTkPQW4KQiPSdix82tnQMVXmqKV__nDF/exec";
 const SHEETS_API_TOKEN = "UT_NROTC";
 const ROSTER_CACHE_KEY = "quarterdeck_roster_cache_v1";
 
@@ -1058,6 +1096,33 @@ function Modal({ title, onClose, children }) {
 // Account info modal
 function AccountModal({ onClose }) {
   const { user } = useAuth();
+  const showNotifSettings = isCoC(user);
+  const [prefs, setPrefs] = useState(() => loadNotifPrefs(user.id));
+
+  const togglePref = (key) => {
+    setPrefs(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      saveNotifPrefs(user.id, next);
+      return next;
+    });
+  };
+
+  const setReminderDays = (val) => {
+    const days = Math.max(0, parseInt(val) || 0);
+    setPrefs(prev => {
+      const next = { ...prev, reminder_days: days };
+      saveNotifPrefs(user.id, next);
+      return next;
+    });
+  };
+
+  const NOTIF_OPTIONS = [
+    { key: "notif_submission", label: "New CHIT/FITREP requires my review" },
+    { key: "notif_approval", label: "CHIT/FITREP advanced to me" },
+    { key: "notif_return", label: "My CHIT/FITREP was returned" },
+    { key: "notif_complete", label: "My CHIT/FITREP was fully approved" },
+    { key: "notif_announcement", label: "BN announcements" },
+  ];
 
   return (
     <Modal title="Account Information" onClose={onClose}>
@@ -1068,6 +1133,37 @@ function AccountModal({ onClose }) {
       <div className="acct-field"><span className="acct-label">Platoon</span>{user.platoon}</div>
       <div className="acct-field"><span className="acct-label">Email</span><a href={"mailto:"+user.email} style={{ color:"#BF5700" }}>{user.email}</a></div>
       <div className="acct-field"><span className="acct-label">Phone</span>{user.phone || "—"}</div>
+
+      {showNotifSettings && (
+        <div style={{ marginTop:"1.25rem" }}>
+          <div style={{ fontFamily:"'Rajdhani', Impact, sans-serif", fontSize:"0.85rem", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase", marginBottom:"0.6rem" }}>Email Notifications</div>
+          {NOTIF_OPTIONS.map(opt => (
+            <label key={opt.key} style={{ display:"flex", alignItems:"center", gap:"0.6rem", padding:"0.35rem 0", fontSize:"0.85rem", cursor:"pointer" }}>
+              <input type="checkbox" checked={prefs[opt.key]} onChange={() => togglePref(opt.key)} style={{ accentColor:"#BF5700", width:"16px", height:"16px" }} />
+              {opt.label}
+            </label>
+          ))}
+          <div style={{ marginTop:"0.75rem", display:"flex", alignItems:"center", gap:"0.6rem", fontSize:"0.85rem" }}>
+            <span>Follow-up reminder after</span>
+            <select
+              className="input"
+              style={{ width:"auto", padding:"0.25rem 0.5rem", fontSize:"0.85rem" }}
+              value={prefs.reminder_days}
+              onChange={e => setReminderDays(e.target.value)}
+            >
+              <option value={0}>Off</option>
+              <option value={1}>1 business day</option>
+              <option value={2}>2 business days</option>
+              <option value={3}>3 business days</option>
+              <option value={5}>5 business days</option>
+            </select>
+          </div>
+          <div style={{ fontSize:"0.72rem", color:"#888", marginTop:"0.3rem" }}>
+            {prefs.reminder_days === 0 ? "No follow-up reminders will be sent for items awaiting your approval." : `You'll receive a daily reminder if a CHIT/FITREP has been waiting ${prefs.reminder_days}+ business day${prefs.reminder_days !== 1 ? "s" : ""}.`}
+          </div>
+        </div>
+      )}
+
       <div style={{ marginTop:"1.25rem", display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
         <a className="btn btn-outline" href="https://docs.google.com/forms/d/e/1FAIpQLSfNKcFJ1qBd6HTxpnBxTFOY8Y0N3YZ0DkTN6BYmMA9QaE3_0w/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer">Update My Info</a>
         <button className="btn btn-orange" onClick={onClose}>Close</button>
@@ -1331,7 +1427,7 @@ function Dashboard({ onNav, userList, chits, fitrebs, forms, reminder, setRemind
     const subject = "BN Announcement from " + user.name;
     const body = text + "\n\n— " + user.name + ", UT NROTC Battalion";
     userList.forEach(u => {
-      if (u.email) sendNotification(u.email, subject, body);
+      if (u.email) sendNotification(u.email, subject, body, "announcement", u.id);
     });
   };
   const liveEvents = useCalendarEvents();
@@ -1986,9 +2082,11 @@ function ChitsPage({ chits, setChits, userList }) {
       if (firstEmail) {
         sendNotification(firstEmail,
           `New CHIT ${c.id} — Requires Your Approval`,
-          `Hello ${firstStage.approverName},\n\nA new CHIT (${c.id}) has been submitted by ${user.name} for "${form.reason}".\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`
+          `Hello ${firstStage.approverName},\n\nA new CHIT (${c.id}) has been submitted by ${user.name} for "${form.reason}".\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
+          "submission", firstStage.approverId
         );
-        trackApproval(c.id, "CHIT", firstEmail, firstStage.approverName, user.name);
+        const approverPrefs = loadNotifPrefs(firstStage.approverId);
+        trackApproval(c.id, "CHIT", firstEmail, firstStage.approverName, user.name, approverPrefs.reminder_days);
       }
     }
     setShowModal(false);
@@ -2039,7 +2137,8 @@ function ChitsPage({ chits, setChits, userList }) {
         if (originatorEmail) {
           sendNotification(originatorEmail,
             `CHIT ${id} — Returned`,
-            `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has been returned by ${user.name}.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.\n\n— The Quarterdeck`
+            `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has been returned by ${user.name}.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.\n\n— The Quarterdeck`,
+            "return", chit.userId
           );
         }
       } else {
@@ -2050,7 +2149,8 @@ function ChitsPage({ chits, setChits, userList }) {
           if (originatorEmail) {
             sendNotification(originatorEmail,
               `CHIT ${id} — Fully Approved`,
-              `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has been fully approved through the chain of command.\n\n— The Quarterdeck`
+              `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has been fully approved through the chain of command.\n\n— The Quarterdeck`,
+              "complete", chit.userId
             );
           }
         } else {
@@ -2061,9 +2161,11 @@ function ChitsPage({ chits, setChits, userList }) {
             if (nextEmail) {
               sendNotification(nextEmail,
                 `CHIT ${id} — Requires Your Approval`,
-                `Hello ${nextStage.approverName},\n\nA CHIT (${id}) from ${chit.name} for "${chit.reason}" requires your approval.\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`
+                `Hello ${nextStage.approverName},\n\nA CHIT (${id}) from ${chit.name} for "${chit.reason}" requires your approval.\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
+                "approval", nextStage.approverId
               );
-              trackApproval(id, "CHIT", nextEmail, nextStage.approverName, chit.name);
+              const nextPrefs = loadNotifPrefs(nextStage.approverId);
+              trackApproval(id, "CHIT", nextEmail, nextStage.approverName, chit.name, nextPrefs.reminder_days);
             }
           }
         }
@@ -2737,9 +2839,11 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
       if (firstEmail) {
         sendNotification(firstEmail,
           `New FITREP ${f.id} — Requires Your Approval`,
-          `Hello ${firstStage.approverName},\n\nA new FITREP (${f.id}) has been submitted by ${user.name} for period ${submitForm.period}.\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`
+          `Hello ${firstStage.approverName},\n\nA new FITREP (${f.id}) has been submitted by ${user.name} for period ${submitForm.period}.\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
+          "submission", firstStage.approverId
         );
-        trackApproval(f.id, "FITREP", firstEmail, firstStage.approverName, user.name);
+        const approverPrefs = loadNotifPrefs(firstStage.approverId);
+        trackApproval(f.id, "FITREP", firstEmail, firstStage.approverName, user.name, approverPrefs.reminder_days);
       }
     }
     setShowModal(false);
@@ -2779,7 +2883,8 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         if (originatorEmail) {
           sendNotification(originatorEmail,
             `FITREP ${id} — Returned`,
-            `Hello ${fitrep.subjectName},\n\nYour FITREP (${id}) has been returned by ${user.name}.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.\n\n— The Quarterdeck`
+            `Hello ${fitrep.subjectName},\n\nYour FITREP (${id}) has been returned by ${user.name}.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.\n\n— The Quarterdeck`,
+            "return", fitrep.subjectId
           );
         }
       } else {
@@ -2789,7 +2894,8 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
           if (originatorEmail) {
             sendNotification(originatorEmail,
               `FITREP ${id} — Fully Approved`,
-              `Hello ${fitrep.subjectName},\n\nYour FITREP (${id}) for ${fitrep.period} has been fully approved through the chain of command.\n\n— The Quarterdeck`
+              `Hello ${fitrep.subjectName},\n\nYour FITREP (${id}) for ${fitrep.period} has been fully approved through the chain of command.\n\n— The Quarterdeck`,
+              "complete", fitrep.subjectId
             );
           }
         } else {
@@ -2799,9 +2905,11 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
             if (nextEmail) {
               sendNotification(nextEmail,
                 `FITREP ${id} — Requires Your Approval`,
-                `Hello ${nextStage.approverName},\n\nA FITREP (${id}) from ${fitrep.subjectName} requires your approval.\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`
+                `Hello ${nextStage.approverName},\n\nA FITREP (${id}) from ${fitrep.subjectName} requires your approval.\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
+                "approval", nextStage.approverId
               );
-              trackApproval(id, "FITREP", nextEmail, nextStage.approverName, fitrep.subjectName);
+              const nextPrefs = loadNotifPrefs(nextStage.approverId);
+              trackApproval(id, "FITREP", nextEmail, nextStage.approverName, fitrep.subjectName, nextPrefs.reminder_days);
             }
           }
         }

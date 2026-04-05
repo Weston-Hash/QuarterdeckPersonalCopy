@@ -7536,8 +7536,38 @@
       { name: "Complete", routeLabel: "", approverId: null, approverRole: null, approverName: "", icon: "\u{1F3C5}", completedBy: null, completedAt: null, comment: "" }
     ];
   }
-  function sendNotification(to, subject, body) {
+  var DEFAULT_NOTIF_PREFS = {
+    notif_submission: true,
+    // "A new CHIT/FITREP was submitted and needs your review"
+    notif_approval: true,
+    // "A CHIT/FITREP has advanced and now needs your review"
+    notif_return: true,
+    // "Your CHIT/FITREP was returned"
+    notif_complete: true,
+    // "Your CHIT/FITREP was fully approved"
+    notif_announcement: true,
+    // BN announcements
+    reminder_days: 1
+    // Business days before follow-up reminder
+  };
+  function loadNotifPrefs(userId) {
+    try {
+      const raw = localStorage.getItem("qd_notif_" + userId);
+      if (raw) return { ...DEFAULT_NOTIF_PREFS, ...JSON.parse(raw) };
+    } catch (e) {
+    }
+    return { ...DEFAULT_NOTIF_PREFS };
+  }
+  function saveNotifPrefs(userId, prefs) {
+    localStorage.setItem("qd_notif_" + userId, JSON.stringify(prefs));
+  }
+  function sendNotification(to, subject, body, notifType, recipientId) {
     if (!to || !SHEETS_API_URL) return;
+    if (recipientId && notifType) {
+      const prefs = loadNotifPrefs(recipientId);
+      const key = "notif_" + notifType;
+      if (prefs[key] === false) return;
+    }
     fetch(SHEETS_API_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -7545,12 +7575,12 @@
     }).catch(() => {
     });
   }
-  function trackApproval(id, type, approverEmail, approverName, submitterName) {
+  function trackApproval(id, type, approverEmail, approverName, submitterName, reminderDays) {
     if (!SHEETS_API_URL) return;
     fetch(SHEETS_API_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "trackApproval", id, type, approverEmail, approverName, submitterName })
+      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "trackApproval", id, type, approverEmail, approverName, submitterName, reminderDays: reminderDays || 1 })
     }).catch(() => {
     });
   }
@@ -7692,7 +7722,7 @@
   ];
   var INIT_CHITS = [];
   var INIT_QS = [];
-  var SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbw7SQeWAvJPnsxNo-2dkJRSYlwbjM9euz--2D0PmjyPxSNO7BztyBPrSMHqlnr1lZGY/exec";
+  var SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbyqwVsMOM2xrE7pJUCOEOEDT4g_npnI30NcZTkPQW4KQiPSdix82tnQMVXmqKV__nDF/exec";
   var SHEETS_API_TOKEN = "UT_NROTC";
   var ROSTER_CACHE_KEY = "quarterdeck_roster_cache_v1";
   function loadCachedRoster() {
@@ -8051,6 +8081,30 @@
   }
   function AccountModal({ onClose }) {
     const { user } = useAuth();
+    const showNotifSettings = isCoC(user);
+    const [prefs, setPrefs] = (0, import_react.useState)(() => loadNotifPrefs(user.id));
+    const togglePref = (key) => {
+      setPrefs((prev) => {
+        const next = { ...prev, [key]: !prev[key] };
+        saveNotifPrefs(user.id, next);
+        return next;
+      });
+    };
+    const setReminderDays = (val) => {
+      const days = Math.max(0, parseInt(val) || 0);
+      setPrefs((prev) => {
+        const next = { ...prev, reminder_days: days };
+        saveNotifPrefs(user.id, next);
+        return next;
+      });
+    };
+    const NOTIF_OPTIONS = [
+      { key: "notif_submission", label: "New CHIT/FITREP requires my review" },
+      { key: "notif_approval", label: "CHIT/FITREP advanced to me" },
+      { key: "notif_return", label: "My CHIT/FITREP was returned" },
+      { key: "notif_complete", label: "My CHIT/FITREP was fully approved" },
+      { key: "notif_announcement", label: "BN announcements" }
+    ];
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Account Information", onClose, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Name" }),
@@ -8079,6 +8133,33 @@
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Phone" }),
         user.phone || "\u2014"
+      ] }),
+      showNotifSettings && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.25rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Rajdhani', Impact, sans-serif", fontSize: "0.85rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "0.6rem" }, children: "Email Notifications" }),
+        NOTIF_OPTIONS.map((opt) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { style: { display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.35rem 0", fontSize: "0.85rem", cursor: "pointer" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "checkbox", checked: prefs[opt.key], onChange: () => togglePref(opt.key), style: { accentColor: "#BF5700", width: "16px", height: "16px" } }),
+          opt.label
+        ] }, opt.key)),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.6rem", fontSize: "0.85rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Follow-up reminder after" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+            "select",
+            {
+              className: "input",
+              style: { width: "auto", padding: "0.25rem 0.5rem", fontSize: "0.85rem" },
+              value: prefs.reminder_days,
+              onChange: (e) => setReminderDays(e.target.value),
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: 0, children: "Off" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: 1, children: "1 business day" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: 2, children: "2 business days" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: 3, children: "3 business days" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: 5, children: "5 business days" })
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#888", marginTop: "0.3rem" }, children: prefs.reminder_days === 0 ? "No follow-up reminders will be sent for items awaiting your approval." : `You'll receive a daily reminder if a CHIT/FITREP has been waiting ${prefs.reminder_days}+ business day${prefs.reminder_days !== 1 ? "s" : ""}.` })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.25rem", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { className: "btn btn-outline", href: "https://docs.google.com/forms/d/e/1FAIpQLSfNKcFJ1qBd6HTxpnBxTFOY8Y0N3YZ0DkTN6BYmMA9QaE3_0w/viewform?usp=publish-editor", target: "_blank", rel: "noopener noreferrer", children: "Update My Info" }),
@@ -8322,7 +8403,7 @@
       const subject = "BN Announcement from " + user.name;
       const body = text + "\n\n\u2014 " + user.name + ", UT NROTC Battalion";
       userList.forEach((u) => {
-        if (u.email) sendNotification(u.email, subject, body);
+        if (u.email) sendNotification(u.email, subject, body, "announcement", u.id);
       });
     };
     const liveEvents = useCalendarEvents();
@@ -8957,9 +9038,12 @@ A new CHIT (${c.id}) has been submitted by ${user.name} for "${form.reason}".
 
 Please log in to The Quarterdeck to review and take action.
 
-\u2014 The Quarterdeck`
+\u2014 The Quarterdeck`,
+            "submission",
+            firstStage.approverId
           );
-          trackApproval(c.id, "CHIT", firstEmail, firstStage.approverName, user.name);
+          const approverPrefs = loadNotifPrefs(firstStage.approverId);
+          trackApproval(c.id, "CHIT", firstEmail, firstStage.approverName, user.name, approverPrefs.reminder_days);
         }
       }
       setShowModal(false);
@@ -9012,7 +9096,9 @@ Your CHIT (${id}) for "${chit.reason}" has been returned by ${user.name}.
 
 ${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.
 
-\u2014 The Quarterdeck`
+\u2014 The Quarterdeck`,
+              "return",
+              chit.userId
             );
           }
         } else {
@@ -9027,7 +9113,9 @@ ${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdec
 
 Your CHIT (${id}) for "${chit.reason}" has been fully approved through the chain of command.
 
-\u2014 The Quarterdeck`
+\u2014 The Quarterdeck`,
+                "complete",
+                chit.userId
               );
             }
           } else {
@@ -9044,9 +9132,12 @@ A CHIT (${id}) from ${chit.name} for "${chit.reason}" requires your approval.
 
 Please log in to The Quarterdeck to review and take action.
 
-\u2014 The Quarterdeck`
+\u2014 The Quarterdeck`,
+                  "approval",
+                  nextStage.approverId
                 );
-                trackApproval(id, "CHIT", nextEmail, nextStage.approverName, chit.name);
+                const nextPrefs = loadNotifPrefs(nextStage.approverId);
+                trackApproval(id, "CHIT", nextEmail, nextStage.approverName, chit.name, nextPrefs.reminder_days);
               }
             }
           }
@@ -9765,9 +9856,12 @@ A new FITREP (${f.id}) has been submitted by ${user.name} for period ${submitFor
 
 Please log in to The Quarterdeck to review and take action.
 
-\u2014 The Quarterdeck`
+\u2014 The Quarterdeck`,
+            "submission",
+            firstStage.approverId
           );
-          trackApproval(f.id, "FITREP", firstEmail, firstStage.approverName, user.name);
+          const approverPrefs = loadNotifPrefs(firstStage.approverId);
+          trackApproval(f.id, "FITREP", firstEmail, firstStage.approverName, user.name, approverPrefs.reminder_days);
         }
       }
       setShowModal(false);
@@ -9809,7 +9903,9 @@ Your FITREP (${id}) has been returned by ${user.name}.
 
 ${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.
 
-\u2014 The Quarterdeck`
+\u2014 The Quarterdeck`,
+              "return",
+              fitrep.subjectId
             );
           }
         } else {
@@ -9824,7 +9920,9 @@ ${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdec
 
 Your FITREP (${id}) for ${fitrep.period} has been fully approved through the chain of command.
 
-\u2014 The Quarterdeck`
+\u2014 The Quarterdeck`,
+                "complete",
+                fitrep.subjectId
               );
             }
           } else {
@@ -9841,9 +9939,12 @@ A FITREP (${id}) from ${fitrep.subjectName} requires your approval.
 
 Please log in to The Quarterdeck to review and take action.
 
-\u2014 The Quarterdeck`
+\u2014 The Quarterdeck`,
+                  "approval",
+                  nextStage.approverId
                 );
-                trackApproval(id, "FITREP", nextEmail, nextStage.approverName, fitrep.subjectName);
+                const nextPrefs = loadNotifPrefs(nextStage.approverId);
+                trackApproval(id, "FITREP", nextEmail, nextStage.approverName, fitrep.subjectName, nextPrefs.reminder_days);
               }
             }
           }
