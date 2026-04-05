@@ -8017,10 +8017,6 @@
   .acct-label { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:#888; min-width:90px; }
   .first-login-banner { background:rgba(191,87,0,0.1); border:1.5px solid #BF5700; border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.25rem; font-size:0.85rem; color:#8B3D00; }
 
-  /* \u2500\u2500 DARK MODE TOGGLE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-  .dark-toggle { background:none; border:1.5px solid rgba(255,255,255,0.25); color:#ccc; border-radius:4px; padding:3px 8px; font-size:0.85rem; cursor:pointer; line-height:1; }
-  .dark-toggle:hover { background:rgba(255,255,255,0.1); }
-
   /* \u2500\u2500 DARK MODE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
   .dark body, body.dark { background:#0f1117; color:#d4d4d8; }
   .dark .content { background:#0f1117; }
@@ -8082,7 +8078,7 @@
       children
     ] }) });
   }
-  function AccountModal({ onClose }) {
+  function AccountModal({ onClose, darkMode, toggleDark }) {
     const { user } = useAuth();
     const showNotifSettings = isCoC(user);
     const [prefs, setPrefs] = (0, import_react.useState)(() => loadNotifPrefs(user.id));
@@ -8163,6 +8159,10 @@
           )
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#888", marginTop: "0.3rem" }, children: prefs.reminder_days === 0 ? "No follow-up reminders will be sent for items awaiting your approval." : `You'll receive a daily reminder if a CHIT/FITREP has been waiting ${prefs.reminder_days}+ business day${prefs.reminder_days !== 1 ? "s" : ""}.` })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.25rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Rajdhani', Impact, sans-serif", fontSize: "0.85rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "0.6rem" }, children: "Appearance" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", style: { width: "100%", justifyContent: "center", padding: "0.6rem 1rem", fontSize: "0.85rem" }, onClick: toggleDark, children: darkMode ? "\u2600 Switch to Light Mode" : "\u{1F319} Switch to Dark Mode" })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.25rem", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { className: "btn btn-outline", href: "https://docs.google.com/forms/d/e/1FAIpQLSfNKcFJ1qBd6HTxpnBxTFOY8Y0N3YZ0DkTN6BYmMA9QaE3_0w/viewform?usp=publish-editor", target: "_blank", rel: "noopener noreferrer", children: "Update My Info" }),
@@ -10326,7 +10326,7 @@ Please log in to The Quarterdeck to review and take action.
     };
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(AuthContext.Provider, { value: { user, setUser }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", { children: CSS }),
-      showAccount && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AccountModal, { onClose: () => setShowAccount(false) }),
+      showAccount && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AccountModal, { onClose: () => setShowAccount(false), darkMode, toggleDark }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: darkMode ? "dark" : "", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "topbar", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center" }, children: [
@@ -10337,7 +10337,6 @@ Please log in to The Quarterdeck to review and take action.
             ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "topbar-right", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "dark-toggle", onClick: toggleDark, title: darkMode ? "Light mode" : "Dark mode", children: darkMode ? "\u2600" : "\u{1F319}" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
               "div",
               {

@@ -1023,10 +1023,6 @@ const CSS = `
   .acct-label { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:#888; min-width:90px; }
   .first-login-banner { background:rgba(191,87,0,0.1); border:1.5px solid #BF5700; border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.25rem; font-size:0.85rem; color:#8B3D00; }
 
-  /* ── DARK MODE TOGGLE ───────────────────────────── */
-  .dark-toggle { background:none; border:1.5px solid rgba(255,255,255,0.25); color:#ccc; border-radius:4px; padding:3px 8px; font-size:0.85rem; cursor:pointer; line-height:1; }
-  .dark-toggle:hover { background:rgba(255,255,255,0.1); }
-
   /* ── DARK MODE ──────────────────────────────────── */
   .dark body, body.dark { background:#0f1117; color:#d4d4d8; }
   .dark .content { background:#0f1117; }
@@ -1097,7 +1093,7 @@ function Modal({ title, onClose, children }) {
 }
 
 // Account info modal
-function AccountModal({ onClose }) {
+function AccountModal({ onClose, darkMode, toggleDark }) {
   const { user } = useAuth();
   const showNotifSettings = isCoC(user);
   const [prefs, setPrefs] = useState(() => loadNotifPrefs(user.id));
@@ -1166,6 +1162,13 @@ function AccountModal({ onClose }) {
           </div>
         </div>
       )}
+
+      <div style={{ marginTop:"1.25rem" }}>
+        <div style={{ fontFamily:"'Rajdhani', Impact, sans-serif", fontSize:"0.85rem", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase", marginBottom:"0.6rem" }}>Appearance</div>
+        <button className="btn btn-outline" style={{ width:"100%", justifyContent:"center", padding:"0.6rem 1rem", fontSize:"0.85rem" }} onClick={toggleDark}>
+          {darkMode ? "☀ Switch to Light Mode" : "🌙 Switch to Dark Mode"}
+        </button>
+      </div>
 
       <div style={{ marginTop:"1.25rem", display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
         <a className="btn btn-outline" href="https://docs.google.com/forms/d/e/1FAIpQLSfNKcFJ1qBd6HTxpnBxTFOY8Y0N3YZ0DkTN6BYmMA9QaE3_0w/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer">Update My Info</a>
@@ -3306,7 +3309,7 @@ export default function App() {
     <AuthContext.Provider value={{ user, setUser }}>
       <style>{CSS}</style>
       {showAccount && (
-        <AccountModal onClose={() => setShowAccount(false)} />
+        <AccountModal onClose={() => setShowAccount(false)} darkMode={darkMode} toggleDark={toggleDark} />
       )}
       <div className={darkMode ? "dark" : ""}>
         <header className="topbar">
@@ -3315,9 +3318,6 @@ export default function App() {
             <div className="topbar-title">The <span>Quarterdeck</span></div>
           </div>
           <div className="topbar-right">
-            <button className="dark-toggle" onClick={toggleDark} title={darkMode ? "Light mode" : "Dark mode"}>
-              {darkMode ? "☀" : "🌙"}
-            </button>
             <div
               style={{ display:"flex", alignItems:"center", gap:"0.5rem", cursor:"pointer" }}
               onClick={() => setShowAccount(true)}
