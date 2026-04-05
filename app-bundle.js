@@ -9735,7 +9735,7 @@
         setSheetError(false);
       }
       const url = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}&_t=${Date.now()}`;
-      fetch(url, { redirect: "follow" }).then((res) => {
+      fetch(url).then((res) => {
         if (!res.ok) throw new Error(res.status);
         return res.json();
       }).then((data) => {
