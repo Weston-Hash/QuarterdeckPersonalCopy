@@ -8027,6 +8027,7 @@
   .dark .card, .dark .stat, .dark .chit-card, .dark .fitrep-card, .dark .q-card, .dark .form-row, .dark .pt-block, .dark .platoon-card { background:#1a1b23; border-color:#2a2b35; color:#d4d4d8; }
   .dark .card-title { color:#d4d4d8; }
   .dark .stat { border-left-color:#BF5700; }
+  .dark .page-title { color:#d4d4d8; }
   .dark .stat-l, .dark .event-sub, .dark .page-sub { color:#8b8b96; }
   .dark .input { background:#1a1b23; border-color:#2a2b35; color:#d4d4d8; }
   .dark .input:focus { border-color:#BF5700; }
