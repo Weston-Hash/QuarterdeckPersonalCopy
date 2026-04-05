@@ -936,6 +936,7 @@ const CSS = `
   .platoon-name { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.82rem; font-weight: 700; font-style: normal; letter-spacing: 1.5px; color: #BF5700; margin-bottom: 0.35rem; }
   .platoon-detail { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.78rem; font-style: normal; color: #6B6B6B; }
 
+  .tab-bar { display:flex; border-bottom:2px solid #eee; margin-bottom:1.25rem; }
   .pt-session-card { background:white; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06); border:1px solid rgba(191,87,0,0.1); padding:1.25rem; margin-bottom:1.25rem; }
   .pt-day-label { font-family:'Barlow', 'Segoe UI', sans-serif; font-size:1.05rem; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; }
   .pt-empty-state { text-align:center; padding:2.5rem 1rem; background:#faf8f5; border-radius:8px; border:2px dashed #e0d8d0; }
@@ -1069,6 +1070,7 @@ const CSS = `
   .dark .badge-gray { background:#2a2b35; color:#8b8b96; }
   .dark .tag { background:rgba(191,87,0,0.15); color:#e8a065; }
   .dark .fitrep-header { border-bottom-color:#2a2b35; }
+  .dark .tab-bar { border-bottom-color:#2a2b35; }
   .dark .pt-session-card { background:#1a1b23; border-color:#2a2b35; box-shadow:none; }
   .dark .pt-day-label { color:#d4d4d8; }
   .dark .pt-empty-state { background:#15161e; border-color:#2a2b35; }
@@ -1840,7 +1842,7 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
       {toast && <div className="alert alert-green">{toast}</div>}
 
       {/* Tab bar */}
-      <div style={{ display:"flex", borderBottom:"2px solid #eee", marginBottom:"1.25rem" }}>
+      <div className="tab-bar">
         {[["pt","PT Plan"],["leadlab","LL"]].map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)} style={{
             padding:"0.5rem 1.2rem", fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.8rem", letterSpacing:"1.5px",
