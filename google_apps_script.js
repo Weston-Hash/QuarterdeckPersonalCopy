@@ -345,7 +345,8 @@ function doPost(e) {
       "Hello " + userName + ",\n\n" +
       "Your one-time verification code is:\n\n" +
       "    " + code + "\n\n" +
-      "This code expires in 5 minutes. Do not share it with anyone.";
+      "This code expires in 5 minutes. Do not share it with anyone.\n\n" +
+      "— The Quarterdeck";
 
     MailApp.sendEmail(email, subject, body);
     return jsonOut({ ok: true });
