@@ -1847,8 +1847,8 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
           <button key={t} onClick={() => setTab(t)} style={{
             padding:"0.5rem 1.2rem", fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.8rem", letterSpacing:"1.5px",
             textTransform:"uppercase", cursor:"pointer", background:"none", border:"none",
-            borderBottom: tab===t ? "2px solid #BF5700" : "2px solid transparent",
-            color: tab===t ? "#BF5700" : "#888", marginBottom:"-2px",
+            borderBottom: tab===t ? "3px solid #BF5700" : "3px solid transparent",
+            color: tab===t ? "#BF5700" : "#888", marginBottom:"-2px", position:"relative",
           }}>{label}</button>
         ))}
       </div>

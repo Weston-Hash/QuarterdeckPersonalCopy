@@ -8818,9 +8818,10 @@
         cursor: "pointer",
         background: "none",
         border: "none",
-        borderBottom: tab === t ? "2px solid #BF5700" : "2px solid transparent",
+        borderBottom: tab === t ? "3px solid #BF5700" : "3px solid transparent",
         color: tab === t ? "#BF5700" : "#888",
-        marginBottom: "-2px"
+        marginBottom: "-2px",
+        position: "relative"
       }, children: label }, t)) }),
       tab === "pt" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
         canUploadPT && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "alert", children: [
