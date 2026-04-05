@@ -153,6 +153,82 @@ function readActiveMfaRecords_(props, propKey) {
   return active;
 }
 
+// ─── Pending Approval Tracking (for reminder emails) ────────────────────────
+// Stored in PropertiesService as JSON under key "qd_pending_approvals"
+// Each entry: { id, type, approverEmail, approverName, submitterName, createdAt }
+
+function getPendingApprovals_() {
+  var props = PropertiesService.getScriptProperties();
+  var raw = props.getProperty("qd_pending_approvals");
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch (e) { return []; }
+}
+
+function savePendingApprovals_(list) {
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty("qd_pending_approvals", JSON.stringify(list));
+}
+
+function isBusinessDay_(date) {
+  var day = date.getDay();
+  return day !== 0 && day !== 6;
+}
+
+function businessDaysSince_(dateStr) {
+  var start = new Date(dateStr);
+  var now = new Date();
+  var count = 0;
+  var d = new Date(start);
+  d.setDate(d.getDate() + 1);
+  while (d <= now) {
+    if (isBusinessDay_(d)) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+
+// Time-based trigger function — set up via Apps Script Triggers UI:
+//   checkPendingReminders, Time-driven, Day timer, 8am-9am
+function checkPendingReminders() {
+  var pending = getPendingApprovals_();
+  if (pending.length === 0) return;
+
+  var now = new Date();
+  if (!isBusinessDay_(now)) return;
+
+  var toRemind = [];
+  var remaining = [];
+
+  for (var i = 0; i < pending.length; i++) {
+    var p = pending[i];
+    var bizDays = businessDaysSince_(p.createdAt);
+    if (bizDays >= 1) {
+      toRemind.push(p);
+      // Keep in list — will be reminded again tomorrow if still pending
+      remaining.push(p);
+    } else {
+      remaining.push(p);
+    }
+  }
+
+  for (var j = 0; j < toRemind.length; j++) {
+    var r = toRemind[j];
+    var typeLabel = r.type === "FITREP" ? "FITREP" : "CHIT";
+    var subject = "Reminder: " + typeLabel + " " + r.id + " awaiting your approval";
+    var body =
+      "Hello " + r.approverName + ",\n\n" +
+      typeLabel + " " + r.id + " from " + r.submitterName + " is awaiting your approval.\n\n" +
+      "Please log in to The Quarterdeck to review and take action.\n\n" +
+      "— The Quarterdeck";
+
+    try {
+      MailApp.sendEmail(r.approverEmail, subject, body);
+    } catch (ignore) {}
+  }
+
+  savePendingApprovals_(remaining);
+}
+
 function doGet(e) {
   if (!e || !e.parameter || e.parameter.token !== SECRET_TOKEN) {
     return jsonOut({ error: "Unauthorized" });
@@ -192,6 +268,54 @@ function doPost(e) {
     return jsonOut({ ok: true });
   }
 
+  // ── Send notification email ──────────────────────────────────────────────
+  if (action === "notify") {
+    var to = (json.to || "").toString().trim();
+    var subject = (json.subject || "").toString().trim();
+    var body = (json.body || "").toString().trim();
+    if (!to || !subject || !body) {
+      return jsonOut({ ok: false, error: "to, subject, and body required" });
+    }
+    try {
+      MailApp.sendEmail(to, subject, body);
+    } catch (err) {
+      return jsonOut({ ok: false, error: "Failed to send email: " + err.message });
+    }
+    return jsonOut({ ok: true });
+  }
+
+  // ── Track a pending approval (for reminder emails) ───────────────────────
+  if (action === "trackApproval") {
+    var entry = {
+      id: (json.id || "").toString().trim(),
+      type: (json.type || "CHIT").toString().trim(),
+      approverEmail: (json.approverEmail || "").toString().trim().toLowerCase(),
+      approverName: (json.approverName || "").toString().trim(),
+      submitterName: (json.submitterName || "").toString().trim(),
+      createdAt: new Date().toISOString()
+    };
+    if (!entry.id || !entry.approverEmail) {
+      return jsonOut({ ok: false, error: "id and approverEmail required" });
+    }
+    var pending = getPendingApprovals_();
+    // Remove any existing entry for same id (stage advanced)
+    pending = pending.filter(function(p) { return p.id !== entry.id; });
+    pending.push(entry);
+    savePendingApprovals_(pending);
+    return jsonOut({ ok: true });
+  }
+
+  // ── Clear a pending approval (approved/returned/completed) ───────────────
+  if (action === "clearApproval") {
+    var clearId = (json.id || "").toString().trim();
+    if (!clearId) return jsonOut({ ok: false, error: "id required" });
+    var pending = getPendingApprovals_();
+    pending = pending.filter(function(p) { return p.id !== clearId; });
+    savePendingApprovals_(pending);
+    return jsonOut({ ok: true });
+  }
+
+  // ── MFA ──────────────────────────────────────────────────────────────────
   var email = (json.email || "").toString().trim().toLowerCase();
   if (!email) return jsonOut({ ok: false, error: "Email required" });
 

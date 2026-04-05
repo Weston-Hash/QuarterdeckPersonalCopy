@@ -7536,6 +7536,37 @@
       { name: "Complete", routeLabel: "", approverId: null, approverRole: null, approverName: "", icon: "\u{1F3C5}", completedBy: null, completedAt: null, comment: "" }
     ];
   }
+  function sendNotification(to, subject, body) {
+    if (!to || !SHEETS_API_URL) return;
+    fetch(SHEETS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "notify", to, subject, body })
+    }).catch(() => {
+    });
+  }
+  function trackApproval(id, type, approverEmail, approverName, submitterName) {
+    if (!SHEETS_API_URL) return;
+    fetch(SHEETS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "trackApproval", id, type, approverEmail, approverName, submitterName })
+    }).catch(() => {
+    });
+  }
+  function clearApproval(id) {
+    if (!SHEETS_API_URL) return;
+    fetch(SHEETS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "clearApproval", id })
+    }).catch(() => {
+    });
+  }
+  function getUserEmail(userList, userId) {
+    const u = userList.find((u2) => u2.id === userId);
+    return u?.email || "";
+  }
   function canActOnChit(user, chit) {
     if (!user || !chit?.stages || chit.status === "Approved" || chit.status === "Denied" || chit.status === "Returned") return false;
     if (chit.currentStage >= chit.stages.length - 1) return false;
@@ -8793,6 +8824,24 @@
         docs: { routingSheet: form.routingSheet, chitDoc: form.chitDoc }
       };
       setChits((prev) => [...prev, c]);
+      const firstStage = stages[1];
+      if (firstStage?.approverId) {
+        const firstEmail = getUserEmail(userList, firstStage.approverId);
+        if (firstEmail) {
+          sendNotification(
+            firstEmail,
+            `New CHIT ${c.id} \u2014 Requires Your Approval`,
+            `Hello ${firstStage.approverName},
+
+A new CHIT (${c.id}) has been submitted by ${user.name} for "${form.reason}".
+
+Please log in to The Quarterdeck to review and take action.
+
+\u2014 The Quarterdeck`
+          );
+          trackApproval(c.id, "CHIT", firstEmail, firstStage.approverName, user.name);
+        }
+      }
       setShowModal(false);
       setForm({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", routingSheet: null, chitDoc: null });
       setChitSubmitAttempted(false);
@@ -8814,6 +8863,7 @@
         return;
       }
       const comment = commentText.trim();
+      const chit = chits.find((c) => c.id === id);
       setChits((prev) => prev.map((c) => {
         if (c.id !== id) return c;
         const updated = [...c.stages];
@@ -8828,6 +8878,60 @@
         const docs = action === "approved" && reviewDoc ? { ...c.docs, routingSheet: reviewDoc } : c.docs;
         return { ...c, currentStage: next, stages: updated, status, docs };
       }));
+      if (chit) {
+        const originatorEmail = getUserEmail(userList, chit.userId);
+        if (action === "returned") {
+          clearApproval(id);
+          if (originatorEmail) {
+            sendNotification(
+              originatorEmail,
+              `CHIT ${id} \u2014 Returned`,
+              `Hello ${chit.name},
+
+Your CHIT (${id}) for "${chit.reason}" has been returned by ${user.name}.
+
+${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.
+
+\u2014 The Quarterdeck`
+            );
+          }
+        } else {
+          const nextStageIdx = Math.min(chit.currentStage + 1, chit.stages.length - 1);
+          if (nextStageIdx >= chit.stages.length - 1) {
+            clearApproval(id);
+            if (originatorEmail) {
+              sendNotification(
+                originatorEmail,
+                `CHIT ${id} \u2014 Fully Approved`,
+                `Hello ${chit.name},
+
+Your CHIT (${id}) for "${chit.reason}" has been fully approved through the chain of command.
+
+\u2014 The Quarterdeck`
+              );
+            }
+          } else {
+            const nextStage = chit.stages[nextStageIdx];
+            if (nextStage?.approverId) {
+              const nextEmail = getUserEmail(userList, nextStage.approverId);
+              if (nextEmail) {
+                sendNotification(
+                  nextEmail,
+                  `CHIT ${id} \u2014 Requires Your Approval`,
+                  `Hello ${nextStage.approverName},
+
+A CHIT (${id}) from ${chit.name} for "${chit.reason}" requires your approval.
+
+Please log in to The Quarterdeck to review and take action.
+
+\u2014 The Quarterdeck`
+                );
+                trackApproval(id, "CHIT", nextEmail, nextStage.approverName, chit.name);
+              }
+            }
+          }
+        }
+      }
       setActiveComment(null);
       setCommentText("");
       setReviewDoc(null);
@@ -9528,6 +9632,24 @@
         docs: { fitrepDoc: submitForm.fitrepDoc, routingSheet: submitForm.routingSheet }
       };
       setFitrebs((prev) => [...prev, f]);
+      const firstStage = stages[1];
+      if (firstStage?.approverId) {
+        const firstEmail = getUserEmail(userList, firstStage.approverId);
+        if (firstEmail) {
+          sendNotification(
+            firstEmail,
+            `New FITREP ${f.id} \u2014 Requires Your Approval`,
+            `Hello ${firstStage.approverName},
+
+A new FITREP (${f.id}) has been submitted by ${user.name} for period ${submitForm.period}.
+
+Please log in to The Quarterdeck to review and take action.
+
+\u2014 The Quarterdeck`
+          );
+          trackApproval(f.id, "FITREP", firstEmail, firstStage.approverName, user.name);
+        }
+      }
       setShowModal(false);
       setSubmitForm({ period: "Spring 2026", notes: "", routeCompany: "", routePlatoon: "", fitrepDoc: null, routingSheet: null });
       fire("\u2705 FITREP submitted and routed to your chain of command.");
@@ -9538,6 +9660,7 @@
         return;
       }
       const comment = commentText.trim();
+      const fitrep = fitrebs.find((f) => f.id === id);
       setFitrebs((prev) => prev.map((f) => {
         if (f.id !== id) return f;
         const updated = [...f.stages];
@@ -9552,6 +9675,60 @@
         const docs = action === "approved" && reviewDoc ? { ...f.docs, routingSheet: reviewDoc } : f.docs;
         return { ...f, currentStage: next, stages: updated, status, docs };
       }));
+      if (fitrep) {
+        const originatorEmail = getUserEmail(userList, fitrep.subjectId);
+        if (action === "returned") {
+          clearApproval(id);
+          if (originatorEmail) {
+            sendNotification(
+              originatorEmail,
+              `FITREP ${id} \u2014 Returned`,
+              `Hello ${fitrep.subjectName},
+
+Your FITREP (${id}) has been returned by ${user.name}.
+
+${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.
+
+\u2014 The Quarterdeck`
+            );
+          }
+        } else {
+          const nextStageIdx = Math.min(fitrep.currentStage + 1, fitrep.stages.length - 1);
+          if (nextStageIdx >= fitrep.stages.length - 1) {
+            clearApproval(id);
+            if (originatorEmail) {
+              sendNotification(
+                originatorEmail,
+                `FITREP ${id} \u2014 Fully Approved`,
+                `Hello ${fitrep.subjectName},
+
+Your FITREP (${id}) for ${fitrep.period} has been fully approved through the chain of command.
+
+\u2014 The Quarterdeck`
+              );
+            }
+          } else {
+            const nextStage = fitrep.stages[nextStageIdx];
+            if (nextStage?.approverId) {
+              const nextEmail = getUserEmail(userList, nextStage.approverId);
+              if (nextEmail) {
+                sendNotification(
+                  nextEmail,
+                  `FITREP ${id} \u2014 Requires Your Approval`,
+                  `Hello ${nextStage.approverName},
+
+A FITREP (${id}) from ${fitrep.subjectName} requires your approval.
+
+Please log in to The Quarterdeck to review and take action.
+
+\u2014 The Quarterdeck`
+                );
+                trackApproval(id, "FITREP", nextEmail, nextStage.approverName, fitrep.subjectName);
+              }
+            }
+          }
+        }
+      }
       setActiveComment(null);
       setCommentText("");
       setReviewDoc(null);
