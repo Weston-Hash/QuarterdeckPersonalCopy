@@ -7930,6 +7930,7 @@
   .platoon-name { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.82rem; font-weight: 700; font-style: normal; letter-spacing: 1.5px; color: #BF5700; margin-bottom: 0.35rem; }
   .platoon-detail { font-family: 'Barlow', 'Segoe UI', sans-serif; font-size: 0.78rem; font-style: normal; color: #6B6B6B; }
 
+  .route-hint { background:#f5f2ee; border-radius:8px; padding:0.65rem; font-size:0.8rem; color:#666; margin-bottom:1rem; }
   .bn-leader-card { background:#f8f8f8; border-radius:8px; padding:0.6rem 0.8rem; border-left:3px solid #BF5700; }
   .billet-card { display:flex; justify-content:space-between; align-items:center; padding:0.45rem 0.7rem; background:#f8f8f8; border-radius:6px; font-size:0.82rem; }
 
@@ -8059,6 +8060,7 @@
   .dark .badge-gray { background:#2a2b35; color:#8b8b96; }
   .dark .tag { background:rgba(191,87,0,0.15); color:#e8a065; }
   .dark .fitrep-header { border-bottom-color:#2a2b35; }
+  .dark .route-hint { background:#15161e; color:#8b8b96; }
   .dark .bn-leader-card { background:#15161e; }
   .dark .billet-card { background:#15161e; color:#d4d4d8; }
   .dark .platoon-detail { color:#8b8b96; }
@@ -9422,7 +9424,7 @@ Please log in to The Quarterdeck to review and take action.
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "#f5f2ee", borderRadius: "8px", padding: "0.65rem", fontSize: "0.8rem", color: "#666", marginBottom: "1rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "route-hint", children: [
           "Your CHIT routes to: ",
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: routeHint() })
         ] }),
@@ -10231,7 +10233,7 @@ Please log in to The Quarterdeck to review and take action.
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "#f5f2ee", borderRadius: "8px", padding: "0.65rem", fontSize: "0.8rem", color: "#666", marginBottom: "1rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "route-hint", children: [
           "Your FITREP routes to: ",
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: routeHint() })
         ] }),
