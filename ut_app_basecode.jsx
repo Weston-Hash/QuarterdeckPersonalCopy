@@ -985,6 +985,51 @@ const CSS = `
   .acct-label { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:#888; min-width:90px; }
   .first-login-banner { background:rgba(191,87,0,0.1); border:1.5px solid #BF5700; border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.25rem; font-size:0.85rem; color:#8B3D00; }
 
+  /* ── DARK MODE TOGGLE ───────────────────────────── */
+  .dark-toggle { background:none; border:1.5px solid rgba(255,255,255,0.25); color:#ccc; border-radius:4px; padding:3px 8px; font-size:0.85rem; cursor:pointer; line-height:1; }
+  .dark-toggle:hover { background:rgba(255,255,255,0.1); }
+
+  /* ── DARK MODE ──────────────────────────────────── */
+  .dark body, body.dark { background:#0f1117; color:#d4d4d8; }
+  .dark .content { background:#0f1117; }
+  .dark .card, .dark .stat, .dark .chit-card, .dark .fitrep-card, .dark .q-card, .dark .form-row, .dark .pt-block, .dark .platoon-card { background:#1a1b23; border-color:#2a2b35; color:#d4d4d8; }
+  .dark .card-title { color:#d4d4d8; }
+  .dark .stat { border-left-color:#BF5700; }
+  .dark .stat-l, .dark .event-sub, .dark .page-sub { color:#8b8b96; }
+  .dark .input { background:#1a1b23; border-color:#2a2b35; color:#d4d4d8; }
+  .dark .input:focus { border-color:#BF5700; }
+  .dark .alert { background:rgba(191,87,0,0.12); border-color:#BF5700; color:#e8a065; }
+  .dark .alert-green { background:rgba(42,125,79,0.15); border-color:#2A7D4F; color:#5cb882; }
+  .dark .alert-red { background:rgba(192,57,43,0.15); border-color:#C0392B; color:#e06050; }
+  .dark .event-row { border-bottom-color:#2a2b35; }
+  .dark .roster-row { border-bottom-color:#2a2b35; }
+  .dark .acct-field { border-bottom-color:#2a2b35; }
+  .dark .modal { background:#1a1b23; color:#d4d4d8; }
+  .dark .modal-close { color:#8b8b96; }
+  .dark .folder-header { background:#1a1b23; }
+  .dark .folder-header:hover { background:#22232e; }
+  .dark .stage-action-box { background:#15161e; border-color:rgba(191,87,0,0.3); }
+  .dark .stage-comment { background:#15161e; }
+  .dark .active-stage-comment { background:#1a1209; }
+  .dark .privacy-note { background:rgba(255,255,255,0.04); border-color:rgba(255,255,255,0.1); color:#aaa; }
+  .dark .page-sub { border-bottom-color:rgba(191,87,0,0.2); }
+  .dark .company-block { background:#1a1b23; }
+  .dark .platoon-grid { background:#1a1b23; }
+  .dark .hint-box { background:#1a1b23; color:#8b8b96; }
+  .dark .btn-outline { border-color:#BF5700; color:#e8a065; }
+  .dark .btn-outline:hover { background:#BF5700; color:white; }
+  .dark .divider { border-top-color:#2a2b35; }
+  .dark .chit-node { background:rgba(191,87,0,0.15); color:#e8a065; }
+  .dark .badge-orange { background:rgba(191,87,0,0.2); color:#e8a065; }
+  .dark .badge-green { background:rgba(42,125,79,0.2); color:#5cb882; }
+  .dark .badge-red { background:rgba(192,57,43,0.2); color:#e06050; }
+  .dark .badge-navy { background:rgba(255,255,255,0.08); color:#9ab0c4; }
+  .dark .badge-gray { background:#2a2b35; color:#8b8b96; }
+  .dark .tag { background:rgba(191,87,0,0.15); color:#e8a065; }
+  .dark .fitrep-header { border-bottom-color:#2a2b35; }
+  .dark .stage-dot { background:#1a1b23; border-color:#2a2b35; }
+  .dark .stage-dot.pending { background:#15161e; border-color:#2a2b35; color:#555; }
+
   @media (max-width: 768px) {
     .sidebar { display: none; }
     .mobile-nav { display: block; }
@@ -1262,13 +1307,18 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   );
 }
 
-function Dashboard({ onNav, userList, chits, forms, reminder, setReminder, announcements, setAnnouncements }) {
+function Dashboard({ onNav, userList, chits, fitrebs, forms, reminder, setReminder, announcements, setAnnouncements }) {
   const { user } = useAuth();
   const canManageReminder = isBigFour(user);
   const [editingReminder, setEditingReminder] = useState(false);
   const [draftText, setDraftText] = useState(reminder.text);
   const [draftAnnouncement, setDraftAnnouncement] = useState("");
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
+
+  // My Queue: count CHITs/FITREPs awaiting this user's action
+  const myChits = chits.filter(c => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
+  const myFitreps = fitrebs.filter(f => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Returned");
+  const queueTotal = myChits.length + myFitreps.length;
 
   const postAnnouncement = () => {
     const text = draftAnnouncement.trim();
@@ -1375,6 +1425,28 @@ function Dashboard({ onNav, userList, chits, forms, reminder, setReminder, annou
         <div className="stat" style={{ borderLeftColor:"#0D1B2A" }}><div className="stat-n" style={{ color:"#0D1B2A" }}>{chits.filter(c => c.status !== "Complete").length}</div><div className="stat-l">Open CHITs</div></div>
         <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}><div className="stat-n" style={{ color:"#2A7D4F" }}>{forms.length}</div><div className="stat-l">Active Forms</div></div>
       </div>
+
+      {/* My Queue — only shown to CoC members who have pending items */}
+      {isCoC(user) && queueTotal > 0 && (
+        <div className="card" style={{ marginBottom:"1rem", borderLeft:"4px solid #BF5700" }}>
+          <div className="card-header" style={{ marginBottom:"0.5rem" }}>
+            <span className="card-title">📥 My Queue</span>
+            <span className="badge badge-orange">{queueTotal} awaiting action</span>
+          </div>
+          <div style={{ display:"flex", gap:"1rem", flexWrap:"wrap" }}>
+            {myChits.length > 0 && (
+              <button className="btn btn-outline btn-sm" onClick={() => onNav("chits")}>
+                {myChits.length} CHIT{myChits.length !== 1 ? "s" : ""} to review
+              </button>
+            )}
+            {myFitreps.length > 0 && (
+              <button className="btn btn-outline btn-sm" onClick={() => onNav("fitreps")}>
+                {myFitreps.length} FITREP{myFitreps.length !== 1 ? "s" : ""} to review
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid2">
         <div>
@@ -3042,6 +3114,8 @@ export default function App() {
   const cachedRoster = loadCachedRoster();
   const [user, setUser]           = useState(null);
   const [page, setPage]           = useState("dashboard");
+  const [darkMode, setDarkMode]   = useState(() => localStorage.getItem("qd_dark") === "1");
+  const toggleDark = () => setDarkMode(prev => { const next = !prev; localStorage.setItem("qd_dark", next ? "1" : "0"); return next; });
   const [reminder, setReminder]   = useState({ enabled: false, text: "" });
   const [announcements, setAnnouncements] = useState([]);
   const [chits, setChits]         = useState(INIT_CHITS);
@@ -3106,7 +3180,7 @@ export default function App() {
 
 
   const renderPage = () => {
-    if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} chits={chits} forms={forms} reminder={reminder} setReminder={setReminder} announcements={announcements} setAnnouncements={setAnnouncements} />;
+    if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} chits={chits} fitrebs={fitrebs} forms={forms} reminder={reminder} setReminder={setReminder} announcements={announcements} setAnnouncements={setAnnouncements} />;
     if (page === "calendar")   return <CalendarPage />;
     if (page === "structure")  return <StructurePage userList={userList} />;
     if (page === "training")   return <TrainingPage ptPlans={ptPlans} setPtPlans={setPtPlans} llSessions={llSessions} setLlSessions={setLlSessions} />;
@@ -3124,13 +3198,16 @@ export default function App() {
       {showAccount && (
         <AccountModal onClose={() => setShowAccount(false)} />
       )}
-      <div>
+      <div className={darkMode ? "dark" : ""}>
         <header className="topbar">
           <div style={{ display:"flex", alignItems:"center" }}>
             <div className="topbar-logo">UT</div>
             <div className="topbar-title">The <span>Quarterdeck</span></div>
           </div>
           <div className="topbar-right">
+            <button className="dark-toggle" onClick={toggleDark} title={darkMode ? "Light mode" : "Dark mode"}>
+              {darkMode ? "☀" : "🌙"}
+            </button>
             <div
               style={{ display:"flex", alignItems:"center", gap:"0.5rem", cursor:"pointer" }}
               onClick={() => setShowAccount(true)}

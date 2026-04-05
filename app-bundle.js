@@ -7987,6 +7987,51 @@
   .acct-label { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:#888; min-width:90px; }
   .first-login-banner { background:rgba(191,87,0,0.1); border:1.5px solid #BF5700; border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.25rem; font-size:0.85rem; color:#8B3D00; }
 
+  /* \u2500\u2500 DARK MODE TOGGLE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+  .dark-toggle { background:none; border:1.5px solid rgba(255,255,255,0.25); color:#ccc; border-radius:4px; padding:3px 8px; font-size:0.85rem; cursor:pointer; line-height:1; }
+  .dark-toggle:hover { background:rgba(255,255,255,0.1); }
+
+  /* \u2500\u2500 DARK MODE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+  .dark body, body.dark { background:#0f1117; color:#d4d4d8; }
+  .dark .content { background:#0f1117; }
+  .dark .card, .dark .stat, .dark .chit-card, .dark .fitrep-card, .dark .q-card, .dark .form-row, .dark .pt-block, .dark .platoon-card { background:#1a1b23; border-color:#2a2b35; color:#d4d4d8; }
+  .dark .card-title { color:#d4d4d8; }
+  .dark .stat { border-left-color:#BF5700; }
+  .dark .stat-l, .dark .event-sub, .dark .page-sub { color:#8b8b96; }
+  .dark .input { background:#1a1b23; border-color:#2a2b35; color:#d4d4d8; }
+  .dark .input:focus { border-color:#BF5700; }
+  .dark .alert { background:rgba(191,87,0,0.12); border-color:#BF5700; color:#e8a065; }
+  .dark .alert-green { background:rgba(42,125,79,0.15); border-color:#2A7D4F; color:#5cb882; }
+  .dark .alert-red { background:rgba(192,57,43,0.15); border-color:#C0392B; color:#e06050; }
+  .dark .event-row { border-bottom-color:#2a2b35; }
+  .dark .roster-row { border-bottom-color:#2a2b35; }
+  .dark .acct-field { border-bottom-color:#2a2b35; }
+  .dark .modal { background:#1a1b23; color:#d4d4d8; }
+  .dark .modal-close { color:#8b8b96; }
+  .dark .folder-header { background:#1a1b23; }
+  .dark .folder-header:hover { background:#22232e; }
+  .dark .stage-action-box { background:#15161e; border-color:rgba(191,87,0,0.3); }
+  .dark .stage-comment { background:#15161e; }
+  .dark .active-stage-comment { background:#1a1209; }
+  .dark .privacy-note { background:rgba(255,255,255,0.04); border-color:rgba(255,255,255,0.1); color:#aaa; }
+  .dark .page-sub { border-bottom-color:rgba(191,87,0,0.2); }
+  .dark .company-block { background:#1a1b23; }
+  .dark .platoon-grid { background:#1a1b23; }
+  .dark .hint-box { background:#1a1b23; color:#8b8b96; }
+  .dark .btn-outline { border-color:#BF5700; color:#e8a065; }
+  .dark .btn-outline:hover { background:#BF5700; color:white; }
+  .dark .divider { border-top-color:#2a2b35; }
+  .dark .chit-node { background:rgba(191,87,0,0.15); color:#e8a065; }
+  .dark .badge-orange { background:rgba(191,87,0,0.2); color:#e8a065; }
+  .dark .badge-green { background:rgba(42,125,79,0.2); color:#5cb882; }
+  .dark .badge-red { background:rgba(192,57,43,0.2); color:#e06050; }
+  .dark .badge-navy { background:rgba(255,255,255,0.08); color:#9ab0c4; }
+  .dark .badge-gray { background:#2a2b35; color:#8b8b96; }
+  .dark .tag { background:rgba(191,87,0,0.15); color:#e8a065; }
+  .dark .fitrep-header { border-bottom-color:#2a2b35; }
+  .dark .stage-dot { background:#1a1b23; border-color:#2a2b35; }
+  .dark .stage-dot.pending { background:#15161e; border-color:#2a2b35; color:#555; }
+
   @media (max-width: 768px) {
     .sidebar { display: none; }
     .mobile-nav { display: block; }
@@ -8257,13 +8302,16 @@
       ] })
     ] }) });
   }
-  function Dashboard({ onNav, userList, chits, forms, reminder, setReminder, announcements, setAnnouncements }) {
+  function Dashboard({ onNav, userList, chits, fitrebs, forms, reminder, setReminder, announcements, setAnnouncements }) {
     const { user } = useAuth();
     const canManageReminder = isBigFour(user);
     const [editingReminder, setEditingReminder] = (0, import_react.useState)(false);
     const [draftText, setDraftText] = (0, import_react.useState)(reminder.text);
     const [draftAnnouncement, setDraftAnnouncement] = (0, import_react.useState)("");
     const [showAnnouncementForm, setShowAnnouncementForm] = (0, import_react.useState)(false);
+    const myChits = chits.filter((c) => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
+    const myFitreps = fitrebs.filter((f) => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Returned");
+    const queueTotal = myChits.length + myFitreps.length;
     const postAnnouncement = () => {
       const text = draftAnnouncement.trim();
       if (!text) return;
@@ -8375,6 +8423,29 @@
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#2A7D4F" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#2A7D4F" }, children: forms.length }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "Active Forms" })
+        ] })
+      ] }),
+      isCoC(user) && queueTotal > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", style: { marginBottom: "1rem", borderLeft: "4px solid #BF5700" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card-header", style: { marginBottom: "0.5rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "card-title", children: "\u{1F4E5} My Queue" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "badge badge-orange", children: [
+            queueTotal,
+            " awaiting action"
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "1rem", flexWrap: "wrap" }, children: [
+          myChits.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "btn btn-outline btn-sm", onClick: () => onNav("chits"), children: [
+            myChits.length,
+            " CHIT",
+            myChits.length !== 1 ? "s" : "",
+            " to review"
+          ] }),
+          myFitreps.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "btn btn-outline btn-sm", onClick: () => onNav("fitreps"), children: [
+            myFitreps.length,
+            " FITREP",
+            myFitreps.length !== 1 ? "s" : "",
+            " to review"
+          ] })
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "grid2", children: [
@@ -10076,6 +10147,12 @@ Please log in to The Quarterdeck to review and take action.
     const cachedRoster = loadCachedRoster();
     const [user, setUser] = (0, import_react.useState)(null);
     const [page, setPage] = (0, import_react.useState)("dashboard");
+    const [darkMode, setDarkMode] = (0, import_react.useState)(() => localStorage.getItem("qd_dark") === "1");
+    const toggleDark = () => setDarkMode((prev) => {
+      const next = !prev;
+      localStorage.setItem("qd_dark", next ? "1" : "0");
+      return next;
+    });
     const [reminder, setReminder] = (0, import_react.useState)({ enabled: false, text: "" });
     const [announcements, setAnnouncements] = (0, import_react.useState)([]);
     const [chits, setChits] = (0, import_react.useState)(INIT_CHITS);
@@ -10132,7 +10209,7 @@ Please log in to The Quarterdeck to review and take action.
       ] });
     }
     const renderPage = () => {
-      if (page === "dashboard") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dashboard, { onNav: setPage, userList, chits, forms, reminder, setReminder, announcements, setAnnouncements });
+      if (page === "dashboard") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dashboard, { onNav: setPage, userList, chits, fitrebs, forms, reminder, setReminder, announcements, setAnnouncements });
       if (page === "calendar") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CalendarPage, {});
       if (page === "structure") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StructurePage, { userList });
       if (page === "training") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TrainingPage, { ptPlans, setPtPlans, llSessions, setLlSessions });
@@ -10146,7 +10223,7 @@ Please log in to The Quarterdeck to review and take action.
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(AuthContext.Provider, { value: { user, setUser }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", { children: CSS }),
       showAccount && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AccountModal, { onClose: () => setShowAccount(false) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: darkMode ? "dark" : "", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "topbar", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "topbar-logo", children: "UT" }),
@@ -10156,6 +10233,7 @@ Please log in to The Quarterdeck to review and take action.
             ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "topbar-right", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "dark-toggle", onClick: toggleDark, title: darkMode ? "Light mode" : "Dark mode", children: darkMode ? "\u2600" : "\u{1F319}" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
               "div",
               {
