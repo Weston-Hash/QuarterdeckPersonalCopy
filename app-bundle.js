@@ -9756,7 +9756,9 @@
         }
       });
     };
-    (0, import_react.useEffect)(fetchRoster, []);
+    (0, import_react.useEffect)(() => {
+      fetchRoster();
+    }, []);
     const handleLogin = (loggedInUser) => {
       const fresh = userList.find((u) => u.id === loggedInUser.id) || loggedInUser;
       setUser(fresh);

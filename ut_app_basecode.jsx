@@ -2751,7 +2751,7 @@ export default function App() {
   };
 
   // Fetch roster from private Google Sheet via Apps Script on mount
-  useEffect(fetchRoster, []);
+  useEffect(() => { fetchRoster(); }, []);
 
   const handleLogin = (loggedInUser) => {
     // Sync with live userList in case Sheets data was fetched
