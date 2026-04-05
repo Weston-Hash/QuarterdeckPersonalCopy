@@ -10350,8 +10350,8 @@ Please log in to The Quarterdeck to review and take action.
     };
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(AuthContext.Provider, { value: { user, setUser }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", { children: CSS }),
-      showAccount && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AccountModal, { onClose: () => setShowAccount(false), darkMode, toggleDark }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: darkMode ? "dark" : "", children: [
+        showAccount && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AccountModal, { onClose: () => setShowAccount(false), darkMode, toggleDark }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "topbar", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "topbar-logo", children: "UT" }),

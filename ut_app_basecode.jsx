@@ -3331,10 +3331,10 @@ export default function App() {
   return (
     <AuthContext.Provider value={{ user, setUser }}>
       <style>{CSS}</style>
-      {showAccount && (
-        <AccountModal onClose={() => setShowAccount(false)} darkMode={darkMode} toggleDark={toggleDark} />
-      )}
       <div className={darkMode ? "dark" : ""}>
+        {showAccount && (
+          <AccountModal onClose={() => setShowAccount(false)} darkMode={darkMode} toggleDark={toggleDark} />
+        )}
         <header className="topbar">
           <div style={{ display:"flex", alignItems:"center" }}>
             <div className="topbar-logo">UT</div>
