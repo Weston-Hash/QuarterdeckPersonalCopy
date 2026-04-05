@@ -335,7 +335,7 @@ function makeChitChainNode(label, stageName, person, approverRole, icon) {
     label: formatRouteNode(label, person),
     stageName,
     approverId: person?.id || null,
-    approverName: person?.name || label,
+    approverName: person ? `${person.rank} ${person.name}` : label,
     approverRole: approverRole || person?.role || null,
     icon,
   };
@@ -1449,13 +1449,14 @@ function Dashboard({ onNav, userList, chits, fitrebs, forms, reminder, setRemind
   const postAnnouncement = () => {
     const text = draftAnnouncement.trim();
     if (!text) return;
-    const entry = { id: Date.now(), text, author: user.name, date: new Date().toLocaleDateString() };
+    const announcerName = `${user.rank} ${user.name}`;
+    const entry = { id: Date.now(), text, author: announcerName, date: new Date().toLocaleDateString() };
     setAnnouncements(prev => [entry, ...prev]);
     setDraftAnnouncement("");
     setShowAnnouncementForm(false);
     // Email all BN members
-    const subject = "BN Announcement from " + user.name;
-    const body = text + "\n\n— " + user.name + ", UT NROTC Battalion";
+    const subject = "BN Announcement from " + announcerName;
+    const body = text + "\n\n— " + announcerName + ", UT NROTC Battalion";
     userList.forEach(u => {
       if (u.email) sendNotification(u.email, subject, body, "announcement", u.id);
     });
@@ -2088,11 +2089,12 @@ function ChitsPage({ chits, setChits, userList }) {
       fire("⚠ Could not build approval chain. Ensure your company/platoon has assigned personnel."); return;
     }
     const now = new Date().toISOString().split("T")[0];
-    const stages = buildChitStages(user.name, now, approvalChain);
+    const fullName = `${user.rank} ${user.name}`;
+    const stages = buildChitStages(fullName, now, approvalChain);
     const c = {
       id: "CHT-" + String(chits.length + 1).padStart(3, "0"),
       userId: user.id,
-      name: user.name,
+      name: fullName,
       company: routeContext.company,
       platoon: routeContext.platoon,
       date: form.endDate && form.endDate !== form.startDate ? `${form.startDate} – ${form.endDate}` : form.startDate,
@@ -2111,11 +2113,11 @@ function ChitsPage({ chits, setChits, userList }) {
       if (firstEmail) {
         sendNotification(firstEmail,
           `New CHIT ${c.id} — Requires Your Approval`,
-          `Hello ${firstStage.approverName},\n\nA new CHIT (${c.id}) has been submitted by ${user.name} for "${form.reason}".\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
+          `Hello ${firstStage.approverName},\n\nA new CHIT (${c.id}) has been submitted by ${fullName} for "${form.reason}".\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
           "submission", firstStage.approverId
         );
         const approverPrefs = loadNotifPrefs(firstStage.approverId);
-        trackApproval(c.id, "CHIT", firstEmail, firstStage.approverName, user.name, approverPrefs.reminder_days);
+        trackApproval(c.id, "CHIT", firstEmail, firstStage.approverName, fullName, approverPrefs.reminder_days);
       }
     }
     setShowModal(false);
@@ -2136,13 +2138,14 @@ function ChitsPage({ chits, setChits, userList }) {
   const advanceStage = (id, action) => {
     if (action === "approved" && !reviewDoc) { fire("⚠ Please upload a signed routing sheet before approving."); return; }
     const comment = commentText.trim();
+    const reviewerFullName = `${user.rank} ${user.name}`;
     const chit = chits.find(c => c.id === id);
     setChits(prev => prev.map(c => {
       if (c.id !== id) return c;
       const updated = [...c.stages];
       updated[c.currentStage] = {
         ...updated[c.currentStage],
-        completedBy: user.name,
+        completedBy: reviewerFullName,
         completedAt: new Date().toISOString().split("T")[0],
         comment,
       };
@@ -2166,7 +2169,7 @@ function ChitsPage({ chits, setChits, userList }) {
         if (originatorEmail) {
           sendNotification(originatorEmail,
             `CHIT ${id} — Returned`,
-            `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has been returned by ${user.name}.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.\n\n— The Quarterdeck`,
+            `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has been returned by ${reviewerFullName}.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.\n\n— The Quarterdeck`,
             "return", chit.userId
           );
         }
@@ -2846,11 +2849,12 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
       fire("⚠ Could not build approval chain. Ensure your company/platoon has assigned personnel."); return;
     }
     const now = new Date().toISOString().split("T")[0];
-    const stages = buildChitStages(user.name, now, approvalChain);
+    const fitFullName = `${user.rank} ${user.name}`;
+    const stages = buildChitStages(fitFullName, now, approvalChain);
     const f = {
       id: "FIT-" + String(fitrebs.length + 1).padStart(3, "0"),
       subjectId: user.id,
-      subjectName: user.name,
+      subjectName: fitFullName,
       subjectRank: user.rank,
       company: routeContext.company,
       platoon: routeContext.platoon,
@@ -2868,11 +2872,11 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
       if (firstEmail) {
         sendNotification(firstEmail,
           `New FITREP ${f.id} — Requires Your Approval`,
-          `Hello ${firstStage.approverName},\n\nA new FITREP (${f.id}) has been submitted by ${user.name} for period ${submitForm.period}.\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
+          `Hello ${firstStage.approverName},\n\nA new FITREP (${f.id}) has been submitted by ${fitFullName} for period ${submitForm.period}.\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
           "submission", firstStage.approverId
         );
         const approverPrefs = loadNotifPrefs(firstStage.approverId);
-        trackApproval(f.id, "FITREP", firstEmail, firstStage.approverName, user.name, approverPrefs.reminder_days);
+        trackApproval(f.id, "FITREP", firstEmail, firstStage.approverName, fitFullName, approverPrefs.reminder_days);
       }
     }
     setShowModal(false);
@@ -2883,13 +2887,14 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   const advanceStage = (id, action = "approved") => {
     if (action === "approved" && !reviewDoc) { fire("⚠ Please upload a signed routing sheet before approving."); return; }
     const comment = commentText.trim();
+    const reviewerFullName = `${user.rank} ${user.name}`;
     const fitrep = fitrebs.find(f => f.id === id);
     setFitrebs(prev => prev.map(f => {
       if (f.id !== id) return f;
       const updated = [...f.stages];
       updated[f.currentStage] = {
         ...updated[f.currentStage],
-        completedBy: user.name,
+        completedBy: reviewerFullName,
         completedAt: new Date().toISOString().split("T")[0],
         comment,
       };
@@ -2912,7 +2917,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         if (originatorEmail) {
           sendNotification(originatorEmail,
             `FITREP ${id} — Returned`,
-            `Hello ${fitrep.subjectName},\n\nYour FITREP (${id}) has been returned by ${user.name}.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.\n\n— The Quarterdeck`,
+            `Hello ${fitrep.subjectName},\n\nYour FITREP (${id}) has been returned by ${reviewerFullName}.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.\n\n— The Quarterdeck`,
             "return", fitrep.subjectId
           );
         }

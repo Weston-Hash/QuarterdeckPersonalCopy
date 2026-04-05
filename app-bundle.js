@@ -7477,7 +7477,7 @@
       label: formatRouteNode(label, person),
       stageName,
       approverId: person?.id || null,
-      approverName: person?.name || label,
+      approverName: person ? `${person.rank} ${person.name}` : label,
       approverRole: approverRole || person?.role || null,
       icon
     };
@@ -8423,12 +8423,13 @@
     const postAnnouncement = () => {
       const text = draftAnnouncement.trim();
       if (!text) return;
-      const entry = { id: Date.now(), text, author: user.name, date: (/* @__PURE__ */ new Date()).toLocaleDateString() };
+      const announcerName = `${user.rank} ${user.name}`;
+      const entry = { id: Date.now(), text, author: announcerName, date: (/* @__PURE__ */ new Date()).toLocaleDateString() };
       setAnnouncements((prev) => [entry, ...prev]);
       setDraftAnnouncement("");
       setShowAnnouncementForm(false);
-      const subject = "BN Announcement from " + user.name;
-      const body = text + "\n\n\u2014 " + user.name + ", UT NROTC Battalion";
+      const subject = "BN Announcement from " + announcerName;
+      const body = text + "\n\n\u2014 " + announcerName + ", UT NROTC Battalion";
       userList.forEach((u) => {
         if (u.email) sendNotification(u.email, subject, body, "announcement", u.id);
       });
@@ -9037,11 +9038,12 @@
         return;
       }
       const now = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-      const stages = buildChitStages(user.name, now, approvalChain);
+      const fullName = `${user.rank} ${user.name}`;
+      const stages = buildChitStages(fullName, now, approvalChain);
       const c = {
         id: "CHT-" + String(chits.length + 1).padStart(3, "0"),
         userId: user.id,
-        name: user.name,
+        name: fullName,
         company: routeContext.company,
         platoon: routeContext.platoon,
         date: form.endDate && form.endDate !== form.startDate ? `${form.startDate} \u2013 ${form.endDate}` : form.startDate,
@@ -9062,7 +9064,7 @@
             `New CHIT ${c.id} \u2014 Requires Your Approval`,
             `Hello ${firstStage.approverName},
 
-A new CHIT (${c.id}) has been submitted by ${user.name} for "${form.reason}".
+A new CHIT (${c.id}) has been submitted by ${fullName} for "${form.reason}".
 
 Please log in to The Quarterdeck to review and take action.
 
@@ -9071,7 +9073,7 @@ Please log in to The Quarterdeck to review and take action.
             firstStage.approverId
           );
           const approverPrefs = loadNotifPrefs(firstStage.approverId);
-          trackApproval(c.id, "CHIT", firstEmail, firstStage.approverName, user.name, approverPrefs.reminder_days);
+          trackApproval(c.id, "CHIT", firstEmail, firstStage.approverName, fullName, approverPrefs.reminder_days);
         }
       }
       setShowModal(false);
@@ -9095,13 +9097,14 @@ Please log in to The Quarterdeck to review and take action.
         return;
       }
       const comment = commentText.trim();
+      const reviewerFullName = `${user.rank} ${user.name}`;
       const chit = chits.find((c) => c.id === id);
       setChits((prev) => prev.map((c) => {
         if (c.id !== id) return c;
         const updated = [...c.stages];
         updated[c.currentStage] = {
           ...updated[c.currentStage],
-          completedBy: user.name,
+          completedBy: reviewerFullName,
           completedAt: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
           comment
         };
@@ -9120,7 +9123,7 @@ Please log in to The Quarterdeck to review and take action.
               `CHIT ${id} \u2014 Returned`,
               `Hello ${chit.name},
 
-Your CHIT (${id}) for "${chit.reason}" has been returned by ${user.name}.
+Your CHIT (${id}) for "${chit.reason}" has been returned by ${reviewerFullName}.
 
 ${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.
 
@@ -9856,11 +9859,12 @@ Please log in to The Quarterdeck to review and take action.
         return;
       }
       const now = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-      const stages = buildChitStages(user.name, now, approvalChain);
+      const fitFullName = `${user.rank} ${user.name}`;
+      const stages = buildChitStages(fitFullName, now, approvalChain);
       const f = {
         id: "FIT-" + String(fitrebs.length + 1).padStart(3, "0"),
         subjectId: user.id,
-        subjectName: user.name,
+        subjectName: fitFullName,
         subjectRank: user.rank,
         company: routeContext.company,
         platoon: routeContext.platoon,
@@ -9880,7 +9884,7 @@ Please log in to The Quarterdeck to review and take action.
             `New FITREP ${f.id} \u2014 Requires Your Approval`,
             `Hello ${firstStage.approverName},
 
-A new FITREP (${f.id}) has been submitted by ${user.name} for period ${submitForm.period}.
+A new FITREP (${f.id}) has been submitted by ${fitFullName} for period ${submitForm.period}.
 
 Please log in to The Quarterdeck to review and take action.
 
@@ -9889,7 +9893,7 @@ Please log in to The Quarterdeck to review and take action.
             firstStage.approverId
           );
           const approverPrefs = loadNotifPrefs(firstStage.approverId);
-          trackApproval(f.id, "FITREP", firstEmail, firstStage.approverName, user.name, approverPrefs.reminder_days);
+          trackApproval(f.id, "FITREP", firstEmail, firstStage.approverName, fitFullName, approverPrefs.reminder_days);
         }
       }
       setShowModal(false);
@@ -9902,13 +9906,14 @@ Please log in to The Quarterdeck to review and take action.
         return;
       }
       const comment = commentText.trim();
+      const reviewerFullName = `${user.rank} ${user.name}`;
       const fitrep = fitrebs.find((f) => f.id === id);
       setFitrebs((prev) => prev.map((f) => {
         if (f.id !== id) return f;
         const updated = [...f.stages];
         updated[f.currentStage] = {
           ...updated[f.currentStage],
-          completedBy: user.name,
+          completedBy: reviewerFullName,
           completedAt: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
           comment
         };
@@ -9927,7 +9932,7 @@ Please log in to The Quarterdeck to review and take action.
               `FITREP ${id} \u2014 Returned`,
               `Hello ${fitrep.subjectName},
 
-Your FITREP (${id}) has been returned by ${user.name}.
+Your FITREP (${id}) has been returned by ${reviewerFullName}.
 
 ${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdeck to review.
 
