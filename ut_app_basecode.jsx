@@ -1171,7 +1171,7 @@ function AccountModal({ onClose, darkMode, toggleDark }) {
       </div>
 
       <div style={{ marginTop:"1.25rem", display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
-        <a className="btn btn-outline" href="https://docs.google.com/forms/d/e/1FAIpQLSfNKcFJ1qBd6HTxpnBxTFOY8Y0N3YZ0DkTN6BYmMA9QaE3_0w/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer">Update My Info</a>
+        <a className="btn btn-outline" href="https://docs.google.com/forms/d/e/1FAIpQLSfNKcFJ1qBd6HTxpnBxTFOY8Y0N3YZ0DkTN6BYmMA9QaE3_0w/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer">Update My Email</a>
         <button className="btn btn-orange" onClick={onClose}>Close</button>
       </div>
     </Modal>
