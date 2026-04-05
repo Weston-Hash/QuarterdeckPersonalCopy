@@ -7992,7 +7992,7 @@
   .divider { border: none; border-top: 1px solid #f0ede8; margin: 0.75rem 0; }
 
   /* \u2500\u2500 FITREP STAGE TRACKER \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-  .stage-track { display: flex; align-items: flex-start; gap: 0; margin: 1rem 0; overflow-x: auto; padding-bottom: 0.25rem; }
+  .stage-track { display: flex; align-items: flex-start; gap: 0; margin: 1rem 0; overflow-x: auto; padding-top: 0.6rem; padding-bottom: 0.25rem; }
   .stage-item { display: flex; flex-direction: column; align-items: center; position: relative; flex: 1; min-width: 90px; }
   .stage-item:not(:last-child)::after { content:""; position:absolute; top:18px; left:50%; width:100%; height:3px; background:#eee; z-index:0; }
   .stage-item.done::after { background:#2A7D4F; }
