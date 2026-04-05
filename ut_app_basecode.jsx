@@ -608,7 +608,7 @@ function loadCachedRoster() {
     return parsed.every(user =>
       user &&
       typeof user === "object" &&
-      Object.prototype.hasOwnProperty.call(user, "password")
+      Object.prototype.hasOwnProperty.call(user, "name")
     ) ? parsed : [];
   } catch (err) {
     return [];
@@ -626,7 +626,7 @@ function saveCachedRoster(users) {
 const SHEET_ONLY_MODE  = true;
 
 // Sheet row 1 must be a header row with these exact names (any column order):
-//   company | name | class | email | phone_number | major | campus | eid | password | billet
+//   company | name | class | email | phone_number | major | campus | eid | billet
 // Maps sheet company prefix → app company name
 const COMPANY_MAP = {
   "BN Staff": "BN",
@@ -708,14 +708,12 @@ function sheetRowToUser(row, index) {
     role,
     company,
     platoon,
-    password: (row.password || "").trim(),
     email:    (row.email || "").trim(),
     phone:    (row.phone_number || row.phone || "").trim(),
     major:    (row.major || "").trim(),
     campus:   (row.campus || "").trim(),
     eid:      (row.eid || "").trim(),
     billet:   billetRaw,
-    mustChangePassword: false,
   };
 }
 
@@ -962,11 +960,6 @@ const CSS = `
 `;
 
 // ─── UTILITIES ──────────────────────────────────────────────
-function generatePassword() {
-  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#";
-  return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-}
-
 // ─── SMALL SHARED COMPONENTS ────────────────────────────────
 function Modal({ title, onClose, children }) {
   return (
@@ -982,126 +975,36 @@ function Modal({ title, onClose, children }) {
   );
 }
 
-// Account info + password change modal
-function AccountModal({ onClose, onPasswordChange }) {
+// Account info modal
+function AccountModal({ onClose }) {
   const { user } = useAuth();
-  const [mode, setMode] = useState(user.mustChangePassword ? "change" : "view");
-  const [newPass, setNewPass]   = useState("");
-  const [confirm, setConfirm]   = useState("");
-  const [err, setErr]           = useState("");
-  const [success, setSuccess]   = useState("");
-
-  const handleChange = () => {
-    if (newPass.length < 8) { setErr("Password must be at least 8 characters."); return; }
-    if (newPass !== confirm)  { setErr("Passwords do not match."); return; }
-    setErr("");
-    onPasswordChange(newPass);
-    setSuccess("Password updated successfully.");
-    setMode("view");
-    setNewPass(""); setConfirm("");
-  };
 
   return (
     <Modal title="Account Information" onClose={onClose}>
-      {user.mustChangePassword && mode !== "change" && (
-        <div className="first-login-banner">
-          ⚠ <strong>Action required:</strong> Please set a new password before continuing.
-          <button className="btn btn-orange btn-sm" style={{ marginLeft:"0.75rem" }} onClick={() => setMode("change")}>Set Password</button>
-        </div>
-      )}
-      {success && <div className="alert alert-green">{success}</div>}
-
-      {mode === "view" && (
-        <>
-          <div className="acct-field"><span className="acct-label">Name</span><strong>{user.name}</strong></div>
-          <div className="acct-field"><span className="acct-label">Rank</span>{user.rank}</div>
-          <div className="acct-field"><span className="acct-label">Role</span><span className="badge badge-orange">{user.role.replace("_"," ").toUpperCase()}</span></div>
-          <div className="acct-field"><span className="acct-label">Company</span>{user.company}</div>
-          <div className="acct-field"><span className="acct-label">Platoon</span>{user.platoon}</div>
-          <div className="acct-field"><span className="acct-label">Email</span><a href={"mailto:"+user.email} style={{ color:"#BF5700" }}>{user.email}</a></div>
-          <div className="acct-field"><span className="acct-label">Phone</span>{user.phone || "—"}</div>
-          <div style={{ marginTop:"1.25rem", display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
-            <button className="btn btn-outline" onClick={() => setMode("change")}>Change Password</button>
-            <button className="btn btn-orange" onClick={onClose}>Close</button>
-          </div>
-        </>
-      )}
-
-      {mode === "change" && (
-        <>
-          {err && <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>⚠ {err}</div>}
-          <div className="input-group">
-            <label className="input-label">New Password</label>
-            <input className="input" type="password" placeholder="At least 8 characters" value={newPass} onChange={e => setNewPass(e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label className="input-label">Confirm New Password</label>
-            <input className="input" type="password" placeholder="Re-enter password" value={confirm} onChange={e => setConfirm(e.target.value)} onKeyDown={e => e.key === "Enter" && handleChange()} />
-          </div>
-          <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end", marginTop:"0.5rem" }}>
-            {!user.mustChangePassword && <button className="btn btn-outline" onClick={() => { setMode("view"); setErr(""); }}>Cancel</button>}
-            <button className="btn btn-orange" onClick={handleChange}>Update Password</button>
-          </div>
-        </>
-      )}
-    </Modal>
-  );
-}
-
-// First-login forced password change overlay (blocks navigation until resolved)
-function FirstLoginGate({ onPasswordChange }) {
-  const [newPass, setNewPass]   = useState("");
-  const [confirm, setConfirm]   = useState("");
-  const [err, setErr]           = useState("");
-
-  const handle = () => {
-    if (newPass.length < 8) { setErr("Password must be at least 8 characters."); return; }
-    if (newPass !== confirm)  { setErr("Passwords do not match."); return; }
-    onPasswordChange(newPass);
-  };
-
-  return (
-    <div className="modal-bg">
-      <div className="modal">
-        <div className="modal-header">
-          <span className="modal-title">🔐 Set Your Password</span>
-        </div>
-        <div className="first-login-banner">
-          Your account was issued a temporary password. You must set a permanent password to continue.
-        </div>
-        {err && <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>⚠ {err}</div>}
-        <div className="input-group">
-          <label className="input-label">New Password</label>
-          <input className="input" type="password" placeholder="At least 8 characters" value={newPass} onChange={e => setNewPass(e.target.value)} />
-        </div>
-        <div className="input-group">
-          <label className="input-label">Confirm Password</label>
-          <input className="input" type="password" placeholder="Re-enter password" value={confirm} onChange={e => setConfirm(e.target.value)} onKeyDown={e => e.key === "Enter" && handle()} />
-        </div>
-        <button className="btn btn-orange" style={{ width:"100%", justifyContent:"center" }} onClick={handle}>Set Password & Continue →</button>
+      <div className="acct-field"><span className="acct-label">Name</span><strong>{user.name}</strong></div>
+      <div className="acct-field"><span className="acct-label">Rank</span>{user.rank}</div>
+      <div className="acct-field"><span className="acct-label">Role</span><span className="badge badge-orange">{user.role.replace("_"," ").toUpperCase()}</span></div>
+      <div className="acct-field"><span className="acct-label">Company</span>{user.company}</div>
+      <div className="acct-field"><span className="acct-label">Platoon</span>{user.platoon}</div>
+      <div className="acct-field"><span className="acct-label">Email</span><a href={"mailto:"+user.email} style={{ color:"#BF5700" }}>{user.email}</a></div>
+      <div className="acct-field"><span className="acct-label">Phone</span>{user.phone || "—"}</div>
+      <div style={{ marginTop:"1.25rem", display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
+        <a className="btn btn-outline" href="https://docs.google.com/forms/d/e/1FAIpQLSfNKcFJ1qBd6HTxpnBxTFOY8Y0N3YZ0DkTN6BYmMA9QaE3_0w/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer">Update My Info</a>
+        <button className="btn btn-orange" onClick={onClose}>Close</button>
       </div>
-    </div>
+    </Modal>
   );
 }
 
 // ─── PAGES ──────────────────────────────────────────────────
 
 function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
-  const [name, setName]         = useState("");
-  const [pass, setPass]         = useState("");
-  const [err, setErr]           = useState("");
-
-  // MFA state
-  const [mfaStep, setMfaStep]   = useState(false);   // true = showing code input
-  const [mfaUser, setMfaUser]   = useState(null);    // user object pending MFA
-  const [mfaCode, setMfaCode]   = useState("");
-  const [mfaLoading, setMfaLoading] = useState(false);
-  const [mfaInfo, setMfaInfo]   = useState("");       // non-error info message
+  const [name, setName] = useState("");
+  const [err, setErr]   = useState("");
 
   const hasRoster = userList.length > 0;
-  const locked = !sheetSynced; // block input until live sheet data arrives
+  const locked = !sheetSynced;
 
-  // ── Step 1: validate credentials → send MFA code ──────────────────────────
   const go = () => {
     if (locked) return;
     const q = name.trim().toLowerCase();
@@ -1112,89 +1015,9 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
       (u.eid && u.eid.toLowerCase() === q)
     );
     if (!user) { setErr("Name not found. Try your last name, email, or EID."); return; }
-    if (user.password !== pass.trim()) { setErr("Incorrect password. Contact ADJ if you need a reset."); return; }
-    if (!user.email) { setErr("No email on file. Contact ADJ to add your email before logging in."); return; }
-
     setErr("");
-    setMfaLoading(true);
-    fetch(SHEETS_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: user.email }),
-    })
-      .then(r => r.json())
-      .then(data => {
-        setMfaLoading(false);
-        if (data.ok) {
-          setMfaUser(user);
-          setMfaStep(true);
-          setMfaInfo("A 6-digit code was sent to " + user.email + ". It expires in 5 minutes.");
-        } else {
-          setErr(data.error || "Failed to send verification code. Try again.");
-        }
-      })
-      .catch(() => {
-        setMfaLoading(false);
-        setErr("Network error sending verification code. Check your connection.");
-      });
+    onLogin(user);
   };
-
-  // ── Step 2: verify MFA code → complete login ──────────────────────────────
-  const verifyCode = () => {
-    if (!mfaCode.trim()) { setErr("Enter the 6-digit code from your email."); return; }
-    setErr("");
-    setMfaLoading(true);
-    fetch(SHEETS_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "verifyMFA", email: mfaUser.email, code: mfaCode.trim() }),
-    })
-      .then(r => r.json())
-      .then(data => {
-        setMfaLoading(false);
-        if (data.ok) {
-          onLogin(mfaUser);
-        } else {
-          setErr(data.error || "Verification failed. Try again or request a new code.");
-        }
-      })
-      .catch(() => {
-        setMfaLoading(false);
-        setErr("Network error verifying code. Check your connection.");
-      });
-  };
-
-  // ── Resend code ───────────────────────────────────────────────────────────
-  const resendCode = () => {
-    setErr("");
-    setMfaCode("");
-    setMfaLoading(true);
-    fetch(SHEETS_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: mfaUser.email }),
-    })
-      .then(r => r.json())
-      .then(data => {
-        setMfaLoading(false);
-        if (data.ok) {
-          setMfaInfo("A new code was sent to " + mfaUser.email + ".");
-        } else {
-          setErr(data.error || "Failed to resend code.");
-        }
-      })
-      .catch(() => {
-        setMfaLoading(false);
-        setErr("Network error. Check your connection.");
-      });
-  };
-
-  // ── Shared card chrome ────────────────────────────────────────────────────
-  const banner = (msg, color) => (
-    <div style={{ background:`rgba(${color},0.1)`, border:`1.5px solid rgb(${color})`, borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:`rgb(${color})`, marginBottom:"0.9rem" }}>
-      {msg}
-    </div>
-  );
 
   return (
     <div className="login-wrap">
@@ -1204,132 +1027,59 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
           <div className="login-title">The <span>Quarterdeck</span></div>
         </div>
 
-        {!mfaStep ? (
-          <>
-            <div className="login-sub">Sign in with your battalion credentials</div>
+        <div className="login-sub">Sign in with your battalion credentials</div>
 
-            {!sheetSynced && !hasRoster && (
-              <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem", display:"flex", alignItems:"center", gap:"0.6rem" }}>
-                <span style={{ fontSize:"1.1rem" }}>⏳</span>
-                <span>Syncing roster from Google Sheets… please wait.</span>
-              </div>
-            )}
-            {!sheetSynced && hasRoster && (
-              <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem" }}>
-                ⏳ Pulling login details…
-              </div>
-            )}
-            {sheetSynced && sheetError && (
-              <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>
-                ⚠ Could not reach Google Sheets{hasRoster ? ". Using cached roster for now" : ""}. Check your connection and{" "}
-                <button onClick={onRetry} style={{ background:"none", border:"none", color:"#C0392B", fontWeight:700, textDecoration:"underline", cursor:"pointer", fontSize:"inherit", padding:0 }}>retry</button>.
-              </div>
-            )}
-
-            {err && banner("⚠ " + err, "192,57,43")}
-
-            <div className="input-group">
-              <label className="input-label" htmlFor="login-username">Last Name, Email, or EID</label>
-              <input
-                id="login-username"
-                name="username"
-                className="input"
-                autoComplete="username"
-                placeholder={locked ? "Waiting for roster sync…" : "Last name, email, or EID"}
-                value={name}
-                disabled={locked || mfaLoading}
-                style={(locked || mfaLoading) ? { opacity:0.45, cursor:"not-allowed" } : {}}
-                onChange={e => setName(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && go()}
-              />
-            </div>
-            <div className="input-group">
-              <label className="input-label" htmlFor="login-password">Password</label>
-              <input
-                id="login-password"
-                name="password"
-                className="input"
-                type="password"
-                autoComplete="current-password"
-                placeholder={locked ? "Waiting for roster sync…" : "Your password"}
-                value={pass}
-                disabled={locked || mfaLoading}
-                style={(locked || mfaLoading) ? { opacity:0.45, cursor:"not-allowed" } : {}}
-                onChange={e => setPass(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && go()}
-              />
-            </div>
-            <button
-              className="btn btn-orange"
-              style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:(locked || mfaLoading) ? 0.45 : 1, cursor:(locked || mfaLoading) ? "not-allowed" : "pointer", fontFamily:"'Barlow', 'Segoe UI', sans-serif", letterSpacing:"normal", textTransform:"none" }}
-              disabled={locked || mfaLoading}
-              onClick={go}
-            >
-              {mfaLoading ? "⏳ Sending code…" : locked ? "⏳ Syncing…" : "Sign In →"}
-            </button>
-
-            <div className="hint-box">
-              <strong>Username:</strong> your last name, full email, or EID.<br />
-              <strong>Password:</strong> use your provided password on first login.<br />
-              Contact ADJ if you need a password reset.
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="login-sub">Two-factor verification</div>
-
-            {mfaInfo && (
-              <div style={{ background:"rgba(39,174,96,0.1)", border:"1.5px solid #27AE60", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"#1e8449", marginBottom:"0.9rem" }}>
-                ✉ {mfaInfo}
-              </div>
-            )}
-            {err && banner("⚠ " + err, "192,57,43")}
-
-            <div className="input-group">
-              <label className="input-label" htmlFor="login-mfa">Verification Code</label>
-              <input
-                id="login-mfa"
-                name="mfa-code"
-                className="input"
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                placeholder="Enter 6-digit code"
-                value={mfaCode}
-                disabled={mfaLoading}
-                style={mfaLoading ? { opacity:0.45, cursor:"not-allowed" } : {}}
-                onChange={e => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                onKeyDown={e => e.key === "Enter" && verifyCode()}
-                autoFocus
-              />
-            </div>
-            <button
-              className="btn btn-orange"
-              style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:mfaLoading ? 0.45 : 1, cursor:mfaLoading ? "not-allowed" : "pointer", fontFamily:"'Barlow', 'Segoe UI', sans-serif", letterSpacing:"normal", textTransform:"none" }}
-              disabled={mfaLoading}
-              onClick={verifyCode}
-            >
-              {mfaLoading ? "⏳ Verifying…" : "Verify & Sign In →"}
-            </button>
-
-            <div style={{ display:"flex", justifyContent:"space-between", marginTop:"0.75rem", fontSize:"0.83rem" }}>
-              <button
-                onClick={() => { setMfaStep(false); setMfaUser(null); setMfaCode(""); setErr(""); setMfaInfo(""); }}
-                style={{ background:"none", border:"none", color:"#666", cursor:"pointer", padding:0, textDecoration:"underline" }}
-              >
-                ← Back
-              </button>
-              <button
-                onClick={resendCode}
-                disabled={mfaLoading}
-                style={{ background:"none", border:"none", color:"#BF5700", cursor:mfaLoading ? "not-allowed" : "pointer", padding:0, textDecoration:"underline", opacity:mfaLoading ? 0.45 : 1 }}
-              >
-                Resend code
-              </button>
-            </div>
-          </>
+        {!sheetSynced && !hasRoster && (
+          <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem", display:"flex", alignItems:"center", gap:"0.6rem" }}>
+            <span style={{ fontSize:"1.1rem" }}>⏳</span>
+            <span>Syncing roster from Google Sheets… please wait.</span>
+          </div>
         )}
+        {!sheetSynced && hasRoster && (
+          <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem" }}>
+            ⏳ Pulling login details…
+          </div>
+        )}
+        {sheetSynced && sheetError && (
+          <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>
+            ⚠ Could not reach Google Sheets{hasRoster ? ". Using cached roster for now" : ""}. Check your connection and{" "}
+            <button onClick={onRetry} style={{ background:"none", border:"none", color:"#C0392B", fontWeight:700, textDecoration:"underline", cursor:"pointer", fontSize:"inherit", padding:0 }}>retry</button>.
+          </div>
+        )}
+
+        {err && (
+          <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid rgb(192,57,43)", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"rgb(192,57,43)", marginBottom:"0.9rem" }}>
+            ⚠ {err}
+          </div>
+        )}
+
+        <div className="input-group">
+          <label className="input-label" htmlFor="login-username">Last Name, Email, or EID</label>
+          <input
+            id="login-username"
+            name="username"
+            className="input"
+            autoComplete="username"
+            placeholder={locked ? "Waiting for roster sync…" : "Last name, email, or EID"}
+            value={name}
+            disabled={locked}
+            style={locked ? { opacity:0.45, cursor:"not-allowed" } : {}}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && go()}
+          />
+        </div>
+        <button
+          className="btn btn-orange"
+          style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:locked ? 0.45 : 1, cursor:locked ? "not-allowed" : "pointer", fontFamily:"'Barlow', 'Segoe UI', sans-serif", letterSpacing:"normal", textTransform:"none" }}
+          disabled={locked}
+          onClick={go}
+        >
+          {locked ? "⏳ Syncing…" : "Sign In →"}
+        </button>
+
+        <div className="hint-box">
+          <strong>Username:</strong> your last name, full email, or EID.
+        </div>
       </div>
     </div>
   );
@@ -3009,10 +2759,6 @@ export default function App() {
     setUser(fresh);
   };
 
-  const handlePasswordChange = (newPassword) => {
-    setUser(prev => ({ ...prev, password: newPassword, mustChangePassword: false }));
-    setUserList(prev => prev.map(u => u.id === user.id ? { ...u, password: newPassword, mustChangePassword: false } : u));
-  };
 
   if (!user) {
     return (
@@ -3023,15 +2769,6 @@ export default function App() {
     );
   }
 
-  // Force password reset on first login before showing anything else
-  if (user.mustChangePassword) {
-    return (
-      <>
-        <style>{CSS}</style>
-        <FirstLoginGate onPasswordChange={handlePasswordChange} />
-      </>
-    );
-  }
 
   const renderPage = () => {
     if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} chits={chits} forms={forms} reminder={reminder} setReminder={setReminder} />;
@@ -3050,10 +2787,7 @@ export default function App() {
     <AuthContext.Provider value={{ user, setUser }}>
       <style>{CSS}</style>
       {showAccount && (
-        <AccountModal
-          onClose={() => setShowAccount(false)}
-          onPasswordChange={handlePasswordChange}
-        />
+        <AccountModal onClose={() => setShowAccount(false)} />
       )}
       <div>
         <header className="topbar">

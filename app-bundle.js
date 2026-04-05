@@ -7672,7 +7672,7 @@
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
       return parsed.every(
-        (user) => user && typeof user === "object" && Object.prototype.hasOwnProperty.call(user, "password")
+        (user) => user && typeof user === "object" && Object.prototype.hasOwnProperty.call(user, "name")
       ) ? parsed : [];
     } catch (err) {
       return [];
@@ -7743,14 +7743,12 @@
       role,
       company,
       platoon,
-      password: (row.password || "").trim(),
       email: (row.email || "").trim(),
       phone: (row.phone_number || row.phone || "").trim(),
       major: (row.major || "").trim(),
       campus: (row.campus || "").trim(),
       eid: (row.eid || "").trim(),
-      billet: billetRaw,
-      mustChangePassword: false
+      billet: billetRaw
     };
   }
   function canActOnFitrep(user, fitrep) {
@@ -7975,136 +7973,46 @@
       children
     ] }) });
   }
-  function AccountModal({ onClose, onPasswordChange }) {
+  function AccountModal({ onClose }) {
     const { user } = useAuth();
-    const [mode, setMode] = (0, import_react.useState)(user.mustChangePassword ? "change" : "view");
-    const [newPass, setNewPass] = (0, import_react.useState)("");
-    const [confirm, setConfirm] = (0, import_react.useState)("");
-    const [err, setErr] = (0, import_react.useState)("");
-    const [success, setSuccess] = (0, import_react.useState)("");
-    const handleChange = () => {
-      if (newPass.length < 8) {
-        setErr("Password must be at least 8 characters.");
-        return;
-      }
-      if (newPass !== confirm) {
-        setErr("Passwords do not match.");
-        return;
-      }
-      setErr("");
-      onPasswordChange(newPass);
-      setSuccess("Password updated successfully.");
-      setMode("view");
-      setNewPass("");
-      setConfirm("");
-    };
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Account Information", onClose, children: [
-      user.mustChangePassword && mode !== "change" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "first-login-banner", children: [
-        "\u26A0 ",
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Action required:" }),
-        " Please set a new password before continuing.",
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", style: { marginLeft: "0.75rem" }, onClick: () => setMode("change"), children: "Set Password" })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Name" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: user.name })
       ] }),
-      success && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "alert alert-green", children: success }),
-      mode === "view" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Name" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: user.name })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Rank" }),
-          user.rank
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Role" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-orange", children: user.role.replace("_", " ").toUpperCase() })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Company" }),
-          user.company
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Platoon" }),
-          user.platoon
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Email" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: "mailto:" + user.email, style: { color: "#BF5700" }, children: user.email })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Phone" }),
-          user.phone || "\u2014"
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.25rem", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => setMode("change"), children: "Change Password" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: onClose, children: "Close" })
-        ] })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Rank" }),
+        user.rank
       ] }),
-      mode === "change" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-        err && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(192,57,43,0.1)", border: "1.5px solid #C0392B", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: "#C0392B", marginBottom: "0.9rem" }, children: [
-          "\u26A0 ",
-          err
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "New Password" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "password", placeholder: "At least 8 characters", value: newPass, onChange: (e) => setNewPass(e.target.value) })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Confirm New Password" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "password", placeholder: "Re-enter password", value: confirm, onChange: (e) => setConfirm(e.target.value), onKeyDown: (e) => e.key === "Enter" && handleChange() })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "0.5rem" }, children: [
-          !user.mustChangePassword && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => {
-            setMode("view");
-            setErr("");
-          }, children: "Cancel" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: handleChange, children: "Update Password" })
-        ] })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Role" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-orange", children: user.role.replace("_", " ").toUpperCase() })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Company" }),
+        user.company
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Platoon" }),
+        user.platoon
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Email" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: "mailto:" + user.email, style: { color: "#BF5700" }, children: user.email })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Phone" }),
+        user.phone || "\u2014"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.25rem", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { className: "btn btn-outline", href: "https://docs.google.com/forms/d/e/1FAIpQLSfNKcFJ1qBd6HTxpnBxTFOY8Y0N3YZ0DkTN6BYmMA9QaE3_0w/viewform?usp=publish-editor", target: "_blank", rel: "noopener noreferrer", children: "Update My Info" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: onClose, children: "Close" })
       ] })
     ] });
   }
-  function FirstLoginGate({ onPasswordChange }) {
-    const [newPass, setNewPass] = (0, import_react.useState)("");
-    const [confirm, setConfirm] = (0, import_react.useState)("");
-    const [err, setErr] = (0, import_react.useState)("");
-    const handle = () => {
-      if (newPass.length < 8) {
-        setErr("Password must be at least 8 characters.");
-        return;
-      }
-      if (newPass !== confirm) {
-        setErr("Passwords do not match.");
-        return;
-      }
-      onPasswordChange(newPass);
-    };
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "modal-bg", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "modal-header", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "modal-title", children: "\u{1F510} Set Your Password" }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "first-login-banner", children: "Your account was issued a temporary password. You must set a permanent password to continue." }),
-      err && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(192,57,43,0.1)", border: "1.5px solid #C0392B", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: "#C0392B", marginBottom: "0.9rem" }, children: [
-        "\u26A0 ",
-        err
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "New Password" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "password", placeholder: "At least 8 characters", value: newPass, onChange: (e) => setNewPass(e.target.value) })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Confirm Password" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "password", placeholder: "Re-enter password", value: confirm, onChange: (e) => setConfirm(e.target.value), onKeyDown: (e) => e.key === "Enter" && handle() })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", style: { width: "100%", justifyContent: "center" }, onClick: handle, children: "Set Password & Continue \u2192" })
-    ] }) });
-  }
   function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
     const [name, setName] = (0, import_react.useState)("");
-    const [pass, setPass] = (0, import_react.useState)("");
     const [err, setErr] = (0, import_react.useState)("");
-    const [mfaStep, setMfaStep] = (0, import_react.useState)(false);
-    const [mfaUser, setMfaUser] = (0, import_react.useState)(null);
-    const [mfaCode, setMfaCode] = (0, import_react.useState)("");
-    const [mfaLoading, setMfaLoading] = (0, import_react.useState)(false);
-    const [mfaInfo, setMfaInfo] = (0, import_react.useState)("");
     const hasRoster = userList.length > 0;
     const locked = !sheetSynced;
     const go = () => {
@@ -8117,78 +8025,9 @@
         setErr("Name not found. Try your last name, email, or EID.");
         return;
       }
-      if (user.password !== pass.trim()) {
-        setErr("Incorrect password. Contact ADJ if you need a reset.");
-        return;
-      }
-      if (!user.email) {
-        setErr("No email on file. Contact ADJ to add your email before logging in.");
-        return;
-      }
       setErr("");
-      setMfaLoading(true);
-      fetch(SHEETS_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: user.email })
-      }).then((r) => r.json()).then((data) => {
-        setMfaLoading(false);
-        if (data.ok) {
-          setMfaUser(user);
-          setMfaStep(true);
-          setMfaInfo("A 6-digit code was sent to " + user.email + ". It expires in 5 minutes.");
-        } else {
-          setErr(data.error || "Failed to send verification code. Try again.");
-        }
-      }).catch(() => {
-        setMfaLoading(false);
-        setErr("Network error sending verification code. Check your connection.");
-      });
+      onLogin(user);
     };
-    const verifyCode = () => {
-      if (!mfaCode.trim()) {
-        setErr("Enter the 6-digit code from your email.");
-        return;
-      }
-      setErr("");
-      setMfaLoading(true);
-      fetch(SHEETS_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "verifyMFA", email: mfaUser.email, code: mfaCode.trim() })
-      }).then((r) => r.json()).then((data) => {
-        setMfaLoading(false);
-        if (data.ok) {
-          onLogin(mfaUser);
-        } else {
-          setErr(data.error || "Verification failed. Try again or request a new code.");
-        }
-      }).catch(() => {
-        setMfaLoading(false);
-        setErr("Network error verifying code. Check your connection.");
-      });
-    };
-    const resendCode = () => {
-      setErr("");
-      setMfaCode("");
-      setMfaLoading(true);
-      fetch(SHEETS_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: mfaUser.email })
-      }).then((r) => r.json()).then((data) => {
-        setMfaLoading(false);
-        if (data.ok) {
-          setMfaInfo("A new code was sent to " + mfaUser.email + ".");
-        } else {
-          setErr(data.error || "Failed to resend code.");
-        }
-      }).catch(() => {
-        setMfaLoading(false);
-        setErr("Network error. Check your connection.");
-      });
-    };
-    const banner = (msg, color) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: `rgba(${color},0.1)`, border: `1.5px solid rgb(${color})`, borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: `rgb(${color})`, marginBottom: "0.9rem" }, children: msg });
     return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-card", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-logo", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-mark", children: "UT" }),
@@ -8197,142 +8036,55 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Quarterdeck" })
         ] })
       ] }),
-      !mfaStep ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-sub", children: "Sign in with your battalion credentials" }),
-        !sheetSynced && !hasRoster && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(191,87,0,0.08)", border: "1.5px solid #BF5700", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#BF5700", marginBottom: "0.9rem", display: "flex", alignItems: "center", gap: "0.6rem" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "1.1rem" }, children: "\u23F3" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Syncing roster from Google Sheets\u2026 please wait." })
-        ] }),
-        !sheetSynced && hasRoster && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: "rgba(191,87,0,0.08)", border: "1.5px solid #BF5700", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#BF5700", marginBottom: "0.9rem" }, children: "\u23F3 Pulling login details\u2026" }),
-        sheetSynced && sheetError && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(192,57,43,0.1)", border: "1.5px solid #C0392B", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#C0392B", marginBottom: "0.9rem" }, children: [
-          "\u26A0 Could not reach Google Sheets",
-          hasRoster ? ". Using cached roster for now" : "",
-          ". Check your connection and",
-          " ",
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: onRetry, style: { background: "none", border: "none", color: "#C0392B", fontWeight: 700, textDecoration: "underline", cursor: "pointer", fontSize: "inherit", padding: 0 }, children: "retry" }),
-          "."
-        ] }),
-        err && banner("\u26A0 " + err, "192,57,43"),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", htmlFor: "login-username", children: "Last Name, Email, or EID" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "input",
-            {
-              id: "login-username",
-              name: "username",
-              className: "input",
-              autoComplete: "username",
-              placeholder: locked ? "Waiting for roster sync\u2026" : "Last name, email, or EID",
-              value: name,
-              disabled: locked || mfaLoading,
-              style: locked || mfaLoading ? { opacity: 0.45, cursor: "not-allowed" } : {},
-              onChange: (e) => setName(e.target.value),
-              onKeyDown: (e) => e.key === "Enter" && go()
-            }
-          )
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", htmlFor: "login-password", children: "Password" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "input",
-            {
-              id: "login-password",
-              name: "password",
-              className: "input",
-              type: "password",
-              autoComplete: "current-password",
-              placeholder: locked ? "Waiting for roster sync\u2026" : "Your password",
-              value: pass,
-              disabled: locked || mfaLoading,
-              style: locked || mfaLoading ? { opacity: 0.45, cursor: "not-allowed" } : {},
-              onChange: (e) => setPass(e.target.value),
-              onKeyDown: (e) => e.key === "Enter" && go()
-            }
-          )
-        ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-sub", children: "Sign in with your battalion credentials" }),
+      !sheetSynced && !hasRoster && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(191,87,0,0.08)", border: "1.5px solid #BF5700", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#BF5700", marginBottom: "0.9rem", display: "flex", alignItems: "center", gap: "0.6rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "1.1rem" }, children: "\u23F3" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Syncing roster from Google Sheets\u2026 please wait." })
+      ] }),
+      !sheetSynced && hasRoster && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: "rgba(191,87,0,0.08)", border: "1.5px solid #BF5700", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#BF5700", marginBottom: "0.9rem" }, children: "\u23F3 Pulling login details\u2026" }),
+      sheetSynced && sheetError && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(192,57,43,0.1)", border: "1.5px solid #C0392B", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#C0392B", marginBottom: "0.9rem" }, children: [
+        "\u26A0 Could not reach Google Sheets",
+        hasRoster ? ". Using cached roster for now" : "",
+        ". Check your connection and",
+        " ",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: onRetry, style: { background: "none", border: "none", color: "#C0392B", fontWeight: 700, textDecoration: "underline", cursor: "pointer", fontSize: "inherit", padding: 0 }, children: "retry" }),
+        "."
+      ] }),
+      err && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(192,57,43,0.1)", border: "1.5px solid rgb(192,57,43)", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: "rgb(192,57,43)", marginBottom: "0.9rem" }, children: [
+        "\u26A0 ",
+        err
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", htmlFor: "login-username", children: "Last Name, Email, or EID" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "button",
+          "input",
           {
-            className: "btn btn-orange",
-            style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: locked || mfaLoading ? 0.45 : 1, cursor: locked || mfaLoading ? "not-allowed" : "pointer", fontFamily: "'Barlow', 'Segoe UI', sans-serif", letterSpacing: "normal", textTransform: "none" },
-            disabled: locked || mfaLoading,
-            onClick: go,
-            children: mfaLoading ? "\u23F3 Sending code\u2026" : locked ? "\u23F3 Syncing\u2026" : "Sign In \u2192"
+            id: "login-username",
+            name: "username",
+            className: "input",
+            autoComplete: "username",
+            placeholder: locked ? "Waiting for roster sync\u2026" : "Last name, email, or EID",
+            value: name,
+            disabled: locked,
+            style: locked ? { opacity: 0.45, cursor: "not-allowed" } : {},
+            onChange: (e) => setName(e.target.value),
+            onKeyDown: (e) => e.key === "Enter" && go()
           }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "hint-box", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Username:" }),
-          " your last name, full email, or EID.",
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Password:" }),
-          " use your provided password on first login.",
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
-          "Contact ADJ if you need a password reset."
-        ] })
-      ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-sub", children: "Two-factor verification" }),
-        mfaInfo && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(39,174,96,0.1)", border: "1.5px solid #27AE60", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: "#1e8449", marginBottom: "0.9rem" }, children: [
-          "\u2709 ",
-          mfaInfo
-        ] }),
-        err && banner("\u26A0 " + err, "192,57,43"),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", htmlFor: "login-mfa", children: "Verification Code" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "input",
-            {
-              id: "login-mfa",
-              name: "mfa-code",
-              className: "input",
-              type: "text",
-              inputMode: "numeric",
-              autoComplete: "one-time-code",
-              maxLength: 6,
-              placeholder: "Enter 6-digit code",
-              value: mfaCode,
-              disabled: mfaLoading,
-              style: mfaLoading ? { opacity: 0.45, cursor: "not-allowed" } : {},
-              onChange: (e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6)),
-              onKeyDown: (e) => e.key === "Enter" && verifyCode(),
-              autoFocus: true
-            }
-          )
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "button",
-          {
-            className: "btn btn-orange",
-            style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: mfaLoading ? 0.45 : 1, cursor: mfaLoading ? "not-allowed" : "pointer", fontFamily: "'Barlow', 'Segoe UI', sans-serif", letterSpacing: "normal", textTransform: "none" },
-            disabled: mfaLoading,
-            onClick: verifyCode,
-            children: mfaLoading ? "\u23F3 Verifying\u2026" : "Verify & Sign In \u2192"
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginTop: "0.75rem", fontSize: "0.83rem" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "button",
-            {
-              onClick: () => {
-                setMfaStep(false);
-                setMfaUser(null);
-                setMfaCode("");
-                setErr("");
-                setMfaInfo("");
-              },
-              style: { background: "none", border: "none", color: "#666", cursor: "pointer", padding: 0, textDecoration: "underline" },
-              children: "\u2190 Back"
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "button",
-            {
-              onClick: resendCode,
-              disabled: mfaLoading,
-              style: { background: "none", border: "none", color: "#BF5700", cursor: mfaLoading ? "not-allowed" : "pointer", padding: 0, textDecoration: "underline", opacity: mfaLoading ? 0.45 : 1 },
-              children: "Resend code"
-            }
-          )
-        ] })
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "button",
+        {
+          className: "btn btn-orange",
+          style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: locked ? 0.45 : 1, cursor: locked ? "not-allowed" : "pointer", fontFamily: "'Barlow', 'Segoe UI', sans-serif", letterSpacing: "normal", textTransform: "none" },
+          disabled: locked,
+          onClick: go,
+          children: locked ? "\u23F3 Syncing\u2026" : "Sign In \u2192"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "hint-box", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Username:" }),
+        " your last name, full email, or EID."
       ] })
     ] }) });
   }
@@ -10009,20 +9761,10 @@
       const fresh = userList.find((u) => u.id === loggedInUser.id) || loggedInUser;
       setUser(fresh);
     };
-    const handlePasswordChange = (newPassword) => {
-      setUser((prev) => ({ ...prev, password: newPassword, mustChangePassword: false }));
-      setUserList((prev) => prev.map((u) => u.id === user.id ? { ...u, password: newPassword, mustChangePassword: false } : u));
-    };
     if (!user) {
       return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", { children: CSS }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(LoginPage, { onLogin: handleLogin, userList, sheetSynced, sheetError, onRetry: fetchRoster })
-      ] });
-    }
-    if (user.mustChangePassword) {
-      return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", { children: CSS }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FirstLoginGate, { onPasswordChange: handlePasswordChange })
       ] });
     }
     const renderPage = () => {
@@ -10039,13 +9781,7 @@
     };
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(AuthContext.Provider, { value: { user, setUser }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", { children: CSS }),
-      showAccount && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        AccountModal,
-        {
-          onClose: () => setShowAccount(false),
-          onPasswordChange: handlePasswordChange
-        }
-      ),
+      showAccount && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AccountModal, { onClose: () => setShowAccount(false) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "topbar", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center" }, children: [
