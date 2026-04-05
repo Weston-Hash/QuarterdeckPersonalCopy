@@ -2221,7 +2221,7 @@ function FormsPage({ forms, setForms }) {
   return (
     <div>
       <div className="page-title">Forms & <span>Links</span></div>
-      <div className="page-sub">Click a link to open the form — your status updates automatically</div>
+      <div className="page-sub">Battalion forms and links</div>
 
       {toast && <div className="alert alert-green">{toast}</div>}
 

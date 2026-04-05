@@ -9199,7 +9199,7 @@
         "Forms & ",
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Links" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-sub", children: "Click a link to open the form \u2014 your status updates automatically" }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-sub", children: "Battalion forms and links" }),
       toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "alert alert-green", children: toast }),
       canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: "+ Add Form" }) }),
       forms.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
