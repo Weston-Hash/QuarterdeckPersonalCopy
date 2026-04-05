@@ -1039,7 +1039,7 @@ const CSS = `
   .dark .stat { border-left-color:#BF5700; }
   .dark .page-title { color:#d4d4d8; }
   .dark .stat-l, .dark .event-sub, .dark .page-sub { color:#8b8b96; }
-  .dark .input { background:#1a1b23; border-color:#2a2b35; color:#d4d4d8; }
+  .dark .input { background:#1a1b23; border-color:#2a2b35; color:#d4d4d8; color-scheme:dark; }
   .dark .input:focus { border-color:#BF5700; }
   .dark .alert { background:rgba(191,87,0,0.12); border-color:#BF5700; color:#e8a065; }
   .dark .alert-green { background:rgba(42,125,79,0.15); border-color:#2A7D4F; color:#5cb882; }
@@ -1073,7 +1073,8 @@ const CSS = `
   .dark .tab-bar { border-bottom-color:#2a2b35; }
   .dark .pt-session-card { background:#1a1b23; border-color:#2a2b35; box-shadow:none; }
   .dark .pt-day-label { color:#d4d4d8; }
-  .dark .pt-empty-state { background:#15161e; border-color:#2a2b35; }
+  .dark .pt-empty-state { background:#15161e; border-color:#2a2b35; color:#8b8b96; }
+  .dark .pt-empty-state div { color:#8b8b96; }
   .dark .route-hint { background:#15161e; color:#8b8b96; }
   .dark .bn-leader-card { background:#15161e; }
   .dark .billet-card { background:#15161e; color:#d4d4d8; }
