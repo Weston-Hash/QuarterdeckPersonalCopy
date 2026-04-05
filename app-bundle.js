@@ -8257,11 +8257,26 @@
       ] })
     ] }) });
   }
-  function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
+  function Dashboard({ onNav, userList, chits, forms, reminder, setReminder, announcements, setAnnouncements }) {
     const { user } = useAuth();
     const canManageReminder = isBigFour(user);
     const [editingReminder, setEditingReminder] = (0, import_react.useState)(false);
     const [draftText, setDraftText] = (0, import_react.useState)(reminder.text);
+    const [draftAnnouncement, setDraftAnnouncement] = (0, import_react.useState)("");
+    const [showAnnouncementForm, setShowAnnouncementForm] = (0, import_react.useState)(false);
+    const postAnnouncement = () => {
+      const text = draftAnnouncement.trim();
+      if (!text) return;
+      const entry = { id: Date.now(), text, author: user.name, date: (/* @__PURE__ */ new Date()).toLocaleDateString() };
+      setAnnouncements((prev) => [entry, ...prev]);
+      setDraftAnnouncement("");
+      setShowAnnouncementForm(false);
+      const subject = "BN Announcement from " + user.name;
+      const body = text + "\n\n\u2014 " + user.name + ", UT NROTC Battalion";
+      userList.forEach((u) => {
+        if (u.email) sendNotification(u.email, subject, body);
+      });
+    };
     const liveEvents = useCalendarEvents();
     const upcomingEvents = liveEvents.length > 0 ? liveEvents : POTW.operations;
     const saveReminder = () => {
@@ -8314,6 +8329,40 @@
         setDraftText(reminder.text);
         setEditingReminder(true);
       }, children: reminder.enabled ? "\u270F Edit Reminder" : "+ Add Reminder" }) }),
+      announcements.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginBottom: "1rem" }, children: announcements.map((a) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "alert", style: { background: "rgba(13,27,42,0.07)", borderColor: "#0D1B2A", color: "#0D1B2A", marginBottom: "0.5rem", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "\u{1F4E2} Announcement:" }),
+          " ",
+          a.text,
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.75rem", opacity: 0.6, marginTop: "0.25rem" }, children: [
+            "\u2014 ",
+            a.author,
+            ", ",
+            a.date
+          ] })
+        ] }),
+        isBigFour(user) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", style: { marginLeft: "0.75rem", flexShrink: 0 }, onClick: () => setAnnouncements((prev) => prev.filter((x) => x.id !== a.id)), children: "\u2715" })
+      ] }, a.id)) }),
+      isBigFour(user) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginBottom: "1rem" }, children: showAnnouncementForm ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-action-label", children: "Post BN Announcement" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "textarea",
+          {
+            className: "input",
+            style: { minHeight: "60px", resize: "vertical", marginBottom: "0.5rem", fontSize: "0.85rem" },
+            placeholder: "Type announcement\u2026 this will be emailed to all BN members",
+            value: draftAnnouncement,
+            onChange: (e) => setDraftAnnouncement(e.target.value)
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: postAnnouncement, children: "Post & Email BN" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
+            setDraftAnnouncement("");
+            setShowAnnouncementForm(false);
+          }, children: "Cancel" })
+        ] })
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => setShowAnnouncementForm(true), children: "\u{1F4E2} Post Announcement" }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "grid3", style: { marginBottom: "1rem" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", children: userList.length }),
@@ -10028,6 +10077,7 @@ Please log in to The Quarterdeck to review and take action.
     const [user, setUser] = (0, import_react.useState)(null);
     const [page, setPage] = (0, import_react.useState)("dashboard");
     const [reminder, setReminder] = (0, import_react.useState)({ enabled: false, text: "" });
+    const [announcements, setAnnouncements] = (0, import_react.useState)([]);
     const [chits, setChits] = (0, import_react.useState)(INIT_CHITS);
     const [fitrebs, setFitrebs] = (0, import_react.useState)(INIT_FITREBS);
     const [showAccount, setShowAccount] = (0, import_react.useState)(false);
@@ -10082,7 +10132,7 @@ Please log in to The Quarterdeck to review and take action.
       ] });
     }
     const renderPage = () => {
-      if (page === "dashboard") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dashboard, { onNav: setPage, userList, chits, forms, reminder, setReminder });
+      if (page === "dashboard") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dashboard, { onNav: setPage, userList, chits, forms, reminder, setReminder, announcements, setAnnouncements });
       if (page === "calendar") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CalendarPage, {});
       if (page === "structure") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StructurePage, { userList });
       if (page === "training") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TrainingPage, { ptPlans, setPtPlans, llSessions, setLlSessions });

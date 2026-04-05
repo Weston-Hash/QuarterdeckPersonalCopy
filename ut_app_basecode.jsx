@@ -1262,11 +1262,28 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   );
 }
 
-function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
+function Dashboard({ onNav, userList, chits, forms, reminder, setReminder, announcements, setAnnouncements }) {
   const { user } = useAuth();
   const canManageReminder = isBigFour(user);
   const [editingReminder, setEditingReminder] = useState(false);
   const [draftText, setDraftText] = useState(reminder.text);
+  const [draftAnnouncement, setDraftAnnouncement] = useState("");
+  const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
+
+  const postAnnouncement = () => {
+    const text = draftAnnouncement.trim();
+    if (!text) return;
+    const entry = { id: Date.now(), text, author: user.name, date: new Date().toLocaleDateString() };
+    setAnnouncements(prev => [entry, ...prev]);
+    setDraftAnnouncement("");
+    setShowAnnouncementForm(false);
+    // Email all BN members
+    const subject = "BN Announcement from " + user.name;
+    const body = text + "\n\n— " + user.name + ", UT NROTC Battalion";
+    userList.forEach(u => {
+      if (u.email) sendNotification(u.email, subject, body);
+    });
+  };
   const liveEvents = useCalendarEvents();
   const upcomingEvents = liveEvents.length > 0 ? liveEvents : POTW.operations;
 
@@ -1310,6 +1327,45 @@ function Dashboard({ onNav, userList, chits, forms, reminder, setReminder }) {
             <button className="btn btn-outline btn-sm" onClick={() => { setDraftText(reminder.text); setEditingReminder(true); }}>
               {reminder.enabled ? "✏ Edit Reminder" : "+ Add Reminder"}
             </button>
+          )}
+        </div>
+      )}
+
+      {/* Announcements — visible to all; Big Four can post/delete */}
+      {announcements.length > 0 && (
+        <div style={{ marginBottom:"1rem" }}>
+          {announcements.map(a => (
+            <div key={a.id} className="alert" style={{ background:"rgba(13,27,42,0.07)", borderColor:"#0D1B2A", color:"#0D1B2A", marginBottom:"0.5rem", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+              <div>
+                <strong>📢 Announcement:</strong> {a.text}
+                <div style={{ fontSize:"0.75rem", opacity:0.6, marginTop:"0.25rem" }}>— {a.author}, {a.date}</div>
+              </div>
+              {isBigFour(user) && (
+                <button className="btn btn-red btn-sm" style={{ marginLeft:"0.75rem", flexShrink:0 }} onClick={() => setAnnouncements(prev => prev.filter(x => x.id !== a.id))}>✕</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {isBigFour(user) && (
+        <div style={{ marginBottom:"1rem" }}>
+          {showAnnouncementForm ? (
+            <div className="stage-action-box">
+              <div className="stage-action-label">Post BN Announcement</div>
+              <textarea
+                className="input"
+                style={{ minHeight:"60px", resize:"vertical", marginBottom:"0.5rem", fontSize:"0.85rem" }}
+                placeholder="Type announcement… this will be emailed to all BN members"
+                value={draftAnnouncement}
+                onChange={e => setDraftAnnouncement(e.target.value)}
+              />
+              <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                <button className="btn btn-green btn-sm" onClick={postAnnouncement}>Post &amp; Email BN</button>
+                <button className="btn btn-outline btn-sm" onClick={() => { setDraftAnnouncement(""); setShowAnnouncementForm(false); }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button className="btn btn-outline btn-sm" onClick={() => setShowAnnouncementForm(true)}>📢 Post Announcement</button>
           )}
         </div>
       )}
@@ -2987,6 +3043,7 @@ export default function App() {
   const [user, setUser]           = useState(null);
   const [page, setPage]           = useState("dashboard");
   const [reminder, setReminder]   = useState({ enabled: false, text: "" });
+  const [announcements, setAnnouncements] = useState([]);
   const [chits, setChits]         = useState(INIT_CHITS);
   const [fitrebs, setFitrebs]     = useState(INIT_FITREBS);
   const [showAccount, setShowAccount] = useState(false);
@@ -3049,7 +3106,7 @@ export default function App() {
 
 
   const renderPage = () => {
-    if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} chits={chits} forms={forms} reminder={reminder} setReminder={setReminder} />;
+    if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} chits={chits} forms={forms} reminder={reminder} setReminder={setReminder} announcements={announcements} setAnnouncements={setAnnouncements} />;
     if (page === "calendar")   return <CalendarPage />;
     if (page === "structure")  return <StructurePage userList={userList} />;
     if (page === "training")   return <TrainingPage ptPlans={ptPlans} setPtPlans={setPtPlans} llSessions={llSessions} setLlSessions={setLlSessions} />;
