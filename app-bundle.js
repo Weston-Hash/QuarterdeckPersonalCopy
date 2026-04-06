@@ -9019,6 +9019,10 @@
         fire("\u26A0 Start Date and Reason are required.");
         return;
       }
+      if (form.startDate < (/* @__PURE__ */ new Date()).toISOString().split("T")[0]) {
+        fire("\u26A0 Start date cannot be in the past.");
+        return;
+      }
       if (form.endDate && form.endDate <= form.startDate) {
         fire("\u26A0 Return date must be after the start date.");
         return;

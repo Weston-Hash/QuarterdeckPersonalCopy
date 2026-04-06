@@ -2074,6 +2074,9 @@ function ChitsPage({ chits, setChits, userList }) {
     if (!form.startDate || !form.reason) {
       fire("⚠ Start Date and Reason are required."); return;
     }
+    if (form.startDate < new Date().toISOString().split("T")[0]) {
+      fire("⚠ Start date cannot be in the past."); return;
+    }
     if (form.endDate && form.endDate <= form.startDate) {
       fire("⚠ Return date must be after the start date."); return;
     }
