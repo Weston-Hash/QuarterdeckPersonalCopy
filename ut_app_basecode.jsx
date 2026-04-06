@@ -352,20 +352,20 @@ function buildChitApprovalChain(userList, user, routeContext) {
 
   if (user.role === "adj") {
     chain.push(
-      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈️️️️"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
       makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
     );
   } else if (user.role === "co_cdr") {
     chain.push(
       makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈️️️️"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
       makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
     );
   } else if (user.role === "plt_cdr") {
     chain.push(
       makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
       makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈️️️️"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
       makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
     );
   } else {
@@ -373,7 +373,7 @@ function buildChitApprovalChain(userList, user, routeContext) {
       makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "👤"),
       makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
       makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈️️️️"),
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
       makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
     );
   }
@@ -399,7 +399,7 @@ function buildChitStages(submitterName, submittedAt, approvalChain) {
       completedAt:null,
       comment:"",
     })),
-    { name:"Complete", routeLabel:"", approverId:null, approverRole:null, approverName:"", icon:"🏅", completedBy:null, completedAt:null, comment:"" },
+    { name:"Complete", routeLabel:"", approverId:null, approverRole:null, approverName:"", icon:"✅", completedBy:null, completedAt:null, comment:"" },
   ];
 }
 
@@ -798,9 +798,9 @@ const FITREP_STAGES = [
   { name:"PC Review",      approverRole:"plt_cdr", icon:"👤" },
   { name:"Co CDR Review",  approverRole:"co_cdr",  icon:"⭐" },
   { name:"ADJ Review",     approverRole:"adj",     icon:"✏️" },
-  { name:"BNXO Review",    approverRole:"xo",      icon:"🥈️️️️" },
+  { name:"BNXO Review",    approverRole:"xo",      icon:"🥈" },
   { name:"BNCO Approval",  approverRole:"bn_cdr",  icon:"🥇" },
-  { name:"Complete",       approverRole:null,      icon:"🏅" },
+  { name:"Complete",       approverRole:null,      icon:"✅" },
 ];
 
 // Returns true if `user` is the designated approver for the fitrep's current stage.
@@ -2073,6 +2073,9 @@ function ChitsPage({ chits, setChits, userList }) {
     setChitSubmitAttempted(true);
     if (!form.startDate || !form.reason) {
       fire("⚠ Start Date and Reason are required."); return;
+    }
+    if (form.endDate && form.endDate <= form.startDate) {
+      fire("⚠ Return date must be after the start date."); return;
     }
     if (form.reason === "Other" && !form.notes.trim()) {
       fire("⚠ Notes are required when reason is 'Other'."); return;

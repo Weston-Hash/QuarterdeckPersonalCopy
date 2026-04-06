@@ -7492,29 +7492,29 @@
     const chain = [];
     if (user.role === "adj") {
       chain.push(
-        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F396}"),
-        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u2705")
+        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
+        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
       );
     } else if (user.role === "co_cdr") {
       chain.push(
         makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
-        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F396}"),
-        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u2705")
+        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
+        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
       );
     } else if (user.role === "plt_cdr") {
       chain.push(
         makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
         makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
-        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F396}"),
-        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u2705")
+        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
+        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
       );
     } else {
       chain.push(
         makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "\u{1F464}"),
         makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
         makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
-        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F396}"),
-        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u2705")
+        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
+        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
       );
     }
     return chain.length > 0 && chain.every((node) => node.approverId) ? chain : [];
@@ -7533,7 +7533,7 @@
         completedAt: null,
         comment: ""
       })),
-      { name: "Complete", routeLabel: "", approverId: null, approverRole: null, approverName: "", icon: "\u{1F3C5}", completedBy: null, completedAt: null, comment: "" }
+      { name: "Complete", routeLabel: "", approverId: null, approverRole: null, approverName: "", icon: "\u2705", completedBy: null, completedAt: null, comment: "" }
     ];
   }
   var DEFAULT_NOTIF_PREFS = {
@@ -9017,6 +9017,10 @@
       setChitSubmitAttempted(true);
       if (!form.startDate || !form.reason) {
         fire("\u26A0 Start Date and Reason are required.");
+        return;
+      }
+      if (form.endDate && form.endDate <= form.startDate) {
+        fire("\u26A0 Return date must be after the start date.");
         return;
       }
       if (form.reason === "Other" && !form.notes.trim()) {
