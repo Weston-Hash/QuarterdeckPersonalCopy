@@ -330,8 +330,8 @@ function doPost(e) {
 
   if (action === "sendMFA") {
     var map = getEmailNameMap();
-    var userName = map[email];
-    if (userName === undefined) {
+    var userName = (json.name || "").toString().trim() || map[email];
+    if (!userName && map[email] === undefined) {
       return jsonOut({ ok: false, error: "Email not found" });
     }
 

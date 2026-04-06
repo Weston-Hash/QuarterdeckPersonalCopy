@@ -8223,7 +8223,7 @@
       fetch(SHEETS_API_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: user.email })
+        body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: user.email, name: `${user.rank} ${user.name}` })
       }).then((r) => r.json()).then((data) => {
         setMfaLoading(false);
         if (data.ok) {
