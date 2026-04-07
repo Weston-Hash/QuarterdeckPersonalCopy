@@ -911,6 +911,7 @@ const CSS = `
   .input-label { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #6B6B6B; margin-bottom: 0.3rem; }
 
   .alert { background: rgba(191,87,0,0.08); border: 1.5px solid #BF5700; border-radius: 8px; padding: 0.65rem 1rem; font-size: 0.85rem; color: #8B3D00; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+  .alert-announce { background: rgba(13,27,42,0.07); border-color: #0D1B2A; color: #0D1B2A; }
   .alert-green { background: rgba(42,125,79,0.1); border-color: #2A7D4F; color: #2A7D4F; }
   .alert-red { background: rgba(192,57,43,0.1); border-color: #C0392B; color: #C0392B; }
   .privacy-note { background: rgba(13,27,42,0.05); border: 1.5px solid rgba(13,27,42,0.15); border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.82rem; color: #0D1B2A; margin-bottom: 1rem; }
@@ -1042,6 +1043,7 @@ const CSS = `
   .dark .input { background:#1a1b23; border-color:#2a2b35; color:#d4d4d8; color-scheme:dark; }
   .dark .input:focus { border-color:#BF5700; }
   .dark .alert { background:rgba(191,87,0,0.12); border-color:#BF5700; color:#e8a065; }
+  .dark .alert-announce { background:rgba(191,87,0,0.12); border-color:#BF5700; color:#d4d4d8; }
   .dark .alert-green { background:rgba(42,125,79,0.15); border-color:#2A7D4F; color:#5cb882; }
   .dark .alert-red { background:rgba(192,57,43,0.15); border-color:#C0392B; color:#e06050; }
   .dark .event-row { border-bottom-color:#2a2b35; }
@@ -1512,7 +1514,7 @@ function Dashboard({ onNav, userList, chits, fitrebs, forms, reminder, setRemind
       {announcements.length > 0 && (
         <div style={{ marginBottom:"1rem" }}>
           {announcements.map(a => (
-            <div key={a.id} className="alert" style={{ background:"rgba(13,27,42,0.07)", borderColor:"#0D1B2A", color:"#0D1B2A", marginBottom:"0.5rem", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+            <div key={a.id} className="alert alert-announce" style={{ marginBottom:"0.5rem", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
               <div>
                 <strong>📢 Announcement:</strong> {a.text}
                 <div style={{ fontSize:"0.75rem", opacity:0.6, marginTop:"0.25rem" }}>— {a.author}, {a.date}</div>
