@@ -8446,22 +8446,35 @@
     const [editingReminder, setEditingReminder] = (0, import_react.useState)(false);
     const [draftText, setDraftText] = (0, import_react.useState)(reminder.text);
     const [draftAnnouncement, setDraftAnnouncement] = (0, import_react.useState)("");
+    const [announcementFiles, setAnnouncementFiles] = (0, import_react.useState)([]);
     const [showAnnouncementForm, setShowAnnouncementForm] = (0, import_react.useState)(false);
     const [showResetConfirm, setShowResetConfirm] = (0, import_react.useState)(false);
     const [resetConfirmText, setResetConfirmText] = (0, import_react.useState)("");
     const myChits = chits.filter((c) => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
     const myFitreps = fitrebs.filter((f) => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Returned");
     const queueTotal = myChits.length + myFitreps.length;
+    const handleAnnouncementFiles = (e) => {
+      const files = Array.from(e.target.files);
+      files.forEach((file) => {
+        if (file.size > 10 * 1024 * 1024) return;
+        const reader = new FileReader();
+        reader.onload = () => setAnnouncementFiles((prev) => [...prev, { name: file.name, size: file.size, url: reader.result }]);
+        reader.readAsDataURL(file);
+      });
+      e.target.value = "";
+    };
     const postAnnouncement = () => {
       const text = draftAnnouncement.trim();
       if (!text) return;
       const announcerName = `${user.rank} ${user.name}`;
-      const entry = { id: Date.now(), text, author: announcerName, date: (/* @__PURE__ */ new Date()).toLocaleDateString() };
+      const entry = { id: Date.now(), text, author: announcerName, date: (/* @__PURE__ */ new Date()).toLocaleDateString(), files: announcementFiles };
       setAnnouncements((prev) => [entry, ...prev]);
       setDraftAnnouncement("");
+      setAnnouncementFiles([]);
       setShowAnnouncementForm(false);
       const subject = "BN Announcement from " + announcerName;
-      const body = text + "\n\n\u2014 " + announcerName + ", UT NROTC Battalion";
+      const fileNote = announcementFiles.length > 0 ? "\n\n\u{1F4CE} " + announcementFiles.length + " file(s) attached \u2014 view in The Quarterdeck." : "";
+      const body = text + fileNote + "\n\n\u2014 " + announcerName + ", UT NROTC Battalion";
       userList.forEach((u) => {
         if (u.email) sendNotification(u.email, subject, body, "announcement", u.id);
       });
@@ -8498,6 +8511,7 @@
             className: "input",
             style: { minHeight: "60px", resize: "vertical", marginBottom: "0.5rem", fontSize: "0.85rem" },
             placeholder: "Type reminder text\u2026 (leave blank to hide)",
+            maxLength: 500,
             value: draftText,
             onChange: (e) => setDraftText(e.target.value)
           }
@@ -8523,6 +8537,10 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "\u{1F4E2} Announcement:" }),
           " ",
           a.text,
+          a.files && a.files.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.4rem", display: "flex", flexWrap: "wrap", gap: "0.4rem" }, children: a.files.map((f, fi) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: f.url, download: f.name, className: "btn btn-outline btn-sm", style: { fontSize: "0.72rem", gap: "0.3rem" }, children: [
+            "\u{1F4CE} ",
+            f.name
+          ] }, fi)) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.75rem", opacity: 0.6, marginTop: "0.25rem" }, children: [
             "\u2014 ",
             a.author,
@@ -8540,14 +8558,28 @@
             className: "input",
             style: { minHeight: "60px", resize: "vertical", marginBottom: "0.5rem", fontSize: "0.85rem" },
             placeholder: "Type announcement\u2026 this will be emailed to all BN members",
+            maxLength: 2e3,
             value: draftAnnouncement,
             onChange: (e) => setDraftAnnouncement(e.target.value)
           }
         ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: "0.5rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer", display: "inline-flex", gap: "0.3rem" }, children: [
+            "\u{1F4CE} Attach Files",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", multiple: true, style: { display: "none" }, onChange: handleAnnouncementFiles })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.72rem", color: "#888", marginLeft: "0.5rem" }, children: "Max 10 MB per file" })
+        ] }),
+        announcementFiles.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", flexWrap: "wrap", gap: "0.35rem", marginBottom: "0.5rem" }, children: announcementFiles.map((f, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { display: "inline-flex", alignItems: "center", gap: "0.3rem", background: "rgba(191,87,0,0.08)", border: "1px solid rgba(191,87,0,0.2)", borderRadius: "4px", padding: "0.2rem 0.5rem", fontSize: "0.75rem" }, children: [
+          "\u{1F4CE} ",
+          f.name,
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { style: { background: "none", border: "none", cursor: "pointer", fontSize: "0.8rem", padding: 0, color: "#C0392B" }, onClick: () => setAnnouncementFiles((prev) => prev.filter((_, j) => j !== i)), children: "\u2715" })
+        ] }, i)) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: postAnnouncement, children: "Post & Email BN" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
             setDraftAnnouncement("");
+            setAnnouncementFiles([]);
             setShowAnnouncementForm(false);
           }, children: "Cancel" })
         ] })
@@ -9009,6 +9041,7 @@
                 {
                   className: "input",
                   style: { minHeight: "100px", resize: "vertical" },
+                  maxLength: 2e3,
                   value: llDraft.notes,
                   onChange: (e) => setLlDraft((d) => ({ ...d, notes: e.target.value }))
                 }
@@ -9051,6 +9084,7 @@
               {
                 className: "input",
                 style: { minHeight: "90px", resize: "vertical" },
+                maxLength: 2e3,
                 placeholder: "Equipment, uniform, location, objectives\u2026",
                 value: newLL.notes,
                 onChange: (e) => setNewLL((s) => ({ ...s, notes: e.target.value }))
@@ -9340,6 +9374,7 @@ Please log in to The Quarterdeck to review and take action.
               {
                 className: "input",
                 style: { minHeight: "70px", resize: "vertical", marginBottom: "0.65rem", fontSize: "0.85rem" },
+                maxLength: 1e3,
                 placeholder: "Add comments (optional)\u2026",
                 value: commentText,
                 onChange: (e) => setCommentText(e.target.value)
@@ -9474,7 +9509,7 @@ Please log in to The Quarterdeck to review and take action.
             "Notes ",
             form.reason === "Other" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" }) : "(optional)"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, value: form.notes, onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })), placeholder: form.reason === "Other" ? "Please explain the reason for your absence" : "" })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, maxLength: 1e3, value: form.notes, onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })), placeholder: form.reason === "Other" ? "Please explain the reason for your absence" : "" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.65rem" }, children: "Required Documents" }),
@@ -9834,6 +9869,7 @@ Please log in to The Quarterdeck to review and take action.
             {
               className: "input",
               style: { minHeight: "80px", resize: "vertical", marginBottom: "0.5rem" },
+              maxLength: 2e3,
               placeholder: "Write your answer\u2026",
               value: ansText,
               onChange: (e) => setAnsText(e.target.value)
@@ -9877,6 +9913,7 @@ Please log in to The Quarterdeck to review and take action.
             {
               className: "input",
               style: { minHeight: "100px", resize: "vertical" },
+              maxLength: 2e3,
               placeholder: "Be specific \u2014 include what you have already tried\u2026",
               value: newQ.text,
               onChange: (e) => setNewQ((s) => ({ ...s, text: e.target.value }))
@@ -10152,6 +10189,7 @@ Please log in to The Quarterdeck to review and take action.
                 {
                   className: "input",
                   style: { minHeight: "80px", resize: "vertical", marginBottom: "0.65rem", fontSize: "0.85rem" },
+                  maxLength: 1e3,
                   placeholder: "Add your comments (optional \u2014 describe performance, concerns, or recommendations)\u2026",
                   value: commentText,
                   onChange: (e) => setCommentText(e.target.value)
@@ -10285,7 +10323,7 @@ Please log in to The Quarterdeck to review and take action.
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Notes (optional)" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, value: submitForm.notes, onChange: (e) => setSubmitForm((s) => ({ ...s, notes: e.target.value })) })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, maxLength: 1e3, value: submitForm.notes, onChange: (e) => setSubmitForm((s) => ({ ...s, notes: e.target.value })) })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.65rem" }, children: "Required Documents" }),

@@ -1467,6 +1467,7 @@ function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, form
   const [editingReminder, setEditingReminder] = useState(false);
   const [draftText, setDraftText] = useState(reminder.text);
   const [draftAnnouncement, setDraftAnnouncement] = useState("");
+  const [announcementFiles, setAnnouncementFiles] = useState([]);
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
@@ -1476,17 +1477,30 @@ function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, form
   const myFitreps = fitrebs.filter(f => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Returned");
   const queueTotal = myChits.length + myFitreps.length;
 
+  const handleAnnouncementFiles = (e) => {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+      if (file.size > 10 * 1024 * 1024) return; // 10 MB limit per file
+      const reader = new FileReader();
+      reader.onload = () => setAnnouncementFiles(prev => [...prev, { name: file.name, size: file.size, url: reader.result }]);
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  };
+
   const postAnnouncement = () => {
     const text = draftAnnouncement.trim();
     if (!text) return;
     const announcerName = `${user.rank} ${user.name}`;
-    const entry = { id: Date.now(), text, author: announcerName, date: new Date().toLocaleDateString() };
+    const entry = { id: Date.now(), text, author: announcerName, date: new Date().toLocaleDateString(), files: announcementFiles };
     setAnnouncements(prev => [entry, ...prev]);
     setDraftAnnouncement("");
+    setAnnouncementFiles([]);
     setShowAnnouncementForm(false);
     // Email all BN members
     const subject = "BN Announcement from " + announcerName;
-    const body = text + "\n\n— " + announcerName + ", UT NROTC Battalion";
+    const fileNote = announcementFiles.length > 0 ? "\n\n📎 " + announcementFiles.length + " file(s) attached — view in The Quarterdeck." : "";
+    const body = text + fileNote + "\n\n— " + announcerName + ", UT NROTC Battalion";
     userList.forEach(u => {
       if (u.email) sendNotification(u.email, subject, body, "announcement", u.id);
     });
@@ -1519,6 +1533,7 @@ function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, form
                 className="input"
                 style={{ minHeight:"60px", resize:"vertical", marginBottom:"0.5rem", fontSize:"0.85rem" }}
                 placeholder="Type reminder text… (leave blank to hide)"
+                maxLength={500}
                 value={draftText}
                 onChange={e => setDraftText(e.target.value)}
               />
@@ -1545,6 +1560,15 @@ function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, form
             <div key={a.id} className="alert alert-announce" style={{ marginBottom:"0.5rem", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
               <div>
                 <strong>📢 Announcement:</strong> {a.text}
+                {a.files && a.files.length > 0 && (
+                  <div style={{ marginTop:"0.4rem", display:"flex", flexWrap:"wrap", gap:"0.4rem" }}>
+                    {a.files.map((f, fi) => (
+                      <a key={fi} href={f.url} download={f.name} className="btn btn-outline btn-sm" style={{ fontSize:"0.72rem", gap:"0.3rem" }}>
+                        📎 {f.name}
+                      </a>
+                    ))}
+                  </div>
+                )}
                 <div style={{ fontSize:"0.75rem", opacity:0.6, marginTop:"0.25rem" }}>— {a.author}, {a.date}</div>
               </div>
               {isBigFour(user) && (
@@ -1563,12 +1587,30 @@ function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, form
                 className="input"
                 style={{ minHeight:"60px", resize:"vertical", marginBottom:"0.5rem", fontSize:"0.85rem" }}
                 placeholder="Type announcement… this will be emailed to all BN members"
+                maxLength={2000}
                 value={draftAnnouncement}
                 onChange={e => setDraftAnnouncement(e.target.value)}
               />
+              <div style={{ marginBottom:"0.5rem" }}>
+                <label className="btn btn-outline btn-sm" style={{ cursor:"pointer", display:"inline-flex", gap:"0.3rem" }}>
+                  📎 Attach Files
+                  <input type="file" multiple style={{ display:"none" }} onChange={handleAnnouncementFiles} />
+                </label>
+                <span style={{ fontSize:"0.72rem", color:"#888", marginLeft:"0.5rem" }}>Max 10 MB per file</span>
+              </div>
+              {announcementFiles.length > 0 && (
+                <div style={{ display:"flex", flexWrap:"wrap", gap:"0.35rem", marginBottom:"0.5rem" }}>
+                  {announcementFiles.map((f, i) => (
+                    <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:"0.3rem", background:"rgba(191,87,0,0.08)", border:"1px solid rgba(191,87,0,0.2)", borderRadius:"4px", padding:"0.2rem 0.5rem", fontSize:"0.75rem" }}>
+                      📎 {f.name}
+                      <button style={{ background:"none", border:"none", cursor:"pointer", fontSize:"0.8rem", padding:0, color:"#C0392B" }} onClick={() => setAnnouncementFiles(prev => prev.filter((_, j) => j !== i))}>✕</button>
+                    </span>
+                  ))}
+                </div>
+              )}
               <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
                 <button className="btn btn-green btn-sm" onClick={postAnnouncement}>Post &amp; Email BN</button>
-                <button className="btn btn-outline btn-sm" onClick={() => { setDraftAnnouncement(""); setShowAnnouncementForm(false); }}>Cancel</button>
+                <button className="btn btn-outline btn-sm" onClick={() => { setDraftAnnouncement(""); setAnnouncementFiles([]); setShowAnnouncementForm(false); }}>Cancel</button>
               </div>
             </div>
           ) : (
@@ -2046,6 +2088,7 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
                     <label className="input-label">Notes</label>
                     <textarea
                       className="input" style={{ minHeight:"100px", resize:"vertical" }}
+                      maxLength={2000}
                       value={llDraft.notes}
                       onChange={e => setLlDraft(d => ({ ...d, notes:e.target.value }))}
                     />
@@ -2098,6 +2141,7 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
               <div className="input-group">
                 <label className="input-label">Notes</label>
                 <textarea className="input" style={{ minHeight:"90px", resize:"vertical" }}
+                  maxLength={2000}
                   placeholder="Equipment, uniform, location, objectives…"
                   value={newLL.notes} onChange={e => setNewLL(s => ({ ...s, notes:e.target.value }))}
                 />
@@ -2372,6 +2416,7 @@ function ChitsPage({ chits, setChits, userList }) {
                 <textarea
                   className="input"
                   style={{ minHeight:"70px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
+                  maxLength={1000}
                   placeholder="Add comments (optional)…"
                   value={commentText}
                   onChange={e => setCommentText(e.target.value)}
@@ -2499,7 +2544,7 @@ function ChitsPage({ chits, setChits, userList }) {
           </div>
           <div className="input-group">
             <label className="input-label">Notes {form.reason === "Other" ? <span style={{ color:"#C0392B" }}>*</span> : "(optional)"}</label>
-            <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} placeholder={form.reason === "Other" ? "Please explain the reason for your absence" : ""} />
+            <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} maxLength={1000} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} placeholder={form.reason === "Other" ? "Please explain the reason for your absence" : ""} />
           </div>
 
           {/* ── Required PDFs ── */}
@@ -2834,7 +2879,7 @@ function AcademicPage() {
           {ansFor === q.id && (
             <div style={{ marginTop:"0.75rem" }}>
               <textarea className="input" style={{ minHeight:"80px", resize:"vertical", marginBottom:"0.5rem" }}
-                placeholder="Write your answer…" value={ansText} onChange={e => setAnsText(e.target.value)} />
+                maxLength={2000} placeholder="Write your answer…" value={ansText} onChange={e => setAnsText(e.target.value)} />
               <button className="btn btn-orange btn-sm" onClick={() => postAns(q.id)}>Post Answer</button>
             </div>
           )}
@@ -2862,7 +2907,7 @@ function AcademicPage() {
           <div className="input-group">
             <label className="input-label">Your Question</label>
             <textarea className="input" style={{ minHeight:"100px", resize:"vertical" }}
-              placeholder="Be specific — include what you have already tried…"
+              maxLength={2000} placeholder="Be specific — include what you have already tried…"
               value={newQ.text} onChange={e => setNewQ(s => ({ ...s, text:e.target.value }))} />
           </div>
           <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
@@ -3124,6 +3169,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
                   <textarea
                     className="input"
                     style={{ minHeight:"80px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
+                    maxLength={1000}
                     placeholder="Add your comments (optional — describe performance, concerns, or recommendations)…"
                     value={commentText}
                     onChange={e => setCommentText(e.target.value)}
@@ -3252,7 +3298,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
           </div>
           <div className="input-group">
             <label className="input-label">Notes (optional)</label>
-            <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} value={submitForm.notes} onChange={e => setSubmitForm(s => ({ ...s, notes:e.target.value }))} />
+            <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} maxLength={1000} value={submitForm.notes} onChange={e => setSubmitForm(s => ({ ...s, notes:e.target.value }))} />
           </div>
 
           {/* ── Required PDFs ── */}
