@@ -8718,9 +8718,9 @@
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: billetsOpen ? "\u25B2" : "\u25BC" })
         ] }),
-        billetsOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "0.75rem 1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.5rem" }, children: billetHolders.map((u, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "billet-card", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontWeight: 600 }, children: fmt(u) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-orange", style: { fontSize: "0.68rem" }, children: getBilletLabel(u) })
+        billetsOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "0.75rem 1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }, children: billetHolders.map((u, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "bn-leader-card", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "1px", color: "#BF5700", fontWeight: 700 }, children: getBilletLabel(u) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.88rem", fontWeight: 600, marginTop: "0.15rem" }, children: fmt(u) })
         ] }, i)) }) })
       ] }),
       companies.map((co, ci) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-block", children: [
@@ -8753,7 +8753,7 @@
   function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
     const { user } = useAuth();
     const canUploadPT = canEdit(user, "pt");
-    const canEditLL = user.role === "traino";
+    const canEditLL = canEdit(user, "leadlab");
     const [tab, setTab] = (0, import_react.useState)("pt");
     const [toast, setToast] = (0, import_react.useState)("");
     const [editingLL, setEditingLL] = (0, import_react.useState)(null);
@@ -8828,7 +8828,7 @@
       tab === "pt" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
         canUploadPT && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "alert", children: [
           "\u270F ",
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "OPS / PTO \u2014 Upload Mode:" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Big 4 / PTO \u2014 Upload Mode:" }),
           " Use the buttons below to post this week's PT plan PDFs."
         ] }),
         PT_SESSIONS.map((s) => {
@@ -8897,7 +8897,7 @@
       ] }),
       tab === "leadlab" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
         canEditLL && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#BF5700" }, children: "\u270F TRAINO \u2014 you can add and edit sessions" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#BF5700" }, children: "\u270F Big 4 / TRAINO \u2014 you can add and edit sessions" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => setShowAddLL(true), children: "+ Add Session" })
         ] }),
         llSessions.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [

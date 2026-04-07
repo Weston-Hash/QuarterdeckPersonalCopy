@@ -1733,11 +1733,11 @@ function StructurePage({ userList }) {
         </div>
         {billetsOpen && (
           <div style={{ padding:"0.75rem 1rem" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))", gap:"0.5rem" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:"0.75rem" }}>
               {billetHolders.map((u, i) => (
-                <div key={i} className="billet-card">
-                  <span style={{ fontWeight:600 }}>{fmt(u)}</span>
-                  <span className="badge badge-orange" style={{ fontSize:"0.68rem" }}>{getBilletLabel(u)}</span>
+                <div key={i} className="bn-leader-card">
+                  <div style={{ fontSize:"0.68rem", textTransform:"uppercase", letterSpacing:"1px", color:"#BF5700", fontWeight:700 }}>{getBilletLabel(u)}</div>
+                  <div style={{ fontSize:"0.88rem", fontWeight:600, marginTop:"0.15rem" }}>{fmt(u)}</div>
                 </div>
               ))}
             </div>
@@ -1780,7 +1780,7 @@ function StructurePage({ userList }) {
 function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
   const { user } = useAuth();
   const canUploadPT = canEdit(user, "pt");     // OPS, PTO, and other seniors
-  const canEditLL   = user.role === "traino";  // TRAINO only for LL notes
+  const canEditLL   = canEdit(user, "leadlab"); // TRAINO + Big Four
 
   const [tab, setTab]           = useState("pt");
   const [toast, setToast]       = useState("");
@@ -1860,7 +1860,7 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
         <div>
           {canUploadPT && (
             <div className="alert">
-              ✏ <strong>OPS / PTO — Upload Mode:</strong> Use the buttons below to post this week's PT plan PDFs.
+              ✏ <strong>Big 4 / PTO — Upload Mode:</strong> Use the buttons below to post this week's PT plan PDFs.
             </div>
           )}
 
@@ -1933,7 +1933,7 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
           {canEditLL && (
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1rem", flexWrap:"wrap", gap:"0.5rem" }}>
               <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#BF5700" }}>
-                ✏ TRAINO — you can add and edit sessions
+                ✏ Big 4 / TRAINO — you can add and edit sessions
               </span>
               <button className="btn btn-orange btn-sm" onClick={() => setShowAddLL(true)}>+ Add Session</button>
             </div>
