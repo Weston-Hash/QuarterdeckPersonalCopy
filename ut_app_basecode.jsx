@@ -3372,7 +3372,7 @@ export default function App() {
   // Auto-logout after 15 minutes of inactivity
   useEffect(() => {
     if (!user) return;
-    const TIMEOUT = 15 * 60 * 1000;
+    const TIMEOUT = 5 * 60 * 1000;
     let timer = setTimeout(logout, TIMEOUT);
     const reset = () => { clearTimeout(timer); timer = setTimeout(logout, TIMEOUT); };
     const events = ["mousedown", "keydown", "touchstart", "scroll"];

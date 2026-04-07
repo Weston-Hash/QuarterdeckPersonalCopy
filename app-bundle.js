@@ -10407,7 +10407,7 @@ Please log in to The Quarterdeck to review and take action.
     }, []);
     (0, import_react.useEffect)(() => {
       if (!user) return;
-      const TIMEOUT = 15 * 60 * 1e3;
+      const TIMEOUT = 5 * 60 * 1e3;
       let timer = setTimeout(logout, TIMEOUT);
       const reset = () => {
         clearTimeout(timer);
