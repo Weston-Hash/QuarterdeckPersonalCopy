@@ -8074,7 +8074,7 @@
   .dark .pt-empty-state { background:#15161e; border-color:#2a2b35; color:#8b8b96; }
   .dark .pt-empty-state div { color:#8b8b96; }
   .dark .route-hint { background:#15161e; color:#8b8b96; }
-  .dark .bn-leader-card { background:#15161e; }
+  .dark .bn-leader-card { background:#15161e; color:#d4d4d8; }
   .dark .billet-card { background:#15161e; color:#d4d4d8; }
   .dark .platoon-detail { color:#d4d4d8; }
   .dark .platoon-name { color:#e8a065; }
