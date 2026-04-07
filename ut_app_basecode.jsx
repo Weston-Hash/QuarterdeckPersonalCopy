@@ -1223,10 +1223,11 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   const [mfaSentAt, setMfaSentAt] = useState(null);
   const [mfaExpired, setMfaExpired] = useState(false);
   const [mfaCountdown, setMfaCountdown] = useState(0);
+  const [mfaLocked, setMfaLocked] = useState(false);
 
-  // Countdown timer for MFA code expiry (5 min)
+  // Countdown timer for MFA code expiry (5 min) — hidden when locked out
   useEffect(() => {
-    if (!mfaSentAt) return;
+    if (!mfaSentAt || mfaLocked) return;
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((mfaSentAt + 5 * 60 * 1000 - Date.now()) / 1000));
       setMfaCountdown(remaining);
@@ -1235,10 +1236,45 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [mfaSentAt]);
+  }, [mfaSentAt, mfaLocked]);
 
   const hasRoster = userList.length > 0;
   const locked = !sheetSynced;
+
+  // Helper: detect lockout from server error messages
+  const checkLockout = (errorMsg) => {
+    if (errorMsg && /too many|locked/i.test(errorMsg)) {
+      setMfaLocked(true);
+      setMfaSentAt(null); // kill the countdown
+    }
+  };
+
+  // Helper: POST to Apps Script with retry on Google redirect failures
+  const apiPost = (payload) =>
+    fetch(SHEETS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(payload),
+    }).then(r => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    }).then(text => {
+      try { return JSON.parse(text); }
+      catch (e) { throw new Error("Invalid response from server"); }
+    });
+
+  // Reset all MFA state (used by Back button and logout)
+  const resetMfa = () => {
+    setMfaStep(false);
+    setMfaUser(null);
+    setMfaCode("");
+    setErr("");
+    setMfaInfo("");
+    setMfaSentAt(null);
+    setMfaExpired(false);
+    setMfaLocked(false);
+    setMfaCountdown(0);
+  };
 
   // Step 1: look up user → send MFA code
   const go = () => {
@@ -1255,12 +1291,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
 
     setErr("");
     setMfaLoading(true);
-    fetch(SHEETS_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: user.email, name: `${user.rank} ${user.name}` }),
-    })
-      .then(r => r.json())
+    apiPost({ token: SHEETS_API_TOKEN, action: "sendMFA", email: user.email, name: `${user.rank} ${user.name}` })
       .then(data => {
         setMfaLoading(false);
         if (data.ok) {
@@ -1268,34 +1299,32 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
           setMfaStep(true);
           setMfaSentAt(Date.now());
           setMfaExpired(false);
+          setMfaLocked(false);
           setMfaInfo("A 6-digit code was sent to " + user.email + ".");
         } else {
+          checkLockout(data.error);
           setErr(data.error || "Failed to send verification code. Try again.");
         }
       })
       .catch(() => {
         setMfaLoading(false);
-        setErr("Network error sending verification code. Check your connection.");
+        setErr("Network error sending verification code. Check your connection and try again.");
       });
   };
 
   // Step 2: verify MFA code
   const verifyCode = () => {
-    if (mfaExpired) { setErr("Code expired. Please request a new one."); return; }
+    if (mfaLocked || mfaExpired) return;
     if (!mfaCode.trim()) { setErr("Enter the 6-digit code from your email."); return; }
     setErr("");
     setMfaLoading(true);
-    fetch(SHEETS_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "verifyMFA", email: mfaUser.email, code: mfaCode.trim() }),
-    })
-      .then(r => r.json())
+    apiPost({ token: SHEETS_API_TOKEN, action: "verifyMFA", email: mfaUser.email, code: mfaCode.trim() })
       .then(data => {
         setMfaLoading(false);
         if (data.ok) {
           onLogin(mfaUser);
         } else {
+          checkLockout(data.error);
           setErr(data.error || "Verification failed. Try again or request a new code.");
         }
       })
@@ -1309,20 +1338,18 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   const resendCode = () => {
     setErr("");
     setMfaCode("");
+    setMfaLocked(false);
     setMfaLoading(true);
-    fetch(SHEETS_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: mfaUser.email }),
-    })
-      .then(r => r.json())
+    apiPost({ token: SHEETS_API_TOKEN, action: "sendMFA", email: mfaUser.email, name: `${mfaUser.rank} ${mfaUser.name}` })
       .then(data => {
         setMfaLoading(false);
         if (data.ok) {
           setMfaSentAt(Date.now());
           setMfaExpired(false);
+          setMfaLocked(false);
           setMfaInfo("A new code was sent to " + mfaUser.email + ".");
         } else {
+          checkLockout(data.error);
           setErr(data.error || "Failed to resend code.");
         }
       })
@@ -1337,6 +1364,9 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
       ⚠ {msg}
     </div>
   );
+
+  // Determine what the MFA step shows: locked, expired, or active
+  const mfaDisabled = mfaLocked || mfaExpired || mfaLoading;
 
   return (
     <div className="login-wrap">
@@ -1403,55 +1433,63 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
           <>
             <div className="login-sub">Email verification</div>
 
-            {mfaInfo && (
+            {/* Info banner: show countdown when active, nothing when locked */}
+            {!mfaLocked && mfaInfo && (
               <div style={{ background: mfaExpired ? "rgba(192,57,43,0.1)" : "rgba(39,174,96,0.1)", border: mfaExpired ? "1.5px solid #C0392B" : "1.5px solid #27AE60", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color: mfaExpired ? "#C0392B" : "#1e8449", marginBottom:"0.9rem" }}>
                 {mfaExpired ? "⚠ Code expired. Please request a new one below." : `✉ ${mfaInfo} Expires in ${Math.floor(mfaCountdown/60)}:${String(mfaCountdown%60).padStart(2,"0")}`}
               </div>
             )}
             {err && errorBanner(err)}
 
-            <div className="input-group">
-              <label className="input-label" htmlFor="login-mfa">Verification Code</label>
-              <input
-                id="login-mfa"
-                name="mfa-code"
-                className="input"
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                placeholder="Enter 6-digit code"
-                value={mfaCode}
-                disabled={mfaLoading}
-                style={mfaLoading ? { opacity:0.45, cursor:"not-allowed" } : {}}
-                onChange={e => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                onKeyDown={e => e.key === "Enter" && verifyCode()}
-                autoFocus
-              />
-            </div>
-            <button
-              className="btn btn-orange"
-              style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:(mfaLoading||mfaExpired) ? 0.45 : 1, cursor:(mfaLoading||mfaExpired) ? "not-allowed" : "pointer", fontFamily:"'Barlow', 'Segoe UI', sans-serif", letterSpacing:"normal", textTransform:"none" }}
-              disabled={mfaLoading||mfaExpired}
-              onClick={verifyCode}
-            >
-              {mfaLoading ? "⏳ Verifying…" : mfaExpired ? "Code Expired" : "Verify & Sign In →"}
-            </button>
+            {/* Hide code input + verify button when locked out */}
+            {!mfaLocked && (
+              <>
+                <div className="input-group">
+                  <label className="input-label" htmlFor="login-mfa">Verification Code</label>
+                  <input
+                    id="login-mfa"
+                    name="mfa-code"
+                    className="input"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    placeholder="Enter 6-digit code"
+                    value={mfaCode}
+                    disabled={mfaDisabled}
+                    style={mfaDisabled ? { opacity:0.45, cursor:"not-allowed" } : {}}
+                    onChange={e => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    onKeyDown={e => e.key === "Enter" && verifyCode()}
+                    autoFocus
+                  />
+                </div>
+                <button
+                  className="btn btn-orange"
+                  style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:mfaDisabled ? 0.45 : 1, cursor:mfaDisabled ? "not-allowed" : "pointer", fontFamily:"'Barlow', 'Segoe UI', sans-serif", letterSpacing:"normal", textTransform:"none" }}
+                  disabled={mfaDisabled}
+                  onClick={verifyCode}
+                >
+                  {mfaLoading ? "⏳ Verifying…" : mfaExpired ? "Code Expired" : "Verify & Sign In →"}
+                </button>
+              </>
+            )}
 
             <div style={{ display:"flex", justifyContent:"space-between", marginTop:"0.75rem", fontSize:"0.83rem" }}>
               <button
-                onClick={() => { setMfaStep(false); setMfaUser(null); setMfaCode(""); setErr(""); setMfaInfo(""); }}
+                onClick={resetMfa}
                 style={{ background:"none", border:"none", color:"#666", cursor:"pointer", padding:0, textDecoration:"underline" }}
               >
                 ← Back
               </button>
-              <button
-                onClick={resendCode}
-                disabled={mfaLoading}
-                style={{ background:"none", border:"none", color:"#BF5700", cursor:mfaLoading ? "not-allowed" : "pointer", padding:0, textDecoration:"underline", opacity:mfaLoading ? 0.45 : 1 }}
-              >
-                Resend code
-              </button>
+              {!mfaLocked && (
+                <button
+                  onClick={resendCode}
+                  disabled={mfaLoading}
+                  style={{ background:"none", border:"none", color:"#BF5700", cursor:mfaLoading ? "not-allowed" : "pointer", padding:0, textDecoration:"underline", opacity:mfaLoading ? 0.45 : 1 }}
+                >
+                  Resend code
+                </button>
+              )}
             </div>
           </>
         )}
@@ -2279,10 +2317,11 @@ function ChitsPage({ chits, setChits, userList }) {
         completedAt: new Date().toISOString().split("T")[0],
         comment,
       };
-      const next = action === "returned"
+      const next = (action === "returned" || action === "denied")
         ? c.currentStage
         : Math.min(c.currentStage + 1, c.stages.length - 1);
-      const status = action === "returned" ? "Returned"
+      const status = action === "denied" ? "Denied"
+        : action === "returned" ? "Returned"
         : next === c.stages.length - 1 ? "Approved"
         : "Pending";
       const docs = action === "approved" && reviewDoc
@@ -2293,8 +2332,18 @@ function ChitsPage({ chits, setChits, userList }) {
     // ── Email notifications ──
     if (chit) {
       const originatorEmail = getUserEmail(userList, chit.userId);
-      if (action === "returned") {
-        // Notify originator of rejection
+      if (action === "denied") {
+        // Notify originator of denial
+        clearApproval(id);
+        if (originatorEmail) {
+          sendNotification(originatorEmail,
+            `CHIT ${id} — Denied`,
+            `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has been denied by ${reviewerFullName}.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}— The Quarterdeck`,
+            "return", chit.userId
+          );
+        }
+      } else if (action === "returned") {
+        // Notify originator of return
         clearApproval(id);
         if (originatorEmail) {
           sendNotification(originatorEmail,
@@ -2433,7 +2482,8 @@ function ChitsPage({ chits, setChits, userList }) {
                 </div>
                 <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
                   <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
-                  <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return to Originator</button>
+                  <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return</button>
+                  <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "denied")}>✕ Deny</button>
                   <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); setReviewDoc(null); }}>Cancel</button>
                 </div>
               </>
@@ -3447,7 +3497,8 @@ export default function App() {
     return () => { clearTimeout(timer); events.forEach(e => window.removeEventListener(e, reset)); };
   }, [user]);
 
-  const logout = () => { try { window.sessionStorage.removeItem(ROSTER_CACHE_KEY); } catch(e) {} setUser(null); setPage("dashboard"); };
+  const [loginKey, setLoginKey] = useState(0);
+  const logout = () => { try { window.sessionStorage.removeItem(ROSTER_CACHE_KEY); } catch(e) {} setUser(null); setPage("dashboard"); setLoginKey(k => k + 1); };
 
   const handleLogin = (loggedInUser) => {
     // Sync with live userList in case Sheets data was fetched
@@ -3460,7 +3511,7 @@ export default function App() {
     return (
       <>
         <style>{CSS}</style>
-        <LoginPage onLogin={handleLogin} userList={userList} sheetSynced={sheetSynced} sheetError={sheetError} onRetry={fetchRoster} />
+        <LoginPage key={loginKey} onLogin={handleLogin} userList={userList} sheetSynced={sheetSynced} sheetError={sheetError} onRetry={fetchRoster} />
       </>
     );
   }

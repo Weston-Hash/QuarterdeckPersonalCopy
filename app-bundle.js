@@ -8213,8 +8213,9 @@
     const [mfaSentAt, setMfaSentAt] = (0, import_react.useState)(null);
     const [mfaExpired, setMfaExpired] = (0, import_react.useState)(false);
     const [mfaCountdown, setMfaCountdown] = (0, import_react.useState)(0);
+    const [mfaLocked, setMfaLocked] = (0, import_react.useState)(false);
     (0, import_react.useEffect)(() => {
-      if (!mfaSentAt) return;
+      if (!mfaSentAt || mfaLocked) return;
       const tick = () => {
         const remaining = Math.max(0, Math.ceil((mfaSentAt + 5 * 60 * 1e3 - Date.now()) / 1e3));
         setMfaCountdown(remaining);
@@ -8225,9 +8226,40 @@
       tick();
       const id = setInterval(tick, 1e3);
       return () => clearInterval(id);
-    }, [mfaSentAt]);
+    }, [mfaSentAt, mfaLocked]);
     const hasRoster = userList.length > 0;
     const locked = !sheetSynced;
+    const checkLockout = (errorMsg) => {
+      if (errorMsg && /too many|locked/i.test(errorMsg)) {
+        setMfaLocked(true);
+        setMfaSentAt(null);
+      }
+    };
+    const apiPost = (payload) => fetch(SHEETS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(payload)
+    }).then((r) => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    }).then((text) => {
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        throw new Error("Invalid response from server");
+      }
+    });
+    const resetMfa = () => {
+      setMfaStep(false);
+      setMfaUser(null);
+      setMfaCode("");
+      setErr("");
+      setMfaInfo("");
+      setMfaSentAt(null);
+      setMfaExpired(false);
+      setMfaLocked(false);
+      setMfaCountdown(0);
+    };
     const go = () => {
       if (locked) return;
       const q = name.trim().toLowerCase();
@@ -8244,46 +8276,38 @@
       }
       setErr("");
       setMfaLoading(true);
-      fetch(SHEETS_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: user.email, name: `${user.rank} ${user.name}` })
-      }).then((r) => r.json()).then((data) => {
+      apiPost({ token: SHEETS_API_TOKEN, action: "sendMFA", email: user.email, name: `${user.rank} ${user.name}` }).then((data) => {
         setMfaLoading(false);
         if (data.ok) {
           setMfaUser(user);
           setMfaStep(true);
           setMfaSentAt(Date.now());
           setMfaExpired(false);
+          setMfaLocked(false);
           setMfaInfo("A 6-digit code was sent to " + user.email + ".");
         } else {
+          checkLockout(data.error);
           setErr(data.error || "Failed to send verification code. Try again.");
         }
       }).catch(() => {
         setMfaLoading(false);
-        setErr("Network error sending verification code. Check your connection.");
+        setErr("Network error sending verification code. Check your connection and try again.");
       });
     };
     const verifyCode = () => {
-      if (mfaExpired) {
-        setErr("Code expired. Please request a new one.");
-        return;
-      }
+      if (mfaLocked || mfaExpired) return;
       if (!mfaCode.trim()) {
         setErr("Enter the 6-digit code from your email.");
         return;
       }
       setErr("");
       setMfaLoading(true);
-      fetch(SHEETS_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "verifyMFA", email: mfaUser.email, code: mfaCode.trim() })
-      }).then((r) => r.json()).then((data) => {
+      apiPost({ token: SHEETS_API_TOKEN, action: "verifyMFA", email: mfaUser.email, code: mfaCode.trim() }).then((data) => {
         setMfaLoading(false);
         if (data.ok) {
           onLogin(mfaUser);
         } else {
+          checkLockout(data.error);
           setErr(data.error || "Verification failed. Try again or request a new code.");
         }
       }).catch(() => {
@@ -8294,18 +8318,17 @@
     const resendCode = () => {
       setErr("");
       setMfaCode("");
+      setMfaLocked(false);
       setMfaLoading(true);
-      fetch(SHEETS_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "sendMFA", email: mfaUser.email })
-      }).then((r) => r.json()).then((data) => {
+      apiPost({ token: SHEETS_API_TOKEN, action: "sendMFA", email: mfaUser.email, name: `${mfaUser.rank} ${mfaUser.name}` }).then((data) => {
         setMfaLoading(false);
         if (data.ok) {
           setMfaSentAt(Date.now());
           setMfaExpired(false);
+          setMfaLocked(false);
           setMfaInfo("A new code was sent to " + mfaUser.email + ".");
         } else {
+          checkLockout(data.error);
           setErr(data.error || "Failed to resend code.");
         }
       }).catch(() => {
@@ -8317,6 +8340,7 @@
       "\u26A0 ",
       msg
     ] });
+    const mfaDisabled = mfaLocked || mfaExpired || mfaLoading;
     return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-card", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-logo", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-mark", children: "UT" }),
@@ -8377,56 +8401,52 @@
         ] })
       ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-sub", children: "Email verification" }),
-        mfaInfo && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: mfaExpired ? "rgba(192,57,43,0.1)" : "rgba(39,174,96,0.1)", border: mfaExpired ? "1.5px solid #C0392B" : "1.5px solid #27AE60", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: mfaExpired ? "#C0392B" : "#1e8449", marginBottom: "0.9rem" }, children: mfaExpired ? "\u26A0 Code expired. Please request a new one below." : `\u2709 ${mfaInfo} Expires in ${Math.floor(mfaCountdown / 60)}:${String(mfaCountdown % 60).padStart(2, "0")}` }),
+        !mfaLocked && mfaInfo && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: mfaExpired ? "rgba(192,57,43,0.1)" : "rgba(39,174,96,0.1)", border: mfaExpired ? "1.5px solid #C0392B" : "1.5px solid #27AE60", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: mfaExpired ? "#C0392B" : "#1e8449", marginBottom: "0.9rem" }, children: mfaExpired ? "\u26A0 Code expired. Please request a new one below." : `\u2709 ${mfaInfo} Expires in ${Math.floor(mfaCountdown / 60)}:${String(mfaCountdown % 60).padStart(2, "0")}` }),
         err && errorBanner(err),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", htmlFor: "login-mfa", children: "Verification Code" }),
+        !mfaLocked && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", htmlFor: "login-mfa", children: "Verification Code" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+              "input",
+              {
+                id: "login-mfa",
+                name: "mfa-code",
+                className: "input",
+                type: "text",
+                inputMode: "numeric",
+                autoComplete: "one-time-code",
+                maxLength: 6,
+                placeholder: "Enter 6-digit code",
+                value: mfaCode,
+                disabled: mfaDisabled,
+                style: mfaDisabled ? { opacity: 0.45, cursor: "not-allowed" } : {},
+                onChange: (e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6)),
+                onKeyDown: (e) => e.key === "Enter" && verifyCode(),
+                autoFocus: true
+              }
+            )
+          ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "input",
+            "button",
             {
-              id: "login-mfa",
-              name: "mfa-code",
-              className: "input",
-              type: "text",
-              inputMode: "numeric",
-              autoComplete: "one-time-code",
-              maxLength: 6,
-              placeholder: "Enter 6-digit code",
-              value: mfaCode,
-              disabled: mfaLoading,
-              style: mfaLoading ? { opacity: 0.45, cursor: "not-allowed" } : {},
-              onChange: (e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6)),
-              onKeyDown: (e) => e.key === "Enter" && verifyCode(),
-              autoFocus: true
+              className: "btn btn-orange",
+              style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: mfaDisabled ? 0.45 : 1, cursor: mfaDisabled ? "not-allowed" : "pointer", fontFamily: "'Barlow', 'Segoe UI', sans-serif", letterSpacing: "normal", textTransform: "none" },
+              disabled: mfaDisabled,
+              onClick: verifyCode,
+              children: mfaLoading ? "\u23F3 Verifying\u2026" : mfaExpired ? "Code Expired" : "Verify & Sign In \u2192"
             }
           )
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "button",
-          {
-            className: "btn btn-orange",
-            style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: mfaLoading || mfaExpired ? 0.45 : 1, cursor: mfaLoading || mfaExpired ? "not-allowed" : "pointer", fontFamily: "'Barlow', 'Segoe UI', sans-serif", letterSpacing: "normal", textTransform: "none" },
-            disabled: mfaLoading || mfaExpired,
-            onClick: verifyCode,
-            children: mfaLoading ? "\u23F3 Verifying\u2026" : mfaExpired ? "Code Expired" : "Verify & Sign In \u2192"
-          }
-        ),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginTop: "0.75rem", fontSize: "0.83rem" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             "button",
             {
-              onClick: () => {
-                setMfaStep(false);
-                setMfaUser(null);
-                setMfaCode("");
-                setErr("");
-                setMfaInfo("");
-              },
+              onClick: resetMfa,
               style: { background: "none", border: "none", color: "#666", cursor: "pointer", padding: 0, textDecoration: "underline" },
               children: "\u2190 Back"
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          !mfaLocked && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             "button",
             {
               onClick: resendCode,
@@ -9236,14 +9256,29 @@ Please log in to The Quarterdeck to review and take action.
           completedAt: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
           comment
         };
-        const next = action === "returned" ? c.currentStage : Math.min(c.currentStage + 1, c.stages.length - 1);
-        const status = action === "returned" ? "Returned" : next === c.stages.length - 1 ? "Approved" : "Pending";
+        const next = action === "returned" || action === "denied" ? c.currentStage : Math.min(c.currentStage + 1, c.stages.length - 1);
+        const status = action === "denied" ? "Denied" : action === "returned" ? "Returned" : next === c.stages.length - 1 ? "Approved" : "Pending";
         const docs = action === "approved" && reviewDoc ? { ...c.docs, routingSheet: reviewDoc } : c.docs;
         return { ...c, currentStage: next, stages: updated, status, docs };
       }));
       if (chit) {
         const originatorEmail = getUserEmail(userList, chit.userId);
-        if (action === "returned") {
+        if (action === "denied") {
+          clearApproval(id);
+          if (originatorEmail) {
+            sendNotification(
+              originatorEmail,
+              `CHIT ${id} \u2014 Denied`,
+              `Hello ${chit.name},
+
+Your CHIT (${id}) for "${chit.reason}" has been denied by ${reviewerFullName}.
+
+${comment ? "Comments: " + comment + "\n\n" : ""}\u2014 The Quarterdeck`,
+              "return",
+              chit.userId
+            );
+          }
+        } else if (action === "returned") {
           clearApproval(id);
           if (originatorEmail) {
             sendNotification(
@@ -9401,7 +9436,8 @@ Please log in to The Quarterdeck to review and take action.
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "approved"), children: "\u2713 Approve" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "returned"), children: "\u21A9 Return to Originator" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "returned"), children: "\u21A9 Return" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "denied"), children: "\u2715 Deny" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
                 setActiveComment(null);
                 setCommentText("");
@@ -10479,6 +10515,7 @@ Please log in to The Quarterdeck to review and take action.
         events.forEach((e) => window.removeEventListener(e, reset));
       };
     }, [user]);
+    const [loginKey, setLoginKey] = (0, import_react.useState)(0);
     const logout = () => {
       try {
         window.sessionStorage.removeItem(ROSTER_CACHE_KEY);
@@ -10486,6 +10523,7 @@ Please log in to The Quarterdeck to review and take action.
       }
       setUser(null);
       setPage("dashboard");
+      setLoginKey((k) => k + 1);
     };
     const handleLogin = (loggedInUser) => {
       const fresh = userList.find((u) => u.id === loggedInUser.id) || loggedInUser;
@@ -10494,7 +10532,7 @@ Please log in to The Quarterdeck to review and take action.
     if (!user) {
       return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("style", { children: CSS }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(LoginPage, { onLogin: handleLogin, userList, sheetSynced, sheetError, onRetry: fetchRoster })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(LoginPage, { onLogin: handleLogin, userList, sheetSynced, sheetError, onRetry: fetchRoster }, loginKey)
       ] });
     }
     const renderPage = () => {
