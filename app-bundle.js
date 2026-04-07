@@ -7729,8 +7729,8 @@
   var ROSTER_CACHE_KEY = "quarterdeck_roster_cache_v1";
   function loadCachedRoster() {
     try {
-      if (typeof window === "undefined" || !window.localStorage) return [];
-      const raw = window.localStorage.getItem(ROSTER_CACHE_KEY);
+      if (typeof window === "undefined" || !window.sessionStorage) return [];
+      const raw = window.sessionStorage.getItem(ROSTER_CACHE_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
@@ -7743,10 +7743,14 @@
   }
   function saveCachedRoster(users) {
     try {
-      if (typeof window === "undefined" || !window.localStorage || !Array.isArray(users)) return;
-      window.localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify(users));
+      if (typeof window === "undefined" || !window.sessionStorage || !Array.isArray(users)) return;
+      window.sessionStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify(users));
     } catch (err) {
     }
+  }
+  try {
+    window.localStorage.removeItem(ROSTER_CACHE_KEY);
+  } catch (e) {
   }
   var COMPANY_MAP = {
     "BN Staff": "BN",
@@ -8155,7 +8159,7 @@
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Email" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: "mailto:" + user.email, style: { color: "#BF5700" }, children: user.email })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: "mailto:" + encodeURIComponent(user.email), style: { color: "#BF5700" }, children: user.email })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Phone" }),
@@ -8414,13 +8418,16 @@
       ] })
     ] }) });
   }
-  function Dashboard({ onNav, userList, chits, fitrebs, forms, reminder, setReminder, announcements, setAnnouncements }) {
+  function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, forms, reminder, setReminder, announcements, setAnnouncements }) {
     const { user } = useAuth();
     const canManageReminder = isBigFour(user);
+    const canReset = isBigFour(user) || user.role === "adj";
     const [editingReminder, setEditingReminder] = (0, import_react.useState)(false);
     const [draftText, setDraftText] = (0, import_react.useState)(reminder.text);
     const [draftAnnouncement, setDraftAnnouncement] = (0, import_react.useState)("");
     const [showAnnouncementForm, setShowAnnouncementForm] = (0, import_react.useState)(false);
+    const [showResetConfirm, setShowResetConfirm] = (0, import_react.useState)(false);
+    const [resetConfirmText, setResetConfirmText] = (0, import_react.useState)("");
     const myChits = chits.filter((c) => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
     const myFitreps = fitrebs.filter((f) => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Returned");
     const queueTotal = myChits.length + myFitreps.length;
@@ -8626,6 +8633,60 @@
               " posted for your response."
             ] })
           ] })
+        ] })
+      ] }),
+      canReset && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", style: { marginTop: "1.5rem", borderLeft: "3px solid #C0392B" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "card-header", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "card-title", children: "\u26A0\uFE0F Semester Data Management" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.83rem", color: "#888", marginBottom: "0.75rem" }, children: "Clear all CHIT and FITREP records at the end of the semester. This action is permanent and cannot be undone." }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn", style: { background: "#C0392B", color: "white", fontSize: "0.82rem" }, onClick: () => setShowResetConfirm(true), children: "\u{1F5D1} Initialize Semester Reset" })
+      ] }),
+      showResetConfirm && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "\u26A0\uFE0F Confirm Semester Reset", onClose: () => {
+        setShowResetConfirm(false);
+        setResetConfirmText("");
+      }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: "0.75rem", fontSize: "0.88rem", color: "#C0392B", fontWeight: 600 }, children: [
+          "This will permanently delete ALL CHITs (",
+          chits.length,
+          ") and FITREPs (",
+          fitrebs.length,
+          ")."
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.85rem", marginBottom: "1rem" }, children: [
+          "Type ",
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "RESET" }),
+          " to confirm:"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "input",
+          {
+            className: "input",
+            placeholder: "Type RESET to confirm",
+            value: resetConfirmText,
+            onChange: (e) => setResetConfirmText(e.target.value),
+            style: { marginBottom: "1rem" }
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => {
+            setShowResetConfirm(false);
+            setResetConfirmText("");
+          }, children: "Cancel" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              className: "btn",
+              style: { background: resetConfirmText === "RESET" ? "#C0392B" : "#ccc", color: "white", cursor: resetConfirmText === "RESET" ? "pointer" : "not-allowed" },
+              disabled: resetConfirmText !== "RESET",
+              onClick: () => {
+                if (resetConfirmText !== "RESET") return;
+                setChits([]);
+                setFitrebs([]);
+                setShowResetConfirm(false);
+                setResetConfirmText("");
+              },
+              children: "Permanently Delete All Data"
+            }
+          )
         ] })
       ] })
     ] });
@@ -9504,7 +9565,7 @@ Please log in to The Quarterdeck to review and take action.
               "\u{1F4DE} ",
               p.phone
             ] }) }),
-            p.email && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: "mailto:" + p.email, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-navy btn-sm", children: "\u2709 Email" }) })
+            p.email && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: "mailto:" + encodeURIComponent(p.email), children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-navy btn-sm", children: "\u2709 Email" }) })
           ] })
         ] }, i))
       ] })
@@ -10344,6 +10405,29 @@ Please log in to The Quarterdeck to review and take action.
     (0, import_react.useEffect)(() => {
       fetchRoster();
     }, []);
+    (0, import_react.useEffect)(() => {
+      if (!user) return;
+      const TIMEOUT = 15 * 60 * 1e3;
+      let timer = setTimeout(logout, TIMEOUT);
+      const reset = () => {
+        clearTimeout(timer);
+        timer = setTimeout(logout, TIMEOUT);
+      };
+      const events = ["mousedown", "keydown", "touchstart", "scroll"];
+      events.forEach((e) => window.addEventListener(e, reset));
+      return () => {
+        clearTimeout(timer);
+        events.forEach((e) => window.removeEventListener(e, reset));
+      };
+    }, [user]);
+    const logout = () => {
+      try {
+        window.sessionStorage.removeItem(ROSTER_CACHE_KEY);
+      } catch (e) {
+      }
+      setUser(null);
+      setPage("dashboard");
+    };
     const handleLogin = (loggedInUser) => {
       const fresh = userList.find((u) => u.id === loggedInUser.id) || loggedInUser;
       setUser(fresh);
@@ -10355,7 +10439,7 @@ Please log in to The Quarterdeck to review and take action.
       ] });
     }
     const renderPage = () => {
-      if (page === "dashboard") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dashboard, { onNav: setPage, userList, chits, fitrebs, forms, reminder, setReminder, announcements, setAnnouncements });
+      if (page === "dashboard") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dashboard, { onNav: setPage, userList, chits, setChits, fitrebs, setFitrebs, forms, reminder, setReminder, announcements, setAnnouncements });
       if (page === "calendar") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CalendarPage, {});
       if (page === "structure") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StructurePage, { userList });
       if (page === "training") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TrainingPage, { ptPlans, setPtPlans, llSessions, setLlSessions });
@@ -10392,10 +10476,7 @@ Please log in to The Quarterdeck to review and take action.
                 ]
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn-logout", onClick: () => {
-              setUser(null);
-              setPage("dashboard");
-            }, children: "Sign Out" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn-logout", onClick: logout, children: "Sign Out" })
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "layout", children: [

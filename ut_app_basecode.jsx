@@ -675,8 +675,8 @@ const ROSTER_CACHE_KEY = "quarterdeck_roster_cache_v1";
 
 function loadCachedRoster() {
   try {
-    if (typeof window === "undefined" || !window.localStorage) return [];
-    const raw = window.localStorage.getItem(ROSTER_CACHE_KEY);
+    if (typeof window === "undefined" || !window.sessionStorage) return [];
+    const raw = window.sessionStorage.getItem(ROSTER_CACHE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -692,12 +692,14 @@ function loadCachedRoster() {
 
 function saveCachedRoster(users) {
   try {
-    if (typeof window === "undefined" || !window.localStorage || !Array.isArray(users)) return;
-    window.localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify(users));
+    if (typeof window === "undefined" || !window.sessionStorage || !Array.isArray(users)) return;
+    window.sessionStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify(users));
   } catch (err) {
     // Ignore cache write failures; live data still works.
   }
 }
+// Remove legacy localStorage roster cache (migrated to sessionStorage for PII safety)
+try { window.localStorage.removeItem(ROSTER_CACHE_KEY); } catch(e) {}
 const SHEET_ONLY_MODE  = true;
 
 // Sheet row 1 must be a header row with these exact names (any column order):
@@ -1158,7 +1160,7 @@ function AccountModal({ onClose, darkMode, toggleDark }) {
       <div className="acct-field"><span className="acct-label">Role</span><span className="badge badge-orange">{displayRole(user.role)}</span></div>
       <div className="acct-field"><span className="acct-label">Company</span>{user.company}</div>
       <div className="acct-field"><span className="acct-label">Platoon</span>{user.platoon}</div>
-      <div className="acct-field"><span className="acct-label">Email</span><a href={"mailto:"+user.email} style={{ color:"#BF5700" }}>{user.email}</a></div>
+      <div className="acct-field"><span className="acct-label">Email</span><a href={"mailto:"+encodeURIComponent(user.email)} style={{ color:"#BF5700" }}>{user.email}</a></div>
       <div className="acct-field"><span className="acct-label">Phone</span>{user.phone || "—"}</div>
 
       {showNotifSettings && (
@@ -1437,13 +1439,16 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   );
 }
 
-function Dashboard({ onNav, userList, chits, fitrebs, forms, reminder, setReminder, announcements, setAnnouncements }) {
+function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, forms, reminder, setReminder, announcements, setAnnouncements }) {
   const { user } = useAuth();
   const canManageReminder = isBigFour(user);
+  const canReset = isBigFour(user) || user.role === "adj";
   const [editingReminder, setEditingReminder] = useState(false);
   const [draftText, setDraftText] = useState(reminder.text);
   const [draftAnnouncement, setDraftAnnouncement] = useState("");
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
 
   // My Queue: count CHITs/FITREPs awaiting this user's action
   const myChits = chits.filter(c => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
@@ -1619,6 +1624,56 @@ function Dashboard({ onNav, userList, chits, fitrebs, forms, reminder, setRemind
           </div>
         </div>
       </div>
+
+      {/* Semester Reset — ADJ + Big Four only */}
+      {canReset && (
+        <div className="card" style={{ marginTop:"1.5rem", borderLeft:"3px solid #C0392B" }}>
+          <div className="card-header">
+            <span className="card-title">⚠️ Semester Data Management</span>
+          </div>
+          <div style={{ fontSize:"0.83rem", color:"#888", marginBottom:"0.75rem" }}>
+            Clear all CHIT and FITREP records at the end of the semester. This action is permanent and cannot be undone.
+          </div>
+          <button className="btn" style={{ background:"#C0392B", color:"white", fontSize:"0.82rem" }} onClick={() => setShowResetConfirm(true)}>
+            🗑 Initialize Semester Reset
+          </button>
+        </div>
+      )}
+
+      {showResetConfirm && (
+        <Modal title="⚠️ Confirm Semester Reset" onClose={() => { setShowResetConfirm(false); setResetConfirmText(""); }}>
+          <div style={{ marginBottom:"0.75rem", fontSize:"0.88rem", color:"#C0392B", fontWeight:600 }}>
+            This will permanently delete ALL CHITs ({chits.length}) and FITREPs ({fitrebs.length}).
+          </div>
+          <div style={{ fontSize:"0.85rem", marginBottom:"1rem" }}>
+            Type <strong>RESET</strong> to confirm:
+          </div>
+          <input
+            className="input"
+            placeholder="Type RESET to confirm"
+            value={resetConfirmText}
+            onChange={e => setResetConfirmText(e.target.value)}
+            style={{ marginBottom:"1rem" }}
+          />
+          <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
+            <button className="btn btn-outline" onClick={() => { setShowResetConfirm(false); setResetConfirmText(""); }}>Cancel</button>
+            <button
+              className="btn"
+              style={{ background: resetConfirmText === "RESET" ? "#C0392B" : "#ccc", color:"white", cursor: resetConfirmText === "RESET" ? "pointer" : "not-allowed" }}
+              disabled={resetConfirmText !== "RESET"}
+              onClick={() => {
+                if (resetConfirmText !== "RESET") return;
+                setChits([]);
+                setFitrebs([]);
+                setShowResetConfirm(false);
+                setResetConfirmText("");
+              }}
+            >
+              Permanently Delete All Data
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -2524,7 +2579,7 @@ function RosterPage({ userList }) {
             </div>
             <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginLeft:"auto" }}>
               {p.phone && <a href={"tel:" + p.phone}><button className="btn btn-outline btn-sm">📞 {p.phone}</button></a>}
-              {p.email && <a href={"mailto:" + p.email}><button className="btn btn-navy btn-sm">✉ Email</button></a>}
+              {p.email && <a href={"mailto:" + encodeURIComponent(p.email)}><button className="btn btn-navy btn-sm">✉ Email</button></a>}
             </div>
           </div>
         ))}
@@ -3314,6 +3369,19 @@ export default function App() {
   // Fetch roster from private Google Sheet via Apps Script on mount
   useEffect(() => { fetchRoster(); }, []);
 
+  // Auto-logout after 15 minutes of inactivity
+  useEffect(() => {
+    if (!user) return;
+    const TIMEOUT = 15 * 60 * 1000;
+    let timer = setTimeout(logout, TIMEOUT);
+    const reset = () => { clearTimeout(timer); timer = setTimeout(logout, TIMEOUT); };
+    const events = ["mousedown", "keydown", "touchstart", "scroll"];
+    events.forEach(e => window.addEventListener(e, reset));
+    return () => { clearTimeout(timer); events.forEach(e => window.removeEventListener(e, reset)); };
+  }, [user]);
+
+  const logout = () => { try { window.sessionStorage.removeItem(ROSTER_CACHE_KEY); } catch(e) {} setUser(null); setPage("dashboard"); };
+
   const handleLogin = (loggedInUser) => {
     // Sync with live userList in case Sheets data was fetched
     const fresh = userList.find(u => u.id === loggedInUser.id) || loggedInUser;
@@ -3332,7 +3400,7 @@ export default function App() {
 
 
   const renderPage = () => {
-    if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} chits={chits} fitrebs={fitrebs} forms={forms} reminder={reminder} setReminder={setReminder} announcements={announcements} setAnnouncements={setAnnouncements} />;
+    if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} chits={chits} setChits={setChits} fitrebs={fitrebs} setFitrebs={setFitrebs} forms={forms} reminder={reminder} setReminder={setReminder} announcements={announcements} setAnnouncements={setAnnouncements} />;
     if (page === "calendar")   return <CalendarPage />;
     if (page === "structure")  return <StructurePage userList={userList} />;
     if (page === "training")   return <TrainingPage ptPlans={ptPlans} setPtPlans={setPtPlans} llSessions={llSessions} setLlSessions={setLlSessions} />;
@@ -3366,7 +3434,7 @@ export default function App() {
               <span style={{ color:"#ccc", fontSize:"0.85rem" }}>{user.name.split(",")[0]}</span>
               {(isCoC(user) || getBilletLabel(user)) && <span className="role-pill">{isCoC(user) ? displayRole(user.role) : getBilletLabel(user)}</span>}
             </div>
-            <button className="btn-logout" onClick={() => { setUser(null); setPage("dashboard"); }}>Sign Out</button>
+            <button className="btn-logout" onClick={logout}>Sign Out</button>
           </div>
         </header>
 
