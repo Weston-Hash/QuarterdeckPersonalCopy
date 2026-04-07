@@ -8210,6 +8210,22 @@
     const [mfaCode, setMfaCode] = (0, import_react.useState)("");
     const [mfaLoading, setMfaLoading] = (0, import_react.useState)(false);
     const [mfaInfo, setMfaInfo] = (0, import_react.useState)("");
+    const [mfaSentAt, setMfaSentAt] = (0, import_react.useState)(null);
+    const [mfaExpired, setMfaExpired] = (0, import_react.useState)(false);
+    const [mfaCountdown, setMfaCountdown] = (0, import_react.useState)(0);
+    (0, import_react.useEffect)(() => {
+      if (!mfaSentAt) return;
+      const tick = () => {
+        const remaining = Math.max(0, Math.ceil((mfaSentAt + 5 * 60 * 1e3 - Date.now()) / 1e3));
+        setMfaCountdown(remaining);
+        if (remaining <= 0) {
+          setMfaExpired(true);
+        }
+      };
+      tick();
+      const id = setInterval(tick, 1e3);
+      return () => clearInterval(id);
+    }, [mfaSentAt]);
     const hasRoster = userList.length > 0;
     const locked = !sheetSynced;
     const go = () => {
@@ -8237,7 +8253,9 @@
         if (data.ok) {
           setMfaUser(user);
           setMfaStep(true);
-          setMfaInfo("A 6-digit code was sent to " + user.email + ". It expires in 5 minutes.");
+          setMfaSentAt(Date.now());
+          setMfaExpired(false);
+          setMfaInfo("A 6-digit code was sent to " + user.email + ".");
         } else {
           setErr(data.error || "Failed to send verification code. Try again.");
         }
@@ -8247,6 +8265,10 @@
       });
     };
     const verifyCode = () => {
+      if (mfaExpired) {
+        setErr("Code expired. Please request a new one.");
+        return;
+      }
       if (!mfaCode.trim()) {
         setErr("Enter the 6-digit code from your email.");
         return;
@@ -8280,6 +8302,8 @@
       }).then((r) => r.json()).then((data) => {
         setMfaLoading(false);
         if (data.ok) {
+          setMfaSentAt(Date.now());
+          setMfaExpired(false);
           setMfaInfo("A new code was sent to " + mfaUser.email + ".");
         } else {
           setErr(data.error || "Failed to resend code.");
@@ -8353,10 +8377,7 @@
         ] })
       ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-sub", children: "Email verification" }),
-        mfaInfo && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(39,174,96,0.1)", border: "1.5px solid #27AE60", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: "#1e8449", marginBottom: "0.9rem" }, children: [
-          "\u2709 ",
-          mfaInfo
-        ] }),
+        mfaInfo && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: mfaExpired ? "rgba(192,57,43,0.1)" : "rgba(39,174,96,0.1)", border: mfaExpired ? "1.5px solid #C0392B" : "1.5px solid #27AE60", borderRadius: "6px", padding: "0.55rem 0.9rem", fontSize: "0.84rem", color: mfaExpired ? "#C0392B" : "#1e8449", marginBottom: "0.9rem" }, children: mfaExpired ? "\u26A0 Code expired. Please request a new one below." : `\u2709 ${mfaInfo} Expires in ${Math.floor(mfaCountdown / 60)}:${String(mfaCountdown % 60).padStart(2, "0")}` }),
         err && errorBanner(err),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", htmlFor: "login-mfa", children: "Verification Code" }),
@@ -8384,10 +8405,10 @@
           "button",
           {
             className: "btn btn-orange",
-            style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: mfaLoading ? 0.45 : 1, cursor: mfaLoading ? "not-allowed" : "pointer", fontFamily: "'Barlow', 'Segoe UI', sans-serif", letterSpacing: "normal", textTransform: "none" },
-            disabled: mfaLoading,
+            style: { width: "100%", justifyContent: "center", marginTop: "0.25rem", opacity: mfaLoading || mfaExpired ? 0.45 : 1, cursor: mfaLoading || mfaExpired ? "not-allowed" : "pointer", fontFamily: "'Barlow', 'Segoe UI', sans-serif", letterSpacing: "normal", textTransform: "none" },
+            disabled: mfaLoading || mfaExpired,
             onClick: verifyCode,
-            children: mfaLoading ? "\u23F3 Verifying\u2026" : "Verify & Sign In \u2192"
+            children: mfaLoading ? "\u23F3 Verifying\u2026" : mfaExpired ? "Code Expired" : "Verify & Sign In \u2192"
           }
         ),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginTop: "0.75rem", fontSize: "0.83rem" }, children: [

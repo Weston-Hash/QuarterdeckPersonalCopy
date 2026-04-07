@@ -1220,6 +1220,22 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
   const [mfaCode, setMfaCode]     = useState("");
   const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaInfo, setMfaInfo]     = useState("");
+  const [mfaSentAt, setMfaSentAt] = useState(null);
+  const [mfaExpired, setMfaExpired] = useState(false);
+  const [mfaCountdown, setMfaCountdown] = useState(0);
+
+  // Countdown timer for MFA code expiry (5 min)
+  useEffect(() => {
+    if (!mfaSentAt) return;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((mfaSentAt + 5 * 60 * 1000 - Date.now()) / 1000));
+      setMfaCountdown(remaining);
+      if (remaining <= 0) { setMfaExpired(true); }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [mfaSentAt]);
 
   const hasRoster = userList.length > 0;
   const locked = !sheetSynced;
@@ -1250,7 +1266,9 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
         if (data.ok) {
           setMfaUser(user);
           setMfaStep(true);
-          setMfaInfo("A 6-digit code was sent to " + user.email + ". It expires in 5 minutes.");
+          setMfaSentAt(Date.now());
+          setMfaExpired(false);
+          setMfaInfo("A 6-digit code was sent to " + user.email + ".");
         } else {
           setErr(data.error || "Failed to send verification code. Try again.");
         }
@@ -1263,6 +1281,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
 
   // Step 2: verify MFA code
   const verifyCode = () => {
+    if (mfaExpired) { setErr("Code expired. Please request a new one."); return; }
     if (!mfaCode.trim()) { setErr("Enter the 6-digit code from your email."); return; }
     setErr("");
     setMfaLoading(true);
@@ -1300,6 +1319,8 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
       .then(data => {
         setMfaLoading(false);
         if (data.ok) {
+          setMfaSentAt(Date.now());
+          setMfaExpired(false);
           setMfaInfo("A new code was sent to " + mfaUser.email + ".");
         } else {
           setErr(data.error || "Failed to resend code.");
@@ -1383,8 +1404,8 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
             <div className="login-sub">Email verification</div>
 
             {mfaInfo && (
-              <div style={{ background:"rgba(39,174,96,0.1)", border:"1.5px solid #27AE60", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color:"#1e8449", marginBottom:"0.9rem" }}>
-                ✉ {mfaInfo}
+              <div style={{ background: mfaExpired ? "rgba(192,57,43,0.1)" : "rgba(39,174,96,0.1)", border: mfaExpired ? "1.5px solid #C0392B" : "1.5px solid #27AE60", borderRadius:"6px", padding:"0.55rem 0.9rem", fontSize:"0.84rem", color: mfaExpired ? "#C0392B" : "#1e8449", marginBottom:"0.9rem" }}>
+                {mfaExpired ? "⚠ Code expired. Please request a new one below." : `✉ ${mfaInfo} Expires in ${Math.floor(mfaCountdown/60)}:${String(mfaCountdown%60).padStart(2,"0")}`}
               </div>
             )}
             {err && errorBanner(err)}
@@ -1410,11 +1431,11 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
             </div>
             <button
               className="btn btn-orange"
-              style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:mfaLoading ? 0.45 : 1, cursor:mfaLoading ? "not-allowed" : "pointer", fontFamily:"'Barlow', 'Segoe UI', sans-serif", letterSpacing:"normal", textTransform:"none" }}
-              disabled={mfaLoading}
+              style={{ width:"100%", justifyContent:"center", marginTop:"0.25rem", opacity:(mfaLoading||mfaExpired) ? 0.45 : 1, cursor:(mfaLoading||mfaExpired) ? "not-allowed" : "pointer", fontFamily:"'Barlow', 'Segoe UI', sans-serif", letterSpacing:"normal", textTransform:"none" }}
+              disabled={mfaLoading||mfaExpired}
               onClick={verifyCode}
             >
-              {mfaLoading ? "⏳ Verifying…" : "Verify & Sign In →"}
+              {mfaLoading ? "⏳ Verifying…" : mfaExpired ? "Code Expired" : "Verify & Sign In →"}
             </button>
 
             <div style={{ display:"flex", justifyContent:"space-between", marginTop:"0.75rem", fontSize:"0.83rem" }}>

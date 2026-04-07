@@ -2,6 +2,9 @@ const SECRET_TOKEN = "UT_NROTC";
 const SHEET_NAME = "MASTER WEBSITE";
 
 const MFA_EXPIRY_MS = 5 * 60 * 1000;
+const MFA_MAX_ATTEMPTS = 5;
+const MFA_LOCKOUT_MS = 15 * 60 * 1000; // 15 min lockout after max attempts
+const VALID_ACTIONS = ["refreshCache", "notify", "trackApproval", "clearApproval", "sendMFA", "verifyMFA"];
 
 const CACHE_TTL_USERS = 300;      // 5 min
 const CACHE_TTL_ROSTER = 21600;   // 6 hr
@@ -153,6 +156,43 @@ function readActiveMfaRecords_(props, propKey) {
   return active;
 }
 
+// ─── MFA Rate Limiting ──────────────────────────────────────────────────────
+function getMfaAttempts_(props, email) {
+  var key = "mfa_attempts_" + email;
+  var raw = props.getProperty(key);
+  if (!raw) return { count: 0, firstAt: 0 };
+  try { return JSON.parse(raw); } catch (e) { return { count: 0, firstAt: 0 }; }
+}
+
+function recordMfaFailure_(props, email) {
+  var key = "mfa_attempts_" + email;
+  var attempts = getMfaAttempts_(props, email);
+  var now = Date.now();
+  // Reset if lockout window has passed
+  if (attempts.firstAt && (now - attempts.firstAt) > MFA_LOCKOUT_MS) {
+    attempts = { count: 0, firstAt: 0 };
+  }
+  attempts.count++;
+  if (!attempts.firstAt) attempts.firstAt = now;
+  props.setProperty(key, JSON.stringify(attempts));
+  return attempts;
+}
+
+function clearMfaAttempts_(props, email) {
+  props.deleteProperty("mfa_attempts_" + email);
+}
+
+function isMfaLocked_(props, email) {
+  var attempts = getMfaAttempts_(props, email);
+  if (attempts.count < MFA_MAX_ATTEMPTS) return false;
+  // Check if lockout window has passed
+  if ((Date.now() - attempts.firstAt) > MFA_LOCKOUT_MS) {
+    clearMfaAttempts_(props, email);
+    return false;
+  }
+  return true;
+}
+
 // ─── Pending Approval Tracking (for reminder emails) ────────────────────────
 // Stored in PropertiesService as JSON under key "qd_pending_approvals"
 // Each entry: { id, type, approverEmail, approverName, submitterName, createdAt }
@@ -265,6 +305,11 @@ function doPost(e) {
 
   var action = json.action || "";
 
+  // Validate action against whitelist
+  if (VALID_ACTIONS.indexOf(action) === -1) {
+    return jsonOut({ ok: false, error: "Invalid action" });
+  }
+
   if (action === "refreshCache") {
     clearCaches();
     getCachedUsersJson_();
@@ -329,6 +374,11 @@ function doPost(e) {
   var propKey = "mfa_" + email;
 
   if (action === "sendMFA") {
+    // Check if email is locked out from too many failed attempts
+    if (isMfaLocked_(props, email)) {
+      return jsonOut({ ok: false, error: "Too many failed attempts. Try again in 15 minutes." });
+    }
+
     var map = getEmailNameMap();
     var userName = (json.name || "").toString().trim() || map[email];
     if (!userName && map[email] === undefined) {
@@ -353,6 +403,11 @@ function doPost(e) {
   }
 
   if (action === "verifyMFA") {
+    // Check lockout before allowing verification
+    if (isMfaLocked_(props, email)) {
+      return jsonOut({ ok: false, error: "Too many failed attempts. Try again in 15 minutes." });
+    }
+
     var inputCode = (json.code || "").toString().trim();
     var records = readActiveMfaRecords_(props, propKey);
 
@@ -364,10 +419,18 @@ function doPost(e) {
       return inputCode === record.code;
     });
     if (!matched) {
-      return jsonOut({ ok: false, error: "Incorrect code." });
+      var attempts = recordMfaFailure_(props, email);
+      var remaining = MFA_MAX_ATTEMPTS - attempts.count;
+      if (remaining <= 0) {
+        props.deleteProperty(propKey); // Clear codes on lockout
+        return jsonOut({ ok: false, error: "Too many failed attempts. Account locked for 15 minutes." });
+      }
+      return jsonOut({ ok: false, error: "Incorrect code. " + remaining + " attempt" + (remaining !== 1 ? "s" : "") + " remaining." });
     }
 
+    // Success — clear codes and reset attempt counter
     props.deleteProperty(propKey);
+    clearMfaAttempts_(props, email);
     return jsonOut({ ok: true });
   }
 
