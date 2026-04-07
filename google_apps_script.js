@@ -292,6 +292,7 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  try {
   var json;
   try {
     json = JSON.parse(e.postData.contents);
@@ -435,4 +436,7 @@ function doPost(e) {
   }
 
   return jsonOut({ ok: false, error: "Unknown action" });
+  } catch (outerErr) {
+    return jsonOut({ ok: false, error: "Server error: " + outerErr.message });
+  }
 }
