@@ -7292,6 +7292,8 @@
   var isSenior = (u) => u && SENIOR_ROLES.includes(u.role);
   var isCoC = (u) => u && [...SENIOR_ROLES, "co_cdr", "plt_cdr", "adj"].includes(u.role);
   var isBigFour = (u) => normalizeCompany(u?.company) === "BN" && ["bn_cdr", "xo", "ops", "sel"].includes(u?.role);
+  var ROLE_DISPLAY = { bn_cdr: "BNCO", xo: "BNXO", ops: "OPS", sel: "SEL", co_cdr: "CC", plt_cdr: "PC", adj: "ADJ" };
+  var displayRole = (role) => ROLE_DISPLAY[role] || role.replace("_", " ").toUpperCase();
   function canEdit(user, section) {
     if (!user) return false;
     if (isSenior(user)) return true;
@@ -8141,7 +8143,7 @@
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Role" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-orange", children: user.role.replace("_", " ").toUpperCase() })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-orange", children: displayRole(user.role) })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "acct-field", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "acct-label", children: "Company" }),
@@ -10386,7 +10388,7 @@ Please log in to The Quarterdeck to review and take action.
                 children: [
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "rank-pill", children: user.rank.split(" ")[0] || user.rank }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#ccc", fontSize: "0.85rem" }, children: user.name.split(",")[0] }),
-                  (isCoC(user) || getBilletLabel(user)) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "role-pill", children: isCoC(user) ? user.role.replace("_", " ") : getBilletLabel(user) })
+                  (isCoC(user) || getBilletLabel(user)) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "role-pill", children: isCoC(user) ? displayRole(user.role) : getBilletLabel(user) })
                 ]
               }
             ),
@@ -10413,7 +10415,7 @@ Please log in to The Quarterdeck to review and take action.
               " \xB7 ",
               user.platoon,
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("br", {}),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#F7941D" }, children: user.role.replace("_", " ").toUpperCase() })
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#F7941D" }, children: displayRole(user.role) })
             ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("main", { className: "content", children: renderPage() })

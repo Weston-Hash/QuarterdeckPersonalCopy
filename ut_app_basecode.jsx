@@ -17,6 +17,8 @@ const SENIOR_ROLES = ["bn_cdr", "xo", "ops", "sel"];
 const isSenior  = (u) => u && SENIOR_ROLES.includes(u.role);
 const isCoC     = (u) => u && [...SENIOR_ROLES, "co_cdr", "plt_cdr", "adj"].includes(u.role);
 const isBigFour = (u) => normalizeCompany(u?.company) === "BN" && ["bn_cdr", "xo", "ops", "sel"].includes(u?.role);
+const ROLE_DISPLAY = { bn_cdr:"BNCO", xo:"BNXO", ops:"OPS", sel:"SEL", co_cdr:"CC", plt_cdr:"PC", adj:"ADJ" };
+const displayRole = (role) => ROLE_DISPLAY[role] || role.replace("_"," ").toUpperCase();
 
 function canEdit(user, section) {
   if (!user) return false;
@@ -1153,7 +1155,7 @@ function AccountModal({ onClose, darkMode, toggleDark }) {
     <Modal title="Account Information" onClose={onClose}>
       <div className="acct-field"><span className="acct-label">Name</span><strong>{user.name}</strong></div>
       <div className="acct-field"><span className="acct-label">Rank</span>{user.rank}</div>
-      <div className="acct-field"><span className="acct-label">Role</span><span className="badge badge-orange">{user.role.replace("_"," ").toUpperCase()}</span></div>
+      <div className="acct-field"><span className="acct-label">Role</span><span className="badge badge-orange">{displayRole(user.role)}</span></div>
       <div className="acct-field"><span className="acct-label">Company</span>{user.company}</div>
       <div className="acct-field"><span className="acct-label">Platoon</span>{user.platoon}</div>
       <div className="acct-field"><span className="acct-label">Email</span><a href={"mailto:"+user.email} style={{ color:"#BF5700" }}>{user.email}</a></div>
@@ -3362,7 +3364,7 @@ export default function App() {
             >
               <span className="rank-pill">{user.rank.split(" ")[0] || user.rank}</span>
               <span style={{ color:"#ccc", fontSize:"0.85rem" }}>{user.name.split(",")[0]}</span>
-              {(isCoC(user) || getBilletLabel(user)) && <span className="role-pill">{isCoC(user) ? user.role.replace("_"," ") : getBilletLabel(user)}</span>}
+              {(isCoC(user) || getBilletLabel(user)) && <span className="role-pill">{isCoC(user) ? displayRole(user.role) : getBilletLabel(user)}</span>}
             </div>
             <button className="btn-logout" onClick={() => { setUser(null); setPage("dashboard"); }}>Sign Out</button>
           </div>
@@ -3381,7 +3383,7 @@ export default function App() {
             <div className="sidebar-footer">
               <strong style={{ color:"#9ab0c4", cursor:"pointer" }} onClick={() => setShowAccount(true)}>{user.name}</strong><br />
               {formatCompanyCoLabel(user.company)} · {user.platoon}<br />
-              <span style={{ color:"#F7941D" }}>{user.role.replace("_"," ").toUpperCase()}</span>
+              <span style={{ color:"#F7941D" }}>{displayRole(user.role)}</span>
             </div>
           </nav>
 
