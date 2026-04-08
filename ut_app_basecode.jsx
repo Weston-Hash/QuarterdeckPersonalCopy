@@ -1959,7 +1959,8 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
   // ── PT upload / remove ──────────────────────────────────────
   const handlePTUpload = (key, file) => {
     if (!file) return;
-    if (file.type !== "application/pdf") { fire("⚠ Please select a PDF file."); return; }
+    const allowed = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    if (!allowed.includes(file.type)) { fire("⚠ Please select a PDF or DOCX file."); return; }
     const reader = new FileReader();
     reader.onload = e => {
       setPtPlans(prev => ({
@@ -2048,7 +2049,7 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
                         ↑ {plan ? "Replace PDF" : "Upload PDF"}
                       </label>
                       <input
-                        id={inputId} type="file" accept=".pdf,application/pdf"
+                        id={inputId} type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         style={{ display:"none" }}
                         onChange={e => { handlePTUpload(s.key, e.target.files[0]); e.target.value = ""; }}
                       />
@@ -2067,11 +2068,18 @@ function TrainingPage({ ptPlans, setPtPlans, llSessions, setLlSessions }) {
                       <span style={{ fontSize:"0.72rem", color:"#aaa" }}>Uploaded by {plan.uploadedBy} · {plan.uploadedAt}</span>
                       <a href={plan.dataUrl} download={plan.fileName} className="btn btn-outline btn-sm">⬇ Download</a>
                     </div>
-                    <iframe
-                      src={plan.dataUrl}
-                      title={`${s.day} ${s.type} Plan`}
-                      style={{ width:"100%", height:"620px", border:"1px solid #eee", borderRadius:"6px", display:"block" }}
-                    />
+                    {plan.fileName.toLowerCase().endsWith(".pdf") ? (
+                      <iframe
+                        src={plan.dataUrl}
+                        title={`${s.day} ${s.type} Plan`}
+                        style={{ width:"100%", height:"620px", border:"1px solid #eee", borderRadius:"6px", display:"block" }}
+                      />
+                    ) : (
+                      <div style={{ textAlign:"center", padding:"2rem", background:"#faf8f5", borderRadius:"6px", border:"1px solid #eee" }}>
+                        <div style={{ fontSize:"2rem", marginBottom:"0.5rem" }}>📄</div>
+                        <div style={{ fontSize:"0.85rem", marginBottom:"0.75rem" }}>DOCX files cannot be previewed — use the download button above.</div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="pt-empty-state">
