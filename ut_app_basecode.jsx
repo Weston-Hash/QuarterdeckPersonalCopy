@@ -1383,7 +1383,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
             {!sheetSynced && !hasRoster && (
               <div style={{ background:"rgba(191,87,0,0.08)", border:"1.5px solid #BF5700", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#BF5700", marginBottom:"0.9rem", display:"flex", alignItems:"center", gap:"0.6rem" }}>
                 <span style={{ fontSize:"1.1rem" }}>⏳</span>
-                <span>Syncing roster from Google Sheets… please wait.</span>
+                <span>Syncing roster… please wait.</span>
               </div>
             )}
             {!sheetSynced && hasRoster && (
@@ -1393,7 +1393,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
             )}
             {sheetSynced && sheetError && (
               <div style={{ background:"rgba(192,57,43,0.1)", border:"1.5px solid #C0392B", borderRadius:"6px", padding:"0.65rem 1rem", fontSize:"0.84rem", color:"#C0392B", marginBottom:"0.9rem" }}>
-                ⚠ Could not reach Google Sheets{hasRoster ? ". Using cached roster for now" : ""}. Check your connection and{" "}
+                ⚠ Could not reach the server{hasRoster ? ". Using cached roster for now" : ""}. Check your connection and{" "}
                 <button onClick={onRetry} style={{ background:"none", border:"none", color:"#C0392B", fontWeight:700, textDecoration:"underline", cursor:"pointer", fontSize:"inherit", padding:0 }}>retry</button>.
               </div>
             )}

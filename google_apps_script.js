@@ -328,7 +328,7 @@ function doPost(e) {
     try {
       MailApp.sendEmail(to, subject, body);
     } catch (err) {
-      return jsonOut({ ok: false, error: "Failed to send email: " + err.message });
+      return jsonOut({ ok: false, error: "Email service temporarily unavailable." });
     }
     return jsonOut({ ok: true });
   }
@@ -399,7 +399,13 @@ function doPost(e) {
       "This code expires in 5 minutes. Do not share it with anyone.\n\n" +
       "— The Quarterdeck";
 
-    MailApp.sendEmail(email, subject, body);
+    try {
+      MailApp.sendEmail(email, subject, body);
+    } catch (mailErr) {
+      // Email quota exceeded — still return success so user can't brute-force
+      // but warn that email wasn't delivered
+      return jsonOut({ ok: false, error: "Email service temporarily unavailable. Please try again later." });
+    }
     return jsonOut({ ok: true });
   }
 

@@ -8353,11 +8353,11 @@
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "login-sub", children: "Sign in with your battalion credentials" }),
         !sheetSynced && !hasRoster && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(191,87,0,0.08)", border: "1.5px solid #BF5700", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#BF5700", marginBottom: "0.9rem", display: "flex", alignItems: "center", gap: "0.6rem" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "1.1rem" }, children: "\u23F3" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Syncing roster from Google Sheets\u2026 please wait." })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Syncing roster\u2026 please wait." })
         ] }),
         !sheetSynced && hasRoster && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: "rgba(191,87,0,0.08)", border: "1.5px solid #BF5700", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#BF5700", marginBottom: "0.9rem" }, children: "\u23F3 Pulling login details\u2026" }),
         sheetSynced && sheetError && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "rgba(192,57,43,0.1)", border: "1.5px solid #C0392B", borderRadius: "6px", padding: "0.65rem 1rem", fontSize: "0.84rem", color: "#C0392B", marginBottom: "0.9rem" }, children: [
-          "\u26A0 Could not reach Google Sheets",
+          "\u26A0 Could not reach the server",
           hasRoster ? ". Using cached roster for now" : "",
           ". Check your connection and",
           " ",
