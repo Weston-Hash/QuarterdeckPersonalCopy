@@ -649,9 +649,10 @@ const LEADLAB_INIT = [];
 
 // Three fixed PT sessions per week. OPS (and other seniors) upload PDFs here.
 const PT_SESSIONS = [
-  { key:"monday",    day:"Monday",    type:"BN PT",      desc:"Battalion-wide formation PT",    color:"#BF5700" },
-  { key:"wednesday", day:"Wednesday", type:"Company PT", desc:"Company-level physical training", color:"#003087" },
-  { key:"thursday",  day:"Thursday",  type:"FEP",        desc:"Fitness Enhancement Program",    color:"#2A7D4F" },
+  { key:"monday",       day:"Monday",    type:"BN PT",         desc:"Battalion-wide formation PT",        color:"#BF5700" },
+  { key:"wed_bravo",    day:"Wednesday", type:"Bravo Co PT",   desc:"Bravo Company physical training",    color:"#003087" },
+  { key:"wed_charlie",  day:"Wednesday", type:"Charlie Co PT", desc:"Charlie Company physical training",  color:"#5B2C6F" },
+  { key:"thursday",     day:"Thursday",  type:"FEP",           desc:"Fitness Enhancement Program",        color:"#2A7D4F" },
 ];
 
 const INIT_CHITS = [];
@@ -3463,7 +3464,7 @@ export default function App() {
   // Forms: posted by billets/Big Four, clicks tracked per user id.
   const [forms, setForms]         = useState([]);
   // PT plan PDFs: one per session key (monday/wednesday/thursday). Null until OPS uploads.
-  const [ptPlans, setPtPlans]     = useState({ monday:null, wednesday:null, thursday:null });
+  const [ptPlans, setPtPlans]     = useState({ monday:null, wed_bravo:null, wed_charlie:null, thursday:null });
   // LL session list: TRAINO manages text notes; everyone reads.
   const [llSessions, setLlSessions] = useState(LEADLAB_INIT);
   // userList: populated from Google Sheet on mount; empty until fetch completes

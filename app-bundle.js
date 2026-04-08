@@ -7719,7 +7719,8 @@
   var LEADLAB_INIT = [];
   var PT_SESSIONS = [
     { key: "monday", day: "Monday", type: "BN PT", desc: "Battalion-wide formation PT", color: "#BF5700" },
-    { key: "wednesday", day: "Wednesday", type: "Company PT", desc: "Company-level physical training", color: "#003087" },
+    { key: "wed_bravo", day: "Wednesday", type: "Bravo Co PT", desc: "Bravo Company physical training", color: "#003087" },
+    { key: "wed_charlie", day: "Wednesday", type: "Charlie Co PT", desc: "Charlie Company physical training", color: "#5B2C6F" },
     { key: "thursday", day: "Thursday", type: "FEP", desc: "Fitness Enhancement Program", color: "#2A7D4F" }
   ];
   var INIT_CHITS = [];
@@ -10481,7 +10482,7 @@ Please log in to The Quarterdeck to review and take action.
     const [fitrebs, setFitrebs] = (0, import_react.useState)(INIT_FITREBS);
     const [showAccount, setShowAccount] = (0, import_react.useState)(false);
     const [forms, setForms] = (0, import_react.useState)([]);
-    const [ptPlans, setPtPlans] = (0, import_react.useState)({ monday: null, wednesday: null, thursday: null });
+    const [ptPlans, setPtPlans] = (0, import_react.useState)({ monday: null, wed_bravo: null, wed_charlie: null, thursday: null });
     const [llSessions, setLlSessions] = (0, import_react.useState)(LEADLAB_INIT);
     const [userList, setUserList] = (0, import_react.useState)(cachedRoster);
     const [sheetSynced, setSheetSynced] = (0, import_react.useState)(!SHEETS_API_URL || cachedRoster.length > 0);
