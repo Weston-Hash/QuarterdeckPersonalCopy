@@ -651,7 +651,7 @@ const LEADLAB_INIT = [];
 const PT_SESSIONS = [
   { key:"monday",       day:"Monday",    type:"BN PT",         desc:"Battalion-wide formation PT",        color:"#BF5700" },
   { key:"wed_bravo",    day:"Wednesday", type:"Bravo Co PT",   desc:"Bravo Company physical training",    color:"#003087" },
-  { key:"wed_charlie",  day:"Wednesday", type:"Charlie Co PT", desc:"Charlie Company physical training",  color:"#5B2C6F" },
+  { key:"wed_charlie",  day:"Wednesday", type:"Charlie Co PT", desc:"Charlie Company physical training",  color:"#B8860B" },
   { key:"thursday",     day:"Thursday",  type:"FEP",           desc:"Fitness Enhancement Program",        color:"#2A7D4F" },
 ];
 
