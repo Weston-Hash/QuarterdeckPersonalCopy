@@ -7819,7 +7819,7 @@
     };
   }
   function canActOnFitrep(user, fitrep) {
-    if (!user || !fitrep?.stages || fitrep.status === "Returned" || fitrep.currentStage >= fitrep.stages.length - 1) return false;
+    if (!user || !fitrep?.stages || fitrep.status === "Approved" || fitrep.status === "Denied" || fitrep.status === "Returned" || fitrep.currentStage >= fitrep.stages.length - 1) return false;
     if (!fitrep.stages.slice(0, fitrep.currentStage).every((s) => s.completedBy)) return false;
     const stage = fitrep.stages[fitrep.currentStage];
     if (!stage?.approverRole) return false;
@@ -8275,6 +8275,10 @@
         return;
       }
       setErr("");
+      setMfaCode("");
+      setMfaExpired(false);
+      setMfaCountdown(0);
+      setMfaLocked(false);
       setMfaLoading(true);
       apiPost({ token: SHEETS_API_TOKEN, action: "sendMFA", email: user.email, name: `${user.rank} ${user.name}` }).then((data) => {
         setMfaLoading(false);
@@ -8471,7 +8475,7 @@
     const [showResetConfirm, setShowResetConfirm] = (0, import_react.useState)(false);
     const [resetConfirmText, setResetConfirmText] = (0, import_react.useState)("");
     const myChits = chits.filter((c) => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
-    const myFitreps = fitrebs.filter((f) => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Returned");
+    const myFitreps = fitrebs.filter((f) => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Denied" && f.status !== "Returned");
     const queueTotal = myChits.length + myFitreps.length;
     const handleAnnouncementFiles = (e) => {
       const files = Array.from(e.target.files);
@@ -10084,14 +10088,29 @@ Please log in to The Quarterdeck to review and take action.
           completedAt: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
           comment
         };
-        const next = action === "returned" ? f.currentStage : Math.min(f.currentStage + 1, f.stages.length - 1);
-        const status = action === "returned" ? "Returned" : next === f.stages.length - 1 ? "Approved" : "Pending";
+        const next = action === "returned" || action === "denied" ? f.currentStage : Math.min(f.currentStage + 1, f.stages.length - 1);
+        const status = action === "denied" ? "Denied" : action === "returned" ? "Returned" : next === f.stages.length - 1 ? "Approved" : "Pending";
         const docs = action === "approved" && reviewDoc ? { ...f.docs, routingSheet: reviewDoc } : f.docs;
         return { ...f, currentStage: next, stages: updated, status, docs };
       }));
       if (fitrep) {
         const originatorEmail = getUserEmail(userList, fitrep.subjectId);
-        if (action === "returned") {
+        if (action === "denied") {
+          clearApproval(id);
+          if (originatorEmail) {
+            sendNotification(
+              originatorEmail,
+              `FITREP ${id} \u2014 Denied`,
+              `Hello ${fitrep.subjectName},
+
+Your FITREP (${id}) has been denied by ${reviewerFullName}.
+
+${comment ? "Comments: " + comment + "\n\n" : ""}\u2014 The Quarterdeck`,
+              "return",
+              fitrep.subjectId
+            );
+          }
+        } else if (action === "returned") {
           clearApproval(id);
           if (originatorEmail) {
             sendNotification(
@@ -10156,9 +10175,9 @@ Please log in to The Quarterdeck to review and take action.
       fire(action === "returned" ? "FITREP returned to originator." : "\u2705 FITREP advanced. Stage comments saved.");
     };
     const companies = [...new Set(visible.map((f) => normalizeCompany(f.company)))];
-    const needsActionF = filtered.filter((f) => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Returned");
+    const needsActionF = filtered.filter((f) => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Denied" && f.status !== "Returned");
     const inPipelineF = filtered.filter((f) => f.status === "Pending" && !canActOnFitrep(user, f));
-    const completedF = filtered.filter((f) => f.status === "Approved" || f.status === "Returned");
+    const completedF = filtered.filter((f) => f.status === "Approved" || f.status === "Denied" || f.status === "Returned");
     const renderFitrepCard = (f) => {
       const canAct = canActOnFitrep(user, f);
       const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
@@ -10252,7 +10271,8 @@ Please log in to The Quarterdeck to review and take action.
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(f.id, "approved"), children: "\u2713 Approve & Advance" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(f.id, "returned"), children: "\u21A9 Return to Originator" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(f.id, "returned"), children: "\u21A9 Return" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(f.id, "denied"), children: "\u2715 Deny" }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
                   setActiveComment(null);
                   setCommentText("");
@@ -10500,6 +10520,16 @@ Please log in to The Quarterdeck to review and take action.
     (0, import_react.useEffect)(() => {
       fetchRoster();
     }, []);
+    const [loginKey, setLoginKey] = (0, import_react.useState)(0);
+    const logout = () => {
+      try {
+        window.sessionStorage.removeItem(ROSTER_CACHE_KEY);
+      } catch (e) {
+      }
+      setUser(null);
+      setPage("dashboard");
+      setLoginKey((k) => k + 1);
+    };
     (0, import_react.useEffect)(() => {
       if (!user) return;
       const TIMEOUT = 5 * 60 * 1e3;
@@ -10514,17 +10544,7 @@ Please log in to The Quarterdeck to review and take action.
         clearTimeout(timer);
         events.forEach((e) => window.removeEventListener(e, reset));
       };
-    }, [user]);
-    const [loginKey, setLoginKey] = (0, import_react.useState)(0);
-    const logout = () => {
-      try {
-        window.sessionStorage.removeItem(ROSTER_CACHE_KEY);
-      } catch (e) {
-      }
-      setUser(null);
-      setPage("dashboard");
-      setLoginKey((k) => k + 1);
-    };
+    }, [user, logout]);
     const handleLogin = (loggedInUser) => {
       const fresh = userList.find((u) => u.id === loggedInUser.id) || loggedInUser;
       setUser(fresh);

@@ -810,7 +810,7 @@ const FITREP_STAGES = [
 // Returns true if `user` is the designated approver for the fitrep's current stage.
 // Uses per-fitrep stages array (same pattern as canActOnChit).
 function canActOnFitrep(user, fitrep) {
-  if (!user || !fitrep?.stages || fitrep.status === "Returned" || fitrep.currentStage >= fitrep.stages.length - 1) return false;
+  if (!user || !fitrep?.stages || fitrep.status === "Approved" || fitrep.status === "Denied" || fitrep.status === "Returned" || fitrep.currentStage >= fitrep.stages.length - 1) return false;
   // Enforce CoC order: every prior stage must be completed before acting on the current one
   if (!fitrep.stages.slice(0, fitrep.currentStage).every(s => s.completedBy)) return false;
   const stage = fitrep.stages[fitrep.currentStage];
@@ -1290,6 +1290,10 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
     if (!user.email) { setErr("No email on file. Contact ADJ to add your email."); return; }
 
     setErr("");
+    setMfaCode("");
+    setMfaExpired(false);
+    setMfaCountdown(0);
+    setMfaLocked(false);
     setMfaLoading(true);
     apiPost({ token: SHEETS_API_TOKEN, action: "sendMFA", email: user.email, name: `${user.rank} ${user.name}` })
       .then(data => {
@@ -1512,7 +1516,7 @@ function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, form
 
   // My Queue: count CHITs/FITREPs awaiting this user's action
   const myChits = chits.filter(c => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
-  const myFitreps = fitrebs.filter(f => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Returned");
+  const myFitreps = fitrebs.filter(f => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Denied" && f.status !== "Returned");
   const queueTotal = myChits.length + myFitreps.length;
 
   const handleAnnouncementFiles = (e) => {
@@ -3079,10 +3083,11 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         completedAt: new Date().toISOString().split("T")[0],
         comment,
       };
-      const next = action === "returned"
+      const next = (action === "returned" || action === "denied")
         ? f.currentStage
         : Math.min(f.currentStage + 1, f.stages.length - 1);
-      const status = action === "returned" ? "Returned"
+      const status = action === "denied" ? "Denied"
+        : action === "returned" ? "Returned"
         : next === f.stages.length - 1 ? "Approved"
         : "Pending";
       const docs = action === "approved" && reviewDoc
@@ -3093,7 +3098,16 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
     // ── Email notifications ──
     if (fitrep) {
       const originatorEmail = getUserEmail(userList, fitrep.subjectId);
-      if (action === "returned") {
+      if (action === "denied") {
+        clearApproval(id);
+        if (originatorEmail) {
+          sendNotification(originatorEmail,
+            `FITREP ${id} — Denied`,
+            `Hello ${fitrep.subjectName},\n\nYour FITREP (${id}) has been denied by ${reviewerFullName}.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}— The Quarterdeck`,
+            "return", fitrep.subjectId
+          );
+        }
+      } else if (action === "returned") {
         clearApproval(id);
         if (originatorEmail) {
           sendNotification(originatorEmail,
@@ -3138,9 +3152,9 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
 
   const companies = [...new Set(visible.map(f => normalizeCompany(f.company)))];
 
-  const needsActionF = filtered.filter(f => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Returned");
+  const needsActionF = filtered.filter(f => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Denied" && f.status !== "Returned");
   const inPipelineF = filtered.filter(f => f.status === "Pending" && !canActOnFitrep(user, f));
-  const completedF = filtered.filter(f => f.status === "Approved" || f.status === "Returned");
+  const completedF = filtered.filter(f => f.status === "Approved" || f.status === "Denied" || f.status === "Returned");
 
   const renderFitrepCard = (f) => {
     const canAct = canActOnFitrep(user, f);
@@ -3236,7 +3250,8 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
                   </div>
                   <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
                     <button className="btn btn-green btn-sm" onClick={() => advanceStage(f.id, "approved")}>✓ Approve & Advance</button>
-                    <button className="btn btn-red btn-sm" onClick={() => advanceStage(f.id, "returned")}>↩ Return to Originator</button>
+                    <button className="btn btn-red btn-sm" onClick={() => advanceStage(f.id, "returned")}>↩ Return</button>
+                    <button className="btn btn-red btn-sm" onClick={() => advanceStage(f.id, "denied")}>✕ Deny</button>
                     <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); setReviewDoc(null); }}>Cancel</button>
                   </div>
                 </>
@@ -3486,7 +3501,10 @@ export default function App() {
   // Fetch roster from private Google Sheet via Apps Script on mount
   useEffect(() => { fetchRoster(); }, []);
 
-  // Auto-logout after 15 minutes of inactivity
+  const [loginKey, setLoginKey] = useState(0);
+  const logout = () => { try { window.sessionStorage.removeItem(ROSTER_CACHE_KEY); } catch(e) {} setUser(null); setPage("dashboard"); setLoginKey(k => k + 1); };
+
+  // Auto-logout after 5 minutes of inactivity
   useEffect(() => {
     if (!user) return;
     const TIMEOUT = 5 * 60 * 1000;
@@ -3495,10 +3513,7 @@ export default function App() {
     const events = ["mousedown", "keydown", "touchstart", "scroll"];
     events.forEach(e => window.addEventListener(e, reset));
     return () => { clearTimeout(timer); events.forEach(e => window.removeEventListener(e, reset)); };
-  }, [user]);
-
-  const [loginKey, setLoginKey] = useState(0);
-  const logout = () => { try { window.sessionStorage.removeItem(ROSTER_CACHE_KEY); } catch(e) {} setUser(null); setPage("dashboard"); setLoginKey(k => k + 1); };
+  }, [user, logout]);
 
   const handleLogin = (loggedInUser) => {
     // Sync with live userList in case Sheets data was fetched
