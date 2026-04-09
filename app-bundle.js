@@ -7294,7 +7294,7 @@
   var isBigFour = (u) => normalizeCompany(u?.company) === "BN" && ["bn_cdr", "xo", "ops", "sel"].includes(u?.role);
   var canSeeArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role));
   var canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
-  var ROLE_DISPLAY = { bn_cdr: "BNCO", xo: "BNXO", ops: "OPS", sel: "SEL", co_cdr: "CC", plt_cdr: "PC", adj: "ADJ", unit_co: "UNIT CO", unit_xo: "UNIT XO", moi: "MOI", amoi: "AMOI", sea: "SEA", sub: "SUB", swo: "SWO" };
+  var ROLE_DISPLAY = { bn_cdr: "BNCO", xo: "BNXO", ops: "OPS", sel: "SEL", co_cdr: "CC", plt_cdr: "PC", adj: "ADJ", unit_co: "UNIT CO", unit_xo: "UNIT XO", moi: "MOI", amoi: "AMOI", sea: "SEA", sub: "SUBO", swo: "SWO" };
   var displayRole = (role) => ROLE_DISPLAY[role] || role.replace("_", " ").toUpperCase();
   function canEdit(user, section) {
     if (!user) return false;
@@ -7332,11 +7332,12 @@
     Charlie: { short: "Charlie", full: "Charlie Company" }
   };
   var COMPANY_COLORS = {
+    Unit: "#8B6914",
     Alpha: "#8B0000",
     Bravo: "#003087",
     Charlie: "#B8860B"
   };
-  var STRUCTURE_BILLET_ORDER = ["PTO", "ADJ", "SUPPO", "PAO", "TRAINO", "AO", "BGDO", "CGC", "AOPS"];
+  var STRUCTURE_BILLET_ORDER = ["PTO", "APTO", "ADJ", "SUPPO", "PAO", "TRAINO", "ATRAINO", "AO", "BGDO", "CGC", "AOPS"];
   function normalizeCompany(company) {
     return LEGACY_COMPANY_MAP[company] || company;
   }
@@ -7356,6 +7357,10 @@
   function getRosterDescriptor(user) {
     const company = normalizeCompany(user.company);
     const coLabel = formatCompanyCoLabel(company);
+    if (company === "Unit") {
+      const billetLabel = UNIT_BILLET_DISPLAY[user.billet] || user.billet || displayRole(user.role);
+      return `Unit Staff \xB7 ${billetLabel}`;
+    }
     if (company === "BN") {
       if (user.role === "bn_cdr") return "BNCO";
       if (user.role === "xo") return "BNXO";
@@ -7397,8 +7402,10 @@
     const match = normalizePlatoon(platoon).match(/^(\d+)/);
     return match ? Number(match[1]) : 99;
   }
-  var ROSTER_COMPANY_ORDER = ["BN", "Alpha", "Bravo", "Charlie"];
-  var BN_ROSTER_ASSIGNMENT_ORDER = ["BNCO", "BNXO", "OPS", "SEL", "PTO", "ADJ", "SUPPO", "PAO", "TRAINO", "AO", "BGDO", "CGC", "AOPS", "MIR"];
+  var ROSTER_COMPANY_ORDER = ["Unit", "BN", "Alpha", "Bravo", "Charlie"];
+  var UNIT_ROSTER_ASSIGNMENT_ORDER = ["Unit CO", "Unit XO", "SUB", "SWO", "MOI", "SEA", "AMOI"];
+  var BN_ROSTER_ASSIGNMENT_ORDER = ["BNCO", "BNXO", "OPS", "SEL", "PTO", "APTO", "ADJ", "SUPPO", "PAO", "TRAINO", "ATRAINO", "AO", "BGDO", "CGC", "AOPS", "MIR"];
+  var UNIT_BILLET_DISPLAY = { "SUB": "SUBO", "SWO": "SWO", "MOI": "MOI", "SEA": "SEA", "AMOI": "AMOI", "Unit CO": "Unit CO", "Unit XO": "Unit XO" };
   function getRosterAssignment(user) {
     const billet = getBilletLabel(user);
     if (billet) return billet;
@@ -7412,6 +7419,13 @@
     const ac = normalizeCompany(a.company), bc = normalizeCompany(b.company);
     const co = ROSTER_COMPANY_ORDER.indexOf(ac) - ROSTER_COMPANY_ORDER.indexOf(bc);
     if (co !== 0) return co;
+    if (ac === "Unit") {
+      const ai = UNIT_ROSTER_ASSIGNMENT_ORDER.indexOf(getRosterAssignment(a));
+      const bi = UNIT_ROSTER_ASSIGNMENT_ORDER.indexOf(getRosterAssignment(b));
+      const d = (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      if (d !== 0) return d;
+      return getNameKey(a.name).localeCompare(getNameKey(b.name));
+    }
     if (ac === "BN") {
       const ai = BN_ROSTER_ASSIGNMENT_ORDER.indexOf(getRosterAssignment(a));
       const bi = BN_ROSTER_ASSIGNMENT_ORDER.indexOf(getRosterAssignment(b));
@@ -7812,6 +7826,8 @@
     "COC": "mid",
     "CGC": "mid",
     "MIR": "mid",
+    "APTO": "mid",
+    "ATRAINO": "mid",
     // Unit staff billets (match exact sheet values)
     "SUB": "sub",
     "SWO": "swo",
@@ -8887,8 +8903,13 @@
   function StructurePage({ userList }) {
     const [open, setOpen] = (0, import_react.useState)({});
     const [billetsOpen, setBilletsOpen] = (0, import_react.useState)(false);
+    const [unitStaffOpen, setUnitStaffOpen] = (0, import_react.useState)(false);
     const byRole = (role) => userList.filter((u) => u.role === role);
     const fmt = (u) => u ? `${u.rank} ${u.name}` : "\u2014";
+    const unitStaffMembers = UNIT_ROSTER_ASSIGNMENT_ORDER.map((billet) => {
+      const u = userList.find((u2) => normalizeCompany(u2.company) === "Unit" && u2.billet === billet);
+      return { billet, displayBillet: UNIT_BILLET_DISPLAY[billet] || billet, user: u };
+    }).filter((entry) => entry.user);
     const bnco = byRole("bn_cdr")[0];
     const bnxo = byRole("xo")[0];
     const ops = byRole("ops")[0];
@@ -8924,6 +8945,22 @@
         "The Quarterdeck \u2014 ",
         grandTotal,
         " Personnel"
+      ] }),
+      unitStaffMembers.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-block", style: { marginBottom: "1rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-header", style: { background: COMPANY_COLORS.Unit }, onClick: () => setUnitStaffOpen((s) => !s), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-name", children: "Unit Staff" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-co", children: [
+              unitStaffMembers.length,
+              " Active Duty Personnel"
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: unitStaffOpen ? "\u25B2" : "\u25BC" })
+        ] }),
+        unitStaffOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "0.75rem 1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }, children: unitStaffMembers.map((entry, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "bn-leader-card", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "1px", color: COMPANY_COLORS.Unit, fontWeight: 700 }, children: entry.displayBillet }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.88rem", fontWeight: 600, marginTop: "0.15rem" }, children: fmt(entry.user) })
+        ] }, i)) }) })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", style: { padding: "1rem 1.2rem", marginBottom: "1rem" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "#888", marginBottom: "0.6rem", fontWeight: 600 }, children: "Battalion Leadership" }),
@@ -9712,6 +9749,7 @@ Please log in to The Quarterdeck to review and take action.
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", style: { maxWidth: "170px" }, value: co, onChange: (e) => setCo(e.target.value), children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "All Companies" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "Unit", children: "Unit Staff" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "BN", children: "Big Four" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "Alpha", children: "Alpha" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "Bravo", children: "Bravo" }),

@@ -23,7 +23,7 @@ const isUnitStaff = (u) => u && UNIT_STAFF_ROLES.includes(u.role);
 const canSeeArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role));
 // Who can post BN-wide announcements: Big Four + CCs + PCs + MOI + Unit CO + Unit XO
 const canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
-const ROLE_DISPLAY = { bn_cdr:"BNCO", xo:"BNXO", ops:"OPS", sel:"SEL", co_cdr:"CC", plt_cdr:"PC", adj:"ADJ", unit_co:"UNIT CO", unit_xo:"UNIT XO", moi:"MOI", amoi:"AMOI", sea:"SEA", sub:"SUB", swo:"SWO" };
+const ROLE_DISPLAY = { bn_cdr:"BNCO", xo:"BNXO", ops:"OPS", sel:"SEL", co_cdr:"CC", plt_cdr:"PC", adj:"ADJ", unit_co:"UNIT CO", unit_xo:"UNIT XO", moi:"MOI", amoi:"AMOI", sea:"SEA", sub:"SUBO", swo:"SWO" };
 const displayRole = (role) => ROLE_DISPLAY[role] || role.replace("_"," ").toUpperCase();
 
 function canEdit(user, section) {
@@ -56,12 +56,13 @@ const COMPANY_META = {
 };
 
 const COMPANY_COLORS = {
+  Unit:    "#8B6914",
   Alpha:   "#8B0000",
   Bravo:   "#003087",
   Charlie: "#B8860B",
 };
 
-const STRUCTURE_BILLET_ORDER = ["PTO", "ADJ", "SUPPO", "PAO", "TRAINO", "AO", "BGDO", "CGC", "AOPS"];
+const STRUCTURE_BILLET_ORDER = ["PTO", "APTO", "ADJ", "SUPPO", "PAO", "TRAINO", "ATRAINO", "AO", "BGDO", "CGC", "AOPS"];
 
 function normalizeCompany(company) {
   return LEGACY_COMPANY_MAP[company] || company;
@@ -92,6 +93,11 @@ function formatCompanyCoLabel(company) {
 function getRosterDescriptor(user) {
   const company  = normalizeCompany(user.company);
   const coLabel  = formatCompanyCoLabel(company);
+  // Unit Staff: show billet label
+  if (company === "Unit") {
+    const billetLabel = UNIT_BILLET_DISPLAY[user.billet] || user.billet || displayRole(user.role);
+    return `Unit Staff · ${billetLabel}`;
+  }
   // Big Four: title only, no company prefix
   if (company === "BN") {
     if (user.role === "bn_cdr") return "BNCO";
@@ -143,8 +149,11 @@ function getPlatoonSortValue(platoon) {
   return match ? Number(match[1]) : 99;
 }
 
-const ROSTER_COMPANY_ORDER = ["BN", "Alpha", "Bravo", "Charlie"];
-const BN_ROSTER_ASSIGNMENT_ORDER = ["BNCO", "BNXO", "OPS", "SEL", "PTO", "ADJ", "SUPPO", "PAO", "TRAINO", "AO", "BGDO", "CGC", "AOPS", "MIR"];
+const ROSTER_COMPANY_ORDER = ["Unit", "BN", "Alpha", "Bravo", "Charlie"];
+const UNIT_ROSTER_ASSIGNMENT_ORDER = ["Unit CO", "Unit XO", "SUB", "SWO", "MOI", "SEA", "AMOI"];
+const BN_ROSTER_ASSIGNMENT_ORDER = ["BNCO", "BNXO", "OPS", "SEL", "PTO", "APTO", "ADJ", "SUPPO", "PAO", "TRAINO", "ATRAINO", "AO", "BGDO", "CGC", "AOPS", "MIR"];
+// Display mapping for unit staff billets (sheet value → display label)
+const UNIT_BILLET_DISPLAY = { "SUB": "SUBO", "SWO": "SWO", "MOI": "MOI", "SEA": "SEA", "AMOI": "AMOI", "Unit CO": "Unit CO", "Unit XO": "Unit XO" };
 const COMPANY_ROSTER_ASSIGNMENT_ORDER = ["CO", "SEL", "1st PC", "2nd PC", "3rd PC", "4th PC", "MIR"];
 
 function normalizePhone(phone) {
@@ -172,12 +181,14 @@ function getRosterProfilePriority(user) {
 
 function getRosterAssignmentSort(user) {
   const assignment = getRosterAssignment(user);
-  const order = normalizeCompany(user.company) === "BN" ? BN_ROSTER_ASSIGNMENT_ORDER : COMPANY_ROSTER_ASSIGNMENT_ORDER;
+  const co = normalizeCompany(user.company);
+  const order = co === "Unit" ? UNIT_ROSTER_ASSIGNMENT_ORDER : co === "BN" ? BN_ROSTER_ASSIGNMENT_ORDER : COMPANY_ROSTER_ASSIGNMENT_ORDER;
   const idx = order.indexOf(assignment);
   return idx === -1 ? order.length : idx;
 }
 
 function getRosterSectionLabel(company) {
+  if (company === "Unit") return "Unit Staff";
   return company === "BN" ? "Big Four" : getCompanyFullName(company);
 }
 
@@ -240,6 +251,15 @@ function compareRoster(a, b) {
   const ac = normalizeCompany(a.company), bc = normalizeCompany(b.company);
   const co = ROSTER_COMPANY_ORDER.indexOf(ac) - ROSTER_COMPANY_ORDER.indexOf(bc);
   if (co !== 0) return co;
+
+  // Unit Staff: use unit recall order, then alpha by last name
+  if (ac === "Unit") {
+    const ai = UNIT_ROSTER_ASSIGNMENT_ORDER.indexOf(getRosterAssignment(a));
+    const bi = UNIT_ROSTER_ASSIGNMENT_ORDER.indexOf(getRosterAssignment(b));
+    const d = (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    if (d !== 0) return d;
+    return getNameKey(a.name).localeCompare(getNameKey(b.name));
+  }
 
   // BN: use Big Four assignment order, then alpha by last name
   if (ac === "BN") {
@@ -775,6 +795,8 @@ const BILLET_TO_ROLE = {
   "COC":    "mid",
   "CGC":    "mid",
   "MIR":    "mid",
+  "APTO":   "mid",
+  "ATRAINO":"mid",
   // Unit staff billets (match exact sheet values)
   "SUB":       "sub",
   "SWO":       "swo",
@@ -1904,10 +1926,17 @@ function CalendarPage() {
 function StructurePage({ userList }) {
   const [open, setOpen] = useState({});
   const [billetsOpen, setBilletsOpen] = useState(false);
+  const [unitStaffOpen, setUnitStaffOpen] = useState(false);
 
   // Helper: find user(s) by role/billet
   const byRole = (role) => userList.filter(u => u.role === role);
   const fmt = (u) => u ? `${u.rank} ${u.name}` : "—";
+
+  // Unit Staff — ordered by recall order
+  const unitStaffMembers = UNIT_ROSTER_ASSIGNMENT_ORDER.map(billet => {
+    const u = userList.find(u => normalizeCompany(u.company) === "Unit" && u.billet === billet);
+    return { billet, displayBillet: UNIT_BILLET_DISPLAY[billet] || billet, user: u };
+  }).filter(entry => entry.user);
 
   // Big Four: BNCO → BNXO → OPS → SEL
   const bnco = byRole("bn_cdr")[0];
@@ -1950,6 +1979,31 @@ function StructurePage({ userList }) {
     <div>
       <div className="page-title">BN <span>Structure</span></div>
       <div className="page-sub">The Quarterdeck — {grandTotal} Personnel</div>
+
+      {/* Unit Staff — top section, distinguished gold */}
+      {unitStaffMembers.length > 0 && (
+        <div className="company-block" style={{ marginBottom:"1rem" }}>
+          <div className="company-header" style={{ background: COMPANY_COLORS.Unit }} onClick={() => setUnitStaffOpen(s => !s)}>
+            <div>
+              <div className="company-name">Unit Staff</div>
+              <div className="company-co">{unitStaffMembers.length} Active Duty Personnel</div>
+            </div>
+            <span>{unitStaffOpen ? "▲" : "▼"}</span>
+          </div>
+          {unitStaffOpen && (
+            <div style={{ padding:"0.75rem 1rem" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:"0.75rem" }}>
+                {unitStaffMembers.map((entry, i) => (
+                  <div key={i} className="bn-leader-card">
+                    <div style={{ fontSize:"0.68rem", textTransform:"uppercase", letterSpacing:"1px", color: COMPANY_COLORS.Unit, fontWeight:700 }}>{entry.displayBillet}</div>
+                    <div style={{ fontSize:"0.88rem", fontWeight:600, marginTop:"0.15rem" }}>{fmt(entry.user)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Big Four */}
       <div className="card" style={{ padding:"1rem 1.2rem", marginBottom:"1rem" }}>
@@ -2771,7 +2825,7 @@ function RosterPage({ userList }) {
         </div>
         <select className="input" style={{ maxWidth:"170px" }} value={co} onChange={e => setCo(e.target.value)}>
           <option value="">All Companies</option>
-          <option value="BN">Big Four</option><option value="Alpha">Alpha</option><option value="Bravo">Bravo</option><option value="Charlie">Charlie</option>
+          <option value="Unit">Unit Staff</option><option value="BN">Big Four</option><option value="Alpha">Alpha</option><option value="Bravo">Bravo</option><option value="Charlie">Charlie</option>
         </select>
       </div>
       <div className="card">
