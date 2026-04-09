@@ -59,7 +59,7 @@ const COMPANY_META = {
 };
 
 const COMPANY_COLORS = {
-  Unit:    "#4A5A2B",
+  Unit:    "linear-gradient(135deg, #002B5C, #8B0000)",
   Alpha:   "#8B0000",
   Bravo:   "#003087",
   Charlie: "#B8860B",
