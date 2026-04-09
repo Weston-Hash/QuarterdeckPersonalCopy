@@ -7292,7 +7292,9 @@
   var isSenior = (u) => u && SENIOR_ROLES.includes(u.role);
   var isCoC = (u) => u && [...SENIOR_ROLES, "co_cdr", "plt_cdr", "adj"].includes(u.role);
   var isBigFour = (u) => normalizeCompany(u?.company) === "BN" && ["bn_cdr", "xo", "ops", "sel"].includes(u?.role);
-  var ROLE_DISPLAY = { bn_cdr: "BNCO", xo: "BNXO", ops: "OPS", sel: "SEL", co_cdr: "CC", plt_cdr: "PC", adj: "ADJ" };
+  var canSeeArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role));
+  var canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
+  var ROLE_DISPLAY = { bn_cdr: "BNCO", xo: "BNXO", ops: "OPS", sel: "SEL", co_cdr: "CC", plt_cdr: "PC", adj: "ADJ", unit_co: "UNIT CO", unit_xo: "UNIT XO", moi: "MOI", amoi: "AMOI", sea: "SEA", sub: "SUB", swo: "SWO" };
   var displayRole = (role) => ROLE_DISPLAY[role] || role.replace("_", " ").toUpperCase();
   function canEdit(user, section) {
     if (!user) return false;
@@ -7324,6 +7326,7 @@
   };
   var COMPANY_META = {
     BN: { short: "BN", full: "BN" },
+    Unit: { short: "Unit", full: "Unit Staff" },
     Alpha: { short: "Alpha", full: "Alpha Company" },
     Bravo: { short: "Bravo", full: "Bravo Company" },
     Charlie: { short: "Charlie", full: "Charlie Company" }
@@ -7484,7 +7487,7 @@
       icon
     };
   }
-  function buildChitApprovalChain(userList, user, routeContext) {
+  function buildChitApprovalChain(userList, user, routeContext, chitType = "recurring") {
     const { company, platoon } = routeContext;
     const adj = userList.find((u) => u.role === "adj");
     const bnxo = userList.find((u) => u.role === "xo");
@@ -7492,32 +7495,47 @@
     const cc = getCompanyCommander(userList, company);
     const pc = getPlatoonCommander(userList, company, platoon);
     const chain = [];
-    if (user.role === "adj") {
-      chain.push(
-        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
-        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
-      );
-    } else if (user.role === "co_cdr") {
-      chain.push(
-        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
-        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
-        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
-      );
-    } else if (user.role === "plt_cdr") {
-      chain.push(
-        makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
-        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
-        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
-        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
-      );
+    if (chitType === "single") {
+      if (user.role === "co_cdr" || user.role === "plt_cdr") {
+        if (user.role === "co_cdr") {
+          chain.push(makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"));
+        } else {
+          chain.push(makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"));
+        }
+      } else {
+        chain.push(
+          makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "\u{1F464}"),
+          makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50")
+        );
+      }
     } else {
-      chain.push(
-        makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "\u{1F464}"),
-        makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
-        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
-        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
-        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
-      );
+      if (user.role === "adj") {
+        chain.push(
+          makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
+          makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
+        );
+      } else if (user.role === "co_cdr") {
+        chain.push(
+          makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
+          makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
+          makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
+        );
+      } else if (user.role === "plt_cdr") {
+        chain.push(
+          makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
+          makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
+          makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
+          makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
+        );
+      } else {
+        chain.push(
+          makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "\u{1F464}"),
+          makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
+          makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
+          makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
+          makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
+        );
+      }
     }
     return chain.length > 0 && chain.every((node) => node.approverId) ? chain : [];
   }
@@ -7652,6 +7670,14 @@
     const f = (d) => `${String(d.getDate()).padStart(2, "0")}${M[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
     return `${f(mon)} - ${f(fri)}`;
   }
+  function getSemesterLabel(dateStr) {
+    if (!dateStr) return "Unknown";
+    const d = new Date(dateStr.split("\u2013")[0].trim());
+    if (isNaN(d)) return "Unknown";
+    const month = d.getMonth();
+    const year = d.getFullYear();
+    return (month >= 7 ? "Fall " : "Spring ") + year;
+  }
   function formatEventTime(isoStr) {
     if (!isoStr) return "";
     const d = new Date(isoStr);
@@ -7755,6 +7781,7 @@
   }
   var COMPANY_MAP = {
     "BN Staff": "BN",
+    "Unit Staff": "Unit",
     "A": "Alpha",
     "B": "Bravo",
     "C": "Charlie"
@@ -7778,14 +7805,21 @@
     "2nd PC": "plt_cdr",
     "3rd PC": "plt_cdr",
     "CC": "co_cdr",
-    "SEL": "sel",
     "AOPS": "mid",
     "PAO": "mid",
     "SUPPO": "mid",
     "BGDO": "mid",
     "COC": "mid",
     "CGC": "mid",
-    "MIR": "mid"
+    "MIR": "mid",
+    // Unit staff billets (match exact sheet values)
+    "SUB": "sub",
+    "SWO": "swo",
+    "MOI": "moi",
+    "SEA": "sea",
+    "AMOI": "amoi",
+    "Unit CO": "unit_co",
+    "Unit XO": "unit_xo"
   };
   function sheetRowToUser(row, index) {
     const companyRaw = (row.company || "").trim();
@@ -7794,13 +7828,14 @@
     const classVal = (row.class || "").trim();
     let companyKey;
     if (companyRaw === "BN Staff") companyKey = "BN Staff";
+    else if (companyRaw === "Unit Staff") companyKey = "Unit Staff";
     else if (/^[ABC]\b/.test(companyRaw)) companyKey = companyRaw.charAt(0);
     else if (/^[ABC]\s/.test(billetRaw)) companyKey = billetRaw.charAt(0);
     else companyKey = companyRaw;
     const company = normalizeCompany(COMPANY_MAP[companyKey] || companyRaw);
     const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i) || billetRaw.match(/(\d+(?:st|nd|rd|th))/i);
     const platoon = platoonMatch ? `${platoonMatch[1]} PLT` : /CC$/i.test(billetRaw) ? "CO" : /SEL$/i.test(billetRaw) ? "SEL" : billetRaw;
-    const name = nameRaw.replace(/^(MIDN|GySgt|GySGT|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
+    const name = nameRaw.replace(/^(MIDN|CAPT|CMDR|CDR|LCDR|LT|LTJG|ENS|SCPO|CPO|PO1|PO2|PO3|GySgt|GySGT|MSgt|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
     const rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
     const billetNorm = billetRaw.replace(/^[ABC]\s+/, "");
     const role = BILLET_TO_ROLE[billetRaw] || BILLET_TO_ROLE[billetNorm] || "mid";
@@ -8203,6 +8238,53 @@
       ] })
     ] });
   }
+  function ViewTracker({ viewedBy, userList }) {
+    const [expanded, setExpanded] = (0, import_react.useState)(false);
+    const viewCount = Object.keys(viewedBy || {}).length;
+    const notViewed = userList.filter((u) => !viewedBy?.[u.id]);
+    const viewed = userList.filter((u) => viewedBy?.[u.id]);
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.5rem", fontSize: "0.75rem" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+        "button",
+        {
+          onClick: () => setExpanded((e) => !e),
+          style: { background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "0.75rem", color: "#BF5700", textDecoration: "underline" },
+          children: [
+            "\u{1F441} ",
+            viewCount,
+            " viewed \xB7 ",
+            notViewed.length,
+            " not viewed ",
+            expanded ? "\u25B2" : "\u25BC"
+          ]
+        }
+      ),
+      expanded && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.4rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontWeight: 600, color: "#2A7D4F", marginBottom: "0.2rem", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.65rem" }, children: [
+            "Viewed (",
+            viewed.length,
+            ")"
+          ] }),
+          viewed.map((u) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { padding: "0.15rem 0", color: "#2A7D4F" }, children: [
+            "\u2713 ",
+            u.name
+          ] }, u.id))
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontWeight: 600, color: "#C0392B", marginBottom: "0.2rem", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.65rem" }, children: [
+            "Not Viewed (",
+            notViewed.length,
+            ")"
+          ] }),
+          notViewed.map((u) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { padding: "0.15rem 0", color: "#C0392B" }, children: [
+            "\u2717 ",
+            u.name
+          ] }, u.id))
+        ] })
+      ] })
+    ] });
+  }
   function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
     const [name, setName] = (0, import_react.useState)("");
     const [err, setErr] = (0, import_react.useState)("");
@@ -8467,7 +8549,7 @@
   function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, forms, reminder, setReminder, announcements, setAnnouncements }) {
     const { user } = useAuth();
     const canManageReminder = isBigFour(user);
-    const canReset = isBigFour(user) || user.role === "adj";
+    const canReset = user.role === "adj";
     const [editingReminder, setEditingReminder] = (0, import_react.useState)(false);
     const [draftText, setDraftText] = (0, import_react.useState)(reminder.text);
     const [draftAnnouncement, setDraftAnnouncement] = (0, import_react.useState)("");
@@ -8492,14 +8574,13 @@
       const text = draftAnnouncement.trim();
       if (!text) return;
       const announcerName = `${user.rank} ${user.name}`;
-      const entry = { id: Date.now(), text, author: announcerName, date: (/* @__PURE__ */ new Date()).toLocaleDateString(), files: announcementFiles };
+      const entry = { id: Date.now(), text, author: announcerName, date: (/* @__PURE__ */ new Date()).toLocaleDateString(), files: announcementFiles, viewedBy: { [user.id]: true } };
       setAnnouncements((prev) => [entry, ...prev]);
       setDraftAnnouncement("");
       setAnnouncementFiles([]);
       setShowAnnouncementForm(false);
-      const subject = "BN Announcement from " + announcerName;
-      const fileNote = announcementFiles.length > 0 ? "\n\n\u{1F4CE} " + announcementFiles.length + " file(s) attached \u2014 view in The Quarterdeck." : "";
-      const body = text + fileNote + "\n\n\u2014 " + announcerName + ", UT NROTC Battalion";
+      const subject = "New BN Announcement \u2014 Check The Quarterdeck";
+      const body = "Hello,\n\nA new announcement has been posted by " + announcerName + ".\n\nPlease log in to The Quarterdeck to view the full announcement.\n\n\u2014 The Quarterdeck";
       userList.forEach((u) => {
         if (u.email) sendNotification(u.email, subject, body, "announcement", u.id);
       });
@@ -8557,25 +8638,35 @@
         setDraftText(reminder.text);
         setEditingReminder(true);
       }, children: reminder.enabled ? "\u270F Edit Reminder" : "+ Add Reminder" }) }),
-      announcements.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginBottom: "1rem" }, children: announcements.map((a) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "alert alert-announce", style: { marginBottom: "0.5rem", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "\u{1F4E2} Announcement:" }),
-          " ",
-          a.text,
-          a.files && a.files.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.4rem", display: "flex", flexWrap: "wrap", gap: "0.4rem" }, children: a.files.map((f, fi) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: f.url, download: f.name, className: "btn btn-outline btn-sm", style: { fontSize: "0.72rem", gap: "0.3rem" }, children: [
-            "\u{1F4CE} ",
-            f.name
-          ] }, fi)) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.75rem", opacity: 0.6, marginTop: "0.25rem" }, children: [
-            "\u2014 ",
-            a.author,
-            ", ",
-            a.date
-          ] })
-        ] }),
-        isBigFour(user) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", style: { marginLeft: "0.75rem", flexShrink: 0 }, onClick: () => setAnnouncements((prev) => prev.filter((x) => x.id !== a.id)), children: "\u2715" })
-      ] }, a.id)) }),
-      isBigFour(user) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginBottom: "1rem" }, children: showAnnouncementForm ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", children: [
+      announcements.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginBottom: "1rem" }, children: announcements.map((a) => {
+        if (!a.viewedBy?.[user.id]) {
+          setTimeout(() => setAnnouncements((prev) => prev.map((x) => x.id === a.id ? { ...x, viewedBy: { ...x.viewedBy, [user.id]: true } } : x)), 0);
+        }
+        const viewCount = Object.keys(a.viewedBy || {}).length;
+        const notViewedCount = userList.length - viewCount;
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "alert alert-announce", style: { marginBottom: "0.5rem", display: "block" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "\u{1F4E2} Announcement:" }),
+              " ",
+              a.text,
+              a.files && a.files.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.4rem", display: "flex", flexWrap: "wrap", gap: "0.4rem" }, children: a.files.map((f, fi) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: f.url, download: f.name, className: "btn btn-outline btn-sm", style: { fontSize: "0.72rem", gap: "0.3rem" }, children: [
+                "\u{1F4CE} ",
+                f.name
+              ] }, fi)) }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.75rem", opacity: 0.6, marginTop: "0.25rem" }, children: [
+                "\u2014 ",
+                a.author,
+                ", ",
+                a.date
+              ] })
+            ] }),
+            canPostAnnouncement(user) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", style: { marginLeft: "0.75rem", flexShrink: 0 }, onClick: () => setAnnouncements((prev) => prev.filter((x) => x.id !== a.id)), children: "\u2715" })
+          ] }),
+          canPostAnnouncement(user) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ViewTracker, { viewedBy: a.viewedBy || {}, userList })
+        ] }, a.id);
+      }) }),
+      canPostAnnouncement(user) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginBottom: "1rem" }, children: showAnnouncementForm ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-action-label", children: "Post BN Announcement" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "textarea",
@@ -9134,7 +9225,7 @@
     const needsRouteSelect = requiresChitRouteSelection(user);
     const [showModal, setShowModal] = (0, import_react.useState)(false);
     const [toast, setToast] = (0, import_react.useState)("");
-    const [form, setForm] = (0, import_react.useState)({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", routingSheet: null, chitDoc: null });
+    const [form, setForm] = (0, import_react.useState)({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, chitType: "single" });
     const [chitSubmitAttempted, setChitSubmitAttempted] = (0, import_react.useState)(false);
     const [activeComment, setActiveComment] = (0, import_react.useState)(null);
     const [commentText, setCommentText] = (0, import_react.useState)("");
@@ -9157,6 +9248,11 @@
       return [...new Set(pcs.map((u) => normalizePlatoon(u.platoon)).filter(Boolean))].sort();
     };
     const routeHint = () => {
+      if (form.chitType === "single") {
+        if (user.role === "co_cdr") return "ADJ";
+        if (user.role === "plt_cdr") return "CC";
+        return "PC \u2192 CC";
+      }
       if (user.role === "adj") return "BNXO \u2192 BNCO";
       if (user.role === "co_cdr") return "ADJ \u2192 BNXO \u2192 BNCO";
       if (user.role === "plt_cdr") return "CC \u2192 ADJ \u2192 BNXO \u2192 BNCO";
@@ -9180,8 +9276,8 @@
         fire("\u26A0 Notes are required when reason is 'Other'.");
         return;
       }
-      if (!form.routingSheet || !form.chitDoc) {
-        fire("\u26A0 Both documents are required: Routing Sheet and CHIT Document.");
+      if (!form.chitDoc) {
+        fire("\u26A0 CHIT Document is required.");
         return;
       }
       if (needsRouteSelect && (!form.routeCompany || !form.routePlatoon)) {
@@ -9189,7 +9285,7 @@
         return;
       }
       const routeContext = resolveChitRoutingContext(user, form);
-      const approvalChain = buildChitApprovalChain(userList, user, routeContext);
+      const approvalChain = buildChitApprovalChain(userList, user, routeContext, form.chitType);
       if (approvalChain.length === 0) {
         fire("\u26A0 Could not build approval chain. Ensure your company/platoon has assigned personnel.");
         return;
@@ -9206,10 +9302,11 @@
         date: form.endDate && form.endDate !== form.startDate ? `${form.startDate} \u2013 ${form.endDate}` : form.startDate,
         reason: form.reason,
         notes: form.notes,
+        chitType: form.chitType,
         status: "Pending",
         currentStage: 1,
         stages,
-        docs: { routingSheet: form.routingSheet, chitDoc: form.chitDoc }
+        docs: { chitDoc: form.chitDoc }
       };
       setChits((prev) => [...prev, c]);
       const firstStage = stages[1];
@@ -9234,25 +9331,11 @@ Please log in to The Quarterdeck to review and take action.
         }
       }
       setShowModal(false);
-      setForm({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", routingSheet: null, chitDoc: null });
+      setForm({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, chitType: "single" });
       setChitSubmitAttempted(false);
       fire("\u2705 CHIT submitted and routed to your chain of command.");
     };
-    const [reviewDoc, setReviewDoc] = (0, import_react.useState)(null);
-    const loadReviewDoc = (file) => {
-      if (!file || file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-        fire("\u26A0 Please select a DOCX file.");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (e) => setReviewDoc({ fileName: file.name, dataUrl: e.target.result });
-      reader.readAsDataURL(file);
-    };
     const advanceStage = (id, action) => {
-      if (action === "approved" && !reviewDoc) {
-        fire("\u26A0 Please upload a signed routing sheet before approving.");
-        return;
-      }
       const comment = commentText.trim();
       const reviewerFullName = `${user.rank} ${user.name}`;
       const chit = chits.find((c) => c.id === id);
@@ -9267,8 +9350,7 @@ Please log in to The Quarterdeck to review and take action.
         };
         const next = action === "returned" || action === "denied" ? c.currentStage : Math.min(c.currentStage + 1, c.stages.length - 1);
         const status = action === "denied" ? "Denied" : action === "returned" ? "Returned" : next === c.stages.length - 1 ? "Approved" : "Pending";
-        const docs = action === "approved" && reviewDoc ? { ...c.docs, routingSheet: reviewDoc } : c.docs;
-        return { ...c, currentStage: next, stages: updated, status, docs };
+        return { ...c, currentStage: next, stages: updated, status };
       }));
       if (chit) {
         const originatorEmail = getUserEmail(userList, chit.userId);
@@ -9348,13 +9430,21 @@ Please log in to The Quarterdeck to review and take action.
       }
       setActiveComment(null);
       setCommentText("");
-      setReviewDoc(null);
       fire("CHIT updated.");
     };
     const [chitFolders, setChitFolders] = (0, import_react.useState)({ action: false, pipeline: false, complete: false });
     const needsAction = visible.filter((c) => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
     const inPipeline = visible.filter((c) => c.status === "Pending" && !canActOnChit(user, c));
     const completed = visible.filter((c) => c.status === "Approved" || c.status === "Denied" || c.status === "Returned");
+    const myCompleted = completed.filter((c) => c.userId === user.id);
+    const archiveBySemester = canSeeArchive(user) ? (() => {
+      const groups = {};
+      completed.forEach((c) => {
+        const sem = getSemesterLabel(c.stages?.[0]?.completedAt || c.date);
+        (groups[sem] = groups[sem] || []).push(c);
+      });
+      return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+    })() : [];
     const renderChitCard = (c) => {
       const canAct = canActOnChit(user, c);
       const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
@@ -9378,14 +9468,15 @@ Please log in to The Quarterdeck to review and take action.
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.82rem", color: "#666" }, children: [
           c.reason,
+          " \xB7 ",
+          c.chitType === "recurring" ? "Every LL/PT" : "Single Event",
           " \xB7 Absent: ",
           c.date
         ] }),
         c.notes && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }, children: c.notes }),
-        c.docs && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.55rem" }, children: [
+        c.docs?.chitDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.55rem" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
-          c.docs.routingSheet && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.routingSheet.dataUrl, download: c.docs.routingSheet.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} Routing Sheet" }),
-          c.docs.chitDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.chitDoc.dataUrl, download: c.docs.chitDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} CHIT Document" })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.chitDoc.dataUrl, download: c.docs.chitDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} CHIT Document" })
         ] }),
         c.stages && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-track", style: { marginTop: "0.75rem" }, children: c.stages.map((s, j) => {
           const done = j < c.currentStage;
@@ -9397,7 +9488,7 @@ Please log in to The Quarterdeck to review and take action.
             active && canAct && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-approver active", children: "\u25CF You" })
           ] }, j);
         }) }),
-        c.stages?.some((s) => s.completedBy && s.comment) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: c.stages.map((s, j) => s.completedBy && s.comment ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment", children: [
+        c.stages?.some((s) => s.completedBy && s.comment) && (user.id !== c.userId || c.status === "Returned" || c.status === "Denied") && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: c.stages.map((s, j) => s.completedBy && s.comment ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment-by", children: [
             s.name,
             " \xB7 ",
@@ -9424,25 +9515,6 @@ Please log in to The Quarterdeck to review and take action.
                 onChange: (e) => setCommentText(e.target.value)
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", style: { marginBottom: "0.65rem" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-                "Signed Routing Sheet ",
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
-                  reviewDoc ? "\u2191 Replace DOCX" : "\u2191 Upload DOCX",
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document", style: { display: "none" }, onChange: (e) => {
-                    loadReviewDoc(e.target.files[0]);
-                    e.target.value = "";
-                  } })
-                ] }),
-                reviewDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
-                  "\u{1F4C4} ",
-                  reviewDoc.fileName
-                ] })
-              ] })
-            ] }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "approved"), children: "\u2713 Approve" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "returned"), children: "\u21A9 Return" }),
@@ -9450,13 +9522,11 @@ Please log in to The Quarterdeck to review and take action.
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
                 setActiveComment(null);
                 setCommentText("");
-                setReviewDoc(null);
               }, children: "Cancel" })
             ] })
           ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => {
             setActiveComment(c.id);
             setCommentText("");
-            setReviewDoc(null);
           }, children: "\u270F Review CHIT" })
         ] })
       ] }, c.id);
@@ -9493,14 +9563,33 @@ Please log in to The Quarterdeck to review and take action.
         ] }) }),
         chitFolders.pipeline && inPipeline.map(renderChitCard)
       ] }),
-      completed.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
+      !canSeeArchive(user) && myCompleted.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setChitFolders((f) => ({ ...f, complete: !f.complete })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
           chitFolders.complete ? "\u25BC" : "\u25B6",
-          " Completed (",
+          " My Completed (",
+          myCompleted.length,
+          ")"
+        ] }) }),
+        chitFolders.complete && myCompleted.map(renderChitCard)
+      ] }),
+      canSeeArchive(user) && archiveBySemester.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setChitFolders((f) => ({ ...f, complete: !f.complete })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+          chitFolders.complete ? "\u25BC" : "\u25B6",
+          " Archive (",
           completed.length,
           ")"
         ] }) }),
-        chitFolders.complete && completed.map(renderChitCard)
+        chitFolders.complete && archiveBySemester.map(([sem, items]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginLeft: "1rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setChitFolders((f) => ({ ...f, [`sem_${sem}`]: !f[`sem_${sem}`] })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+            chitFolders[`sem_${sem}`] ? "\u25BC" : "\u25B6",
+            " ",
+            sem,
+            " (",
+            items.length,
+            ")"
+          ] }) }),
+          chitFolders[`sem_${sem}`] && items.map(renderChitCard)
+        ] }, sem))
       ] }),
       showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Submit CHIT", onClose: () => setShowModal(false), children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "privacy-note", children: "\u{1F512} Private \u2014 only you and your CoC will see this." }),
@@ -9520,6 +9609,17 @@ Please log in to The Quarterdeck to review and take action.
               getPlatoons(form.routeCompany).map((p) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: p, children: formatPlatoonLabel(p) }, p))
             ] })
           ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+            "Type of Absence ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.chitType, onChange: (e) => setForm((s) => ({ ...s, chitType: e.target.value })), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "single", children: "Missing Single Event" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "recurring", children: "Missing Every LL/PT" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#888", marginTop: "0.25rem" }, children: form.chitType === "single" ? "Routes to your PC/CC for approval." : "Routes up through BNXO/BNCO for approval." })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
@@ -9556,61 +9656,32 @@ Please log in to The Quarterdeck to review and take action.
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, maxLength: 1e3, value: form.notes, onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })), placeholder: form.reason === "Other" ? "Please explain the reason for your absence" : "" })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.65rem" }, children: "Required Documents" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-              "Routing Sheet ",
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "chit-routing-sheet", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: form.routingSheet ? "\u2191 Replace DOCX" : "\u2191 Upload DOCX" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "input",
-                {
-                  id: "chit-routing-sheet",
-                  type: "file",
-                  accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                  style: { display: "none" },
-                  onChange: (e) => {
-                    loadChitFile("routingSheet", e.target.files[0], ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"], "\u26A0 Please select a DOCX file.");
-                    e.target.value = "";
-                  }
-                }
-              ),
-              form.routingSheet ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
-                "\u{1F4C4} ",
-                form.routingSheet.fileName
-              ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#C0392B" }, children: "Required" })
-            ] })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+            "CHIT Document ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-              "CHIT Document ",
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "chit-doc", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: form.chitDoc ? "\u2191 Replace PDF" : "\u2191 Upload PDF" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "input",
-                {
-                  id: "chit-doc",
-                  type: "file",
-                  accept: ".pdf,application/pdf",
-                  style: { display: "none" },
-                  onChange: (e) => {
-                    loadChitFile("chitDoc", e.target.files[0], ["application/pdf"], "\u26A0 Please select a PDF file.");
-                    e.target.value = "";
-                  }
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "chit-doc", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: form.chitDoc ? "\u2191 Replace PDF" : "\u2191 Upload PDF" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+              "input",
+              {
+                id: "chit-doc",
+                type: "file",
+                accept: ".pdf,application/pdf",
+                style: { display: "none" },
+                onChange: (e) => {
+                  loadChitFile("chitDoc", e.target.files[0], ["application/pdf"], "\u26A0 Please select a PDF file.");
+                  e.target.value = "";
                 }
-              ),
-              form.chitDoc ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
-                "\u{1F4C4} ",
-                form.chitDoc.fileName
-              ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#C0392B" }, children: "Required" })
-            ] })
+              }
+            ),
+            form.chitDoc ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
+              "\u{1F4C4} ",
+              form.chitDoc.fileName
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#C0392B" }, children: "Required" })
           ] })
-        ] }),
+        ] }) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "route-hint", children: [
           "Your CHIT routes to: ",
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: routeHint() })
@@ -9672,7 +9743,7 @@ Please log in to The Quarterdeck to review and take action.
       ] })
     ] });
   }
-  function FormsPage({ forms, setForms }) {
+  function FormsPage({ forms, setForms, userList }) {
     const { user } = useAuth();
     const canManage = isSenior(user) || ["adj", "pto", "traino", "academics"].includes(user.role);
     const [showModal, setShowModal] = (0, import_react.useState)(false);
@@ -9728,37 +9799,40 @@ Please log in to The Quarterdeck to review and take action.
         canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#BF5700", marginTop: "0.3rem" }, children: "Use the Add Form button to share a link with the battalion." })
       ] }),
       forms.map((f) => {
-        const opened = !!f.clicks[user.id];
-        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-row", style: { alignItems: "center" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { flex: 1 }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontWeight: 600, marginBottom: "0.2rem" }, children: f.title }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.78rem", color: "#888" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tag", children: f.category }),
-              f.deadline && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-                " \xB7 Due: ",
-                f.deadline
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-                " \xB7 Added by ",
-                f.addedBy,
-                " \xB7 ",
-                f.addedAt
+        const opened = !!f.clicks?.[user.id];
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-row", style: { alignItems: "flex-start", flexDirection: "column" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", width: "100%", alignItems: "center", gap: "1rem", flexWrap: "wrap" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { flex: 1 }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontWeight: 600, marginBottom: "0.2rem" }, children: f.title }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.78rem", color: "#888" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "tag", children: f.category }),
+                f.deadline && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                  " \xB7 Due: ",
+                  f.deadline
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                  " \xB7 Added by ",
+                  f.addedBy,
+                  " \xB7 ",
+                  f.addedAt
+                ] })
               ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
+              opened ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-green", children: "\u2713 Opened" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { background: "#f5f2ee", color: "#bbb" }, children: "Not opened" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => handleFillOut(f.id), children: "Fill Out \u2197" }),
+              canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "button",
+                {
+                  className: "btn btn-sm",
+                  style: { background: "transparent", border: "1.5px solid #C0392B", color: "#C0392B" },
+                  onClick: () => deleteForm(f.id),
+                  children: "\u{1F5D1}"
+                }
+              )
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
-            opened ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-green", children: "\u2713 Opened" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { background: "#f5f2ee", color: "#bbb" }, children: "Not opened" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => handleFillOut(f.id), children: "Fill Out \u2197" }),
-            canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-              "button",
-              {
-                className: "btn btn-sm",
-                style: { background: "transparent", border: "1.5px solid #C0392B", color: "#C0392B" },
-                onClick: () => deleteForm(f.id),
-                children: "\u{1F5D1}"
-              }
-            )
-          ] })
+          canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ViewTracker, { viewedBy: f.clicks || {}, userList })
         ] }, f.id);
       }),
       showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Add Form", onClose: () => setShowModal(false), children: [
@@ -9977,25 +10051,15 @@ Please log in to The Quarterdeck to review and take action.
     const canSubmit = canSubmitChit(user);
     const needsRouteSelect = requiresChitRouteSelection(user);
     const [showModal, setShowModal] = (0, import_react.useState)(false);
-    const [submitForm, setSubmitForm] = (0, import_react.useState)({ period: "Spring 2026", notes: "", routeCompany: "", routePlatoon: "", fitrepDoc: null, routingSheet: null });
+    const [submitForm, setSubmitForm] = (0, import_react.useState)({ period: "Spring 2026", notes: "", routeCompany: "", routePlatoon: "", fitrepDoc: null });
     const [activeComment, setActiveComment] = (0, import_react.useState)(null);
     const [commentText, setCommentText] = (0, import_react.useState)("");
     const [toast, setToast] = (0, import_react.useState)("");
     const [filter, setFilter] = (0, import_react.useState)("");
-    const [reviewDoc, setReviewDoc] = (0, import_react.useState)(null);
     const [fitrepFolders, setFitrepFolders] = (0, import_react.useState)({ action: false, pipeline: false, complete: false });
     const fire = (msg) => {
       setToast(msg);
       setTimeout(() => setToast(""), 3500);
-    };
-    const loadReviewDoc = (file) => {
-      if (!file || file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-        fire("\u26A0 Please select a DOCX file.");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (e) => setReviewDoc({ fileName: file.name, dataUrl: e.target.result });
-      reader.readAsDataURL(file);
     };
     const loadFitrepFile = (field, file, allowedTypes, errorMsg) => {
       if (!file || !allowedTypes.includes(file.type)) {
@@ -10020,8 +10084,8 @@ Please log in to The Quarterdeck to review and take action.
     };
     const handleSubmit = () => {
       if (!submitForm.period) return;
-      if (!submitForm.fitrepDoc || !submitForm.routingSheet) {
-        fire("\u26A0 Both PDFs are required: FITREP Document and Routing Sheet.");
+      if (!submitForm.fitrepDoc) {
+        fire("\u26A0 FITREP Document is required.");
         return;
       }
       if (needsRouteSelect && (!submitForm.routeCompany || !submitForm.routePlatoon)) {
@@ -10048,7 +10112,7 @@ Please log in to The Quarterdeck to review and take action.
         status: "Pending",
         currentStage: 1,
         stages,
-        docs: { fitrepDoc: submitForm.fitrepDoc, routingSheet: submitForm.routingSheet }
+        docs: { fitrepDoc: submitForm.fitrepDoc }
       };
       setFitrebs((prev) => [...prev, f]);
       const firstStage = stages[1];
@@ -10073,14 +10137,10 @@ Please log in to The Quarterdeck to review and take action.
         }
       }
       setShowModal(false);
-      setSubmitForm({ period: "Spring 2026", notes: "", routeCompany: "", routePlatoon: "", fitrepDoc: null, routingSheet: null });
+      setSubmitForm({ period: "Spring 2026", notes: "", routeCompany: "", routePlatoon: "", fitrepDoc: null });
       fire("\u2705 FITREP submitted and routed to your chain of command.");
     };
     const advanceStage = (id, action = "approved") => {
-      if (action === "approved" && !reviewDoc) {
-        fire("\u26A0 Please upload a signed routing sheet before approving.");
-        return;
-      }
       const comment = commentText.trim();
       const reviewerFullName = `${user.rank} ${user.name}`;
       const fitrep = fitrebs.find((f) => f.id === id);
@@ -10095,8 +10155,7 @@ Please log in to The Quarterdeck to review and take action.
         };
         const next = action === "returned" || action === "denied" ? f.currentStage : Math.min(f.currentStage + 1, f.stages.length - 1);
         const status = action === "denied" ? "Denied" : action === "returned" ? "Returned" : next === f.stages.length - 1 ? "Approved" : "Pending";
-        const docs = action === "approved" && reviewDoc ? { ...f.docs, routingSheet: reviewDoc } : f.docs;
-        return { ...f, currentStage: next, stages: updated, status, docs };
+        return { ...f, currentStage: next, stages: updated, status };
       }));
       if (fitrep) {
         const originatorEmail = getUserEmail(userList, fitrep.subjectId);
@@ -10176,13 +10235,21 @@ Please log in to The Quarterdeck to review and take action.
       }
       setActiveComment(null);
       setCommentText("");
-      setReviewDoc(null);
       fire(action === "returned" ? "FITREP returned to originator." : "\u2705 FITREP advanced. Stage comments saved.");
     };
     const companies = [...new Set(visible.map((f) => normalizeCompany(f.company)))];
     const needsActionF = filtered.filter((f) => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Denied" && f.status !== "Returned");
     const inPipelineF = filtered.filter((f) => f.status === "Pending" && !canActOnFitrep(user, f));
     const completedF = filtered.filter((f) => f.status === "Approved" || f.status === "Denied" || f.status === "Returned");
+    const myCompletedF = completedF.filter((f) => f.subjectId === user.id);
+    const archiveBySemesterF = canSeeArchive(user) ? (() => {
+      const groups = {};
+      completedF.forEach((f) => {
+        const sem = getSemesterLabel(f.stages?.[0]?.completedAt || "");
+        (groups[sem] = groups[sem] || []).push(f);
+      });
+      return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+    })() : [];
     const renderFitrepCard = (f) => {
       const canAct = canActOnFitrep(user, f);
       const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
@@ -10210,10 +10277,9 @@ Please log in to The Quarterdeck to review and take action.
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-body", children: [
-          f.docs && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.75rem" }, children: [
+          f.docs?.fitrepDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.75rem" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
-            f.docs.fitrepDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: f.docs.fitrepDoc.dataUrl, download: f.docs.fitrepDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} FITREP Document" }),
-            f.docs.routingSheet && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: f.docs.routingSheet.dataUrl, download: f.docs.routingSheet.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} Routing Sheet" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: f.docs.fitrepDoc.dataUrl, download: f.docs.fitrepDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} FITREP Document" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-track", children: f.stages.map((s, i) => {
             const done = i < f.currentStage;
@@ -10225,7 +10291,7 @@ Please log in to The Quarterdeck to review and take action.
               active && canAct && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-approver active", children: "\u25CF You" })
             ] }, i);
           }) }),
-          f.stages.some((s) => s.completedBy && s.comment) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.75rem" }, children: [
+          f.stages.some((s) => s.completedBy && s.comment) && (user.id !== f.subjectId || f.status === "Returned" || f.status === "Denied") && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.75rem" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.7rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888", marginBottom: "0.5rem" }, children: "Stage Comments" }),
             f.stages.map((s, i) => s.completedBy && s.comment ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment-by", children: [
@@ -10255,25 +10321,6 @@ Please log in to The Quarterdeck to review and take action.
                   onChange: (e) => setCommentText(e.target.value)
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", style: { marginBottom: "0.65rem" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-                  "Signed Routing Sheet ",
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" }, children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
-                    reviewDoc ? "\u2191 Replace DOCX" : "\u2191 Upload DOCX",
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document", style: { display: "none" }, onChange: (e) => {
-                      loadReviewDoc(e.target.files[0]);
-                      e.target.value = "";
-                    } })
-                  ] }),
-                  reviewDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
-                    "\u{1F4C4} ",
-                    reviewDoc.fileName
-                  ] })
-                ] })
-              ] }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(f.id, "approved"), children: "\u2713 Approve & Advance" }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(f.id, "returned"), children: "\u21A9 Return" }),
@@ -10281,13 +10328,11 @@ Please log in to The Quarterdeck to review and take action.
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
                   setActiveComment(null);
                   setCommentText("");
-                  setReviewDoc(null);
                 }, children: "Cancel" })
               ] })
             ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => {
               setActiveComment(f.id);
               setCommentText("");
-              setReviewDoc(null);
             }, children: "\u270F Review FITREP" })
           ] })
         ] })
@@ -10346,14 +10391,33 @@ Please log in to The Quarterdeck to review and take action.
         ] }) }),
         fitrepFolders.pipeline && inPipelineF.map(renderFitrepCard)
       ] }),
-      completedF.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
+      !canSeeArchive(user) && myCompletedF.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setFitrepFolders((f) => ({ ...f, complete: !f.complete })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
           fitrepFolders.complete ? "\u25BC" : "\u25B6",
-          " Completed (",
+          " My Completed (",
+          myCompletedF.length,
+          ")"
+        ] }) }),
+        fitrepFolders.complete && myCompletedF.map(renderFitrepCard)
+      ] }),
+      canSeeArchive(user) && archiveBySemesterF.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setFitrepFolders((f) => ({ ...f, complete: !f.complete })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+          fitrepFolders.complete ? "\u25BC" : "\u25B6",
+          " Archive (",
           completedF.length,
           ")"
         ] }) }),
-        fitrepFolders.complete && completedF.map(renderFitrepCard)
+        fitrepFolders.complete && archiveBySemesterF.map(([sem, items]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginLeft: "1rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setFitrepFolders((f) => ({ ...f, [`sem_${sem}`]: !f[`sem_${sem}`] })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+            fitrepFolders[`sem_${sem}`] ? "\u25BC" : "\u25B6",
+            " ",
+            sem,
+            " (",
+            items.length,
+            ")"
+          ] }) }),
+          fitrepFolders[`sem_${sem}`] && items.map(renderFitrepCard)
+        ] }, sem))
       ] }),
       showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Submit FITREP", onClose: () => setShowModal(false), children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "privacy-note", children: "\u{1F512} Private \u2014 only you and your CoC will see this." }),
@@ -10413,32 +10477,6 @@ Please log in to The Quarterdeck to review and take action.
                 submitForm.fitrepDoc.fileName
               ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#C0392B" }, children: "Required" })
             ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-              "Routing Sheet ",
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "fitrep-routing-sheet", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: submitForm.routingSheet ? "\u2191 Replace DOCX" : "\u2191 Upload DOCX" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                "input",
-                {
-                  id: "fitrep-routing-sheet",
-                  type: "file",
-                  accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                  style: { display: "none" },
-                  onChange: (e) => {
-                    loadFitrepFile("routingSheet", e.target.files[0], ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"], "\u26A0 Please select a DOCX file.");
-                    e.target.value = "";
-                  }
-                }
-              ),
-              submitForm.routingSheet ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
-                "\u{1F4C4} ",
-                submitForm.routingSheet.fileName
-              ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#C0392B" }, children: "Required" })
-            ] })
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "route-hint", children: [
@@ -10452,9 +10490,115 @@ Please log in to The Quarterdeck to review and take action.
       ] })
     ] });
   }
+  function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
+    const { user } = useAuth();
+    const canManage = canPostAnnouncement(user);
+    const [showModal, setShowModal] = (0, import_react.useState)(false);
+    const [draft, setDraft] = (0, import_react.useState)({ title: "", body: "" });
+    const [toast, setToast] = (0, import_react.useState)("");
+    const fire = (msg) => {
+      setToast(msg);
+      setTimeout(() => setToast(""), 3e3);
+    };
+    const postWord = () => {
+      const title = draft.title.trim();
+      const body = draft.body.trim();
+      if (!title || !body) {
+        fire("\u26A0 Title and word content are required.");
+        return;
+      }
+      const entry = {
+        id: Date.now(),
+        title,
+        body,
+        author: `${user.rank} ${user.name}`,
+        date: (/* @__PURE__ */ new Date()).toLocaleDateString(),
+        viewedBy: { [user.id]: true }
+      };
+      setWeeklyWords((prev) => [entry, ...prev]);
+      setDraft({ title: "", body: "" });
+      setShowModal(false);
+      fire("\u2705 Weekly Word posted.");
+      const subject = "New Weekly Word \u2014 Check The Quarterdeck";
+      const emailBody = "Hello,\n\nA new Weekly Word has been posted.\n\nPlease log in to The Quarterdeck to read it.\n\n\u2014 The Quarterdeck";
+      userList.forEach((u) => {
+        if (u.email) sendNotification(u.email, subject, emailBody, "announcement", u.id);
+      });
+    };
+    const deleteWord = (id) => {
+      setWeeklyWords((prev) => prev.filter((w) => w.id !== id));
+      fire("Word removed.");
+    };
+    return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-title", children: [
+        "Weekly ",
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Word" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-sub", children: "Weekly messages from battalion leadership" }),
+      toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `alert ${toast.startsWith("\u26A0") ? "alert-red" : "alert-green"}`, children: toast }),
+      canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: "+ Post Weekly Word" }) }),
+      weeklyWords.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2rem" }, children: "\u{1F4D6}" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: "No Weekly Word posted yet." })
+      ] }),
+      weeklyWords.map((w) => {
+        if (!w.viewedBy?.[user.id]) {
+          setTimeout(() => setWeeklyWords((prev) => prev.map((x) => x.id === w.id ? { ...x, viewedBy: { ...x.viewedBy, [user.id]: true } } : x)), 0);
+        }
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "potw-card", style: { marginBottom: "1rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-week", children: "\u{1F4D6} Weekly Word" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-title", children: w.title })
+            ] }),
+            canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-sm", style: { background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.3)" }, onClick: () => deleteWord(w.id), children: "\u2715" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-body", style: { whiteSpace: "pre-wrap" }, children: w.body }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }, children: [
+            "\u2014 ",
+            w.author,
+            ", ",
+            w.date
+          ] }),
+          canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem", background: "rgba(255,255,255,0.08)", borderRadius: "6px", padding: "0.5rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ViewTracker, { viewedBy: w.viewedBy || {}, userList }) })
+        ] }, w.id);
+      }),
+      showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Post Weekly Word", onClose: () => setShowModal(false), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+            "Title ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", placeholder: "e.g. Week 12 \u2014 Perseverance", value: draft.title, onChange: (e) => setDraft((s) => ({ ...s, title: e.target.value })) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+            "Content ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "textarea",
+            {
+              className: "input",
+              style: { minHeight: "150px", resize: "vertical" },
+              maxLength: 5e3,
+              placeholder: "Write the weekly word message\u2026",
+              value: draft.body,
+              onChange: (e) => setDraft((s) => ({ ...s, body: e.target.value }))
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => setShowModal(false), children: "Cancel" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: postWord, children: "Post & Notify BN" })
+        ] })
+      ] })
+    ] });
+  }
   var NAV = [
     { id: "dashboard", label: "Dashboard", icon: "\u{1F3E0}" },
     { id: "calendar", label: "POTW", icon: "\u{1F4C5}" },
+    { id: "weeklyword", label: "Weekly Word", icon: "\u{1F4D6}" },
     { id: "structure", label: "BN Structure", icon: "\u{1F5A7}" },
     { id: "training", label: "PT & LL", icon: "\u{1F4AA}" },
     { id: "chits", label: "CHITs", icon: "\u{1F4CB}" },
@@ -10486,6 +10630,7 @@ Please log in to The Quarterdeck to review and take action.
     const [fitrebs, setFitrebs] = (0, import_react.useState)(INIT_FITREBS);
     const [showAccount, setShowAccount] = (0, import_react.useState)(false);
     const [forms, setForms] = (0, import_react.useState)([]);
+    const [weeklyWords, setWeeklyWords] = (0, import_react.useState)([]);
     const [ptPlans, setPtPlans] = (0, import_react.useState)({ monday: null, wed_bravo: null, wed_charlie: null, thursday: null });
     const [llSessions, setLlSessions] = (0, import_react.useState)(LEADLAB_INIT);
     const [userList, setUserList] = (0, import_react.useState)(cachedRoster);
@@ -10563,12 +10708,13 @@ Please log in to The Quarterdeck to review and take action.
     const renderPage = () => {
       if (page === "dashboard") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dashboard, { onNav: setPage, userList, chits, setChits, fitrebs, setFitrebs, forms, reminder, setReminder, announcements, setAnnouncements });
       if (page === "calendar") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CalendarPage, {});
+      if (page === "weeklyword") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WeeklyWordPage, { weeklyWords, setWeeklyWords, userList });
       if (page === "structure") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StructurePage, { userList });
       if (page === "training") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TrainingPage, { ptPlans, setPtPlans, llSessions, setLlSessions });
       if (page === "chits") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChitsPage, { chits, setChits, userList });
       if (page === "fitreps") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FitrepsPage, { fitrebs, setFitrebs, userList });
       if (page === "roster") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(RosterPage, { userList });
-      if (page === "forms") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FormsPage, { forms, setForms });
+      if (page === "forms") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FormsPage, { forms, setForms, userList });
       if (page === "academic") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AcademicPage, {});
       return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dashboard, { onNav: setPage });
     };

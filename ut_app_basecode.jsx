@@ -17,7 +17,13 @@ const SENIOR_ROLES = ["bn_cdr", "xo", "ops", "sel"];
 const isSenior  = (u) => u && SENIOR_ROLES.includes(u.role);
 const isCoC     = (u) => u && [...SENIOR_ROLES, "co_cdr", "plt_cdr", "adj"].includes(u.role);
 const isBigFour = (u) => normalizeCompany(u?.company) === "BN" && ["bn_cdr", "xo", "ops", "sel"].includes(u?.role);
-const ROLE_DISPLAY = { bn_cdr:"BNCO", xo:"BNXO", ops:"OPS", sel:"SEL", co_cdr:"CC", plt_cdr:"PC", adj:"ADJ" };
+const UNIT_STAFF_ROLES = ["unit_co", "unit_xo", "moi", "amoi", "sea", "sub", "swo"];
+const isUnitStaff = (u) => u && UNIT_STAFF_ROLES.includes(u.role);
+// Unit staff who can see archive (AMOI and SEA excluded)
+const canSeeArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role));
+// Who can post BN-wide announcements: Big Four + CCs + PCs + MOI + Unit CO + Unit XO
+const canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
+const ROLE_DISPLAY = { bn_cdr:"BNCO", xo:"BNXO", ops:"OPS", sel:"SEL", co_cdr:"CC", plt_cdr:"PC", adj:"ADJ", unit_co:"UNIT CO", unit_xo:"UNIT XO", moi:"MOI", amoi:"AMOI", sea:"SEA", sub:"SUB", swo:"SWO" };
 const displayRole = (role) => ROLE_DISPLAY[role] || role.replace("_"," ").toUpperCase();
 
 function canEdit(user, section) {
@@ -43,6 +49,7 @@ const LEGACY_COMPANY_MAP = {
 
 const COMPANY_META = {
   BN:      { short: "BN",      full: "BN" },
+  Unit:    { short: "Unit",    full: "Unit Staff" },
   Alpha:   { short: "Alpha",   full: "Alpha Company" },
   Bravo:   { short: "Bravo",   full: "Bravo Company" },
   Charlie: { short: "Charlie", full: "Charlie Company" },
@@ -343,7 +350,8 @@ function makeChitChainNode(label, stageName, person, approverRole, icon) {
   };
 }
 
-function buildChitApprovalChain(userList, user, routeContext) {
+// chitType: "single" (single event → short chain up to CC) or "recurring" (every LL/PT → full chain up to BNXO)
+function buildChitApprovalChain(userList, user, routeContext, chitType = "recurring") {
   const { company, platoon } = routeContext;
   const adj = userList.find(u => u.role === "adj");
   const bnxo = userList.find(u => u.role === "xo");
@@ -352,32 +360,50 @@ function buildChitApprovalChain(userList, user, routeContext) {
   const pc = getPlatoonCommander(userList, company, platoon);
   const chain = [];
 
-  if (user.role === "adj") {
-    chain.push(
-      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
-      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
-    );
-  } else if (user.role === "co_cdr") {
-    chain.push(
-      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
-      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
-    );
-  } else if (user.role === "plt_cdr") {
-    chain.push(
-      makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
-      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
-      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
-    );
+  if (chitType === "single") {
+    // Single event absence → short chain: PC → CC only
+    if (user.role === "co_cdr" || user.role === "plt_cdr") {
+      // CCs/PCs: just goes to CC (or ADJ if CC submitting)
+      if (user.role === "co_cdr") {
+        chain.push(makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"));
+      } else {
+        chain.push(makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"));
+      }
+    } else {
+      chain.push(
+        makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "👤"),
+        makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
+      );
+    }
   } else {
-    chain.push(
-      makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "👤"),
-      makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
-      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
-      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
-    );
+    // Recurring absence (every LL/PT) → full chain up to BNXO
+    if (user.role === "adj") {
+      chain.push(
+        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
+        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
+      );
+    } else if (user.role === "co_cdr") {
+      chain.push(
+        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
+        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
+        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
+      );
+    } else if (user.role === "plt_cdr") {
+      chain.push(
+        makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
+        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
+        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
+        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
+      );
+    } else {
+      chain.push(
+        makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "👤"),
+        makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
+        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
+        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
+        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
+      );
+    }
   }
 
   return chain.length > 0 && chain.every(node => node.approverId) ? chain : [];
@@ -548,6 +574,14 @@ function formatWeekRange(mon) {
   const f = d => `${String(d.getDate()).padStart(2,"0")}${M[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
   return `${f(mon)} - ${f(fri)}`;
 }
+function getSemesterLabel(dateStr) {
+  if (!dateStr) return "Unknown";
+  const d = new Date(dateStr.split("–")[0].trim());
+  if (isNaN(d)) return "Unknown";
+  const month = d.getMonth();
+  const year = d.getFullYear();
+  return (month >= 7 ? "Fall " : "Spring ") + year;
+}
 function formatEventTime(isoStr) {
   if (!isoStr) return "";
   const d = new Date(isoStr);
@@ -707,10 +741,11 @@ const SHEET_ONLY_MODE  = true;
 //   company | name | class | email | phone_number | major | campus | eid | billet
 // Maps sheet company prefix → app company name
 const COMPANY_MAP = {
-  "BN Staff": "BN",
-  "A":        "Alpha",
-  "B":        "Bravo",
-  "C":        "Charlie",
+  "BN Staff":    "BN",
+  "Unit Staff":  "Unit",
+  "A":           "Alpha",
+  "B":           "Bravo",
+  "C":           "Charlie",
 };
 
 // Maps sheet billet → app role
@@ -733,7 +768,6 @@ const BILLET_TO_ROLE = {
   "2nd PC":   "plt_cdr",
   "3rd PC":   "plt_cdr",
   "CC":       "co_cdr",
-  "SEL":      "sel",
   "AOPS":   "mid",
   "PAO":    "mid",
   "SUPPO":  "mid",
@@ -741,6 +775,14 @@ const BILLET_TO_ROLE = {
   "COC":    "mid",
   "CGC":    "mid",
   "MIR":    "mid",
+  // Unit staff billets (match exact sheet values)
+  "SUB":       "sub",
+  "SWO":       "swo",
+  "MOI":       "moi",
+  "SEA":       "sea",
+  "AMOI":      "amoi",
+  "Unit CO":   "unit_co",
+  "Unit XO":   "unit_xo",
 };
 
 // Converts a sheet row object → app user object
@@ -754,6 +796,7 @@ function sheetRowToUser(row, index) {
   // If company column doesn't start with A/B/C (e.g. "2nd PC"), fall back to billet prefix
   let companyKey;
   if (companyRaw === "BN Staff") companyKey = "BN Staff";
+  else if (companyRaw === "Unit Staff") companyKey = "Unit Staff";
   else if (/^[ABC]\b/.test(companyRaw)) companyKey = companyRaw.charAt(0);
   else if (/^[ABC]\s/.test(billetRaw)) companyKey = billetRaw.charAt(0);
   else companyKey = companyRaw;
@@ -770,7 +813,7 @@ function sheetRowToUser(row, index) {
         : billetRaw;
 
   // Name: strip rank prefix (MIDN, GySgt, SSgt, OC, Sgt, etc.)
-  const name = nameRaw.replace(/^(MIDN|GySgt|GySGT|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
+  const name = nameRaw.replace(/^(MIDN|CAPT|CMDR|CDR|LCDR|LT|LTJG|ENS|SCPO|CPO|PO1|PO2|PO3|GySgt|GySGT|MSgt|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
 
   // Rank: "1/C"→"MIDN 1/C", "GySgt"→"GySgt", etc.
   const rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
@@ -1209,6 +1252,42 @@ function AccountModal({ onClose, darkMode, toggleDark }) {
   );
 }
 
+// ─── VIEW TRACKER COMPONENT ────────────────────────────────
+// Reusable component showing who has/hasn't viewed an item
+function ViewTracker({ viewedBy, userList }) {
+  const [expanded, setExpanded] = useState(false);
+  const viewCount = Object.keys(viewedBy || {}).length;
+  const notViewed = userList.filter(u => !viewedBy?.[u.id]);
+  const viewed = userList.filter(u => viewedBy?.[u.id]);
+
+  return (
+    <div style={{ marginTop:"0.5rem", fontSize:"0.75rem" }}>
+      <button
+        onClick={() => setExpanded(e => !e)}
+        style={{ background:"none", border:"none", cursor:"pointer", padding:0, fontSize:"0.75rem", color:"#BF5700", textDecoration:"underline" }}
+      >
+        👁 {viewCount} viewed · {notViewed.length} not viewed {expanded ? "▲" : "▼"}
+      </button>
+      {expanded && (
+        <div style={{ marginTop:"0.4rem", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.5rem" }}>
+          <div>
+            <div style={{ fontWeight:600, color:"#2A7D4F", marginBottom:"0.2rem", textTransform:"uppercase", letterSpacing:"1px", fontSize:"0.65rem" }}>Viewed ({viewed.length})</div>
+            {viewed.map(u => (
+              <div key={u.id} style={{ padding:"0.15rem 0", color:"#2A7D4F" }}>✓ {u.name}</div>
+            ))}
+          </div>
+          <div>
+            <div style={{ fontWeight:600, color:"#C0392B", marginBottom:"0.2rem", textTransform:"uppercase", letterSpacing:"1px", fontSize:"0.65rem" }}>Not Viewed ({notViewed.length})</div>
+            {notViewed.map(u => (
+              <div key={u.id} style={{ padding:"0.15rem 0", color:"#C0392B" }}>✗ {u.name}</div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── PAGES ──────────────────────────────────────────────────
 
 function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
@@ -1506,7 +1585,7 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
 function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, forms, reminder, setReminder, announcements, setAnnouncements }) {
   const { user } = useAuth();
   const canManageReminder = isBigFour(user);
-  const canReset = isBigFour(user) || user.role === "adj";
+  const canReset = user.role === "adj";
   const [editingReminder, setEditingReminder] = useState(false);
   const [draftText, setDraftText] = useState(reminder.text);
   const [draftAnnouncement, setDraftAnnouncement] = useState("");
@@ -1535,15 +1614,14 @@ function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, form
     const text = draftAnnouncement.trim();
     if (!text) return;
     const announcerName = `${user.rank} ${user.name}`;
-    const entry = { id: Date.now(), text, author: announcerName, date: new Date().toLocaleDateString(), files: announcementFiles };
+    const entry = { id: Date.now(), text, author: announcerName, date: new Date().toLocaleDateString(), files: announcementFiles, viewedBy: { [user.id]: true } };
     setAnnouncements(prev => [entry, ...prev]);
     setDraftAnnouncement("");
     setAnnouncementFiles([]);
     setShowAnnouncementForm(false);
-    // Email all BN members
-    const subject = "BN Announcement from " + announcerName;
-    const fileNote = announcementFiles.length > 0 ? "\n\n📎 " + announcementFiles.length + " file(s) attached — view in The Quarterdeck." : "";
-    const body = text + fileNote + "\n\n— " + announcerName + ", UT NROTC Battalion";
+    // Email all BN members — just tell them to check Quarterdeck
+    const subject = "New BN Announcement — Check The Quarterdeck";
+    const body = "Hello,\n\nA new announcement has been posted by " + announcerName + ".\n\nPlease log in to The Quarterdeck to view the full announcement.\n\n— The Quarterdeck";
     userList.forEach(u => {
       if (u.email) sendNotification(u.email, subject, body, "announcement", u.id);
     });
@@ -1599,29 +1677,43 @@ function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, form
       {/* Announcements — visible to all; Big Four can post/delete */}
       {announcements.length > 0 && (
         <div style={{ marginBottom:"1rem" }}>
-          {announcements.map(a => (
-            <div key={a.id} className="alert alert-announce" style={{ marginBottom:"0.5rem", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-              <div>
-                <strong>📢 Announcement:</strong> {a.text}
-                {a.files && a.files.length > 0 && (
-                  <div style={{ marginTop:"0.4rem", display:"flex", flexWrap:"wrap", gap:"0.4rem" }}>
-                    {a.files.map((f, fi) => (
-                      <a key={fi} href={f.url} download={f.name} className="btn btn-outline btn-sm" style={{ fontSize:"0.72rem", gap:"0.3rem" }}>
-                        📎 {f.name}
-                      </a>
-                    ))}
+          {announcements.map(a => {
+            // Mark as viewed by current user
+            if (!a.viewedBy?.[user.id]) {
+              setTimeout(() => setAnnouncements(prev => prev.map(x => x.id === a.id ? { ...x, viewedBy: { ...x.viewedBy, [user.id]: true } } : x)), 0);
+            }
+            const viewCount = Object.keys(a.viewedBy || {}).length;
+            const notViewedCount = userList.length - viewCount;
+            return (
+              <div key={a.id} className="alert alert-announce" style={{ marginBottom:"0.5rem", display:"block" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                  <div>
+                    <strong>📢 Announcement:</strong> {a.text}
+                    {a.files && a.files.length > 0 && (
+                      <div style={{ marginTop:"0.4rem", display:"flex", flexWrap:"wrap", gap:"0.4rem" }}>
+                        {a.files.map((f, fi) => (
+                          <a key={fi} href={f.url} download={f.name} className="btn btn-outline btn-sm" style={{ fontSize:"0.72rem", gap:"0.3rem" }}>
+                            📎 {f.name}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ fontSize:"0.75rem", opacity:0.6, marginTop:"0.25rem" }}>— {a.author}, {a.date}</div>
                   </div>
+                  {canPostAnnouncement(user) && (
+                    <button className="btn btn-red btn-sm" style={{ marginLeft:"0.75rem", flexShrink:0 }} onClick={() => setAnnouncements(prev => prev.filter(x => x.id !== a.id))}>✕</button>
+                  )}
+                </div>
+                {/* View tracker — visible to announcement posters */}
+                {canPostAnnouncement(user) && (
+                  <ViewTracker viewedBy={a.viewedBy || {}} userList={userList} />
                 )}
-                <div style={{ fontSize:"0.75rem", opacity:0.6, marginTop:"0.25rem" }}>— {a.author}, {a.date}</div>
               </div>
-              {isBigFour(user) && (
-                <button className="btn btn-red btn-sm" style={{ marginLeft:"0.75rem", flexShrink:0 }} onClick={() => setAnnouncements(prev => prev.filter(x => x.id !== a.id))}>✕</button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
-      {isBigFour(user) && (
+      {canPostAnnouncement(user) && (
         <div style={{ marginBottom:"1rem" }}>
           {showAnnouncementForm ? (
             <div className="stage-action-box">
@@ -2215,7 +2307,7 @@ function ChitsPage({ chits, setChits, userList }) {
   const needsRouteSelect = requiresChitRouteSelection(user);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState("");
-  const [form, setForm] = useState({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
+  const [form, setForm] = useState({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, chitType:"single" });
   const [chitSubmitAttempted, setChitSubmitAttempted] = useState(false);
   const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText] = useState("");
@@ -2238,6 +2330,11 @@ function ChitsPage({ chits, setChits, userList }) {
   };
 
   const routeHint = () => {
+    if (form.chitType === "single") {
+      if (user.role === "co_cdr") return "ADJ";
+      if (user.role === "plt_cdr") return "CC";
+      return "PC → CC";
+    }
     if (user.role === "adj")    return "BNXO → BNCO";
     if (user.role === "co_cdr") return "ADJ → BNXO → BNCO";
     if (user.role === "plt_cdr") return "CC → ADJ → BNXO → BNCO";
@@ -2258,14 +2355,14 @@ function ChitsPage({ chits, setChits, userList }) {
     if (form.reason === "Other" && !form.notes.trim()) {
       fire("⚠ Notes are required when reason is 'Other'."); return;
     }
-    if (!form.routingSheet || !form.chitDoc) {
-      fire("⚠ Both documents are required: Routing Sheet and CHIT Document."); return;
+    if (!form.chitDoc) {
+      fire("⚠ CHIT Document is required."); return;
     }
     if (needsRouteSelect && (!form.routeCompany || !form.routePlatoon)) {
       fire("⚠ Please select your company and platoon."); return;
     }
     const routeContext = resolveChitRoutingContext(user, form);
-    const approvalChain = buildChitApprovalChain(userList, user, routeContext);
+    const approvalChain = buildChitApprovalChain(userList, user, routeContext, form.chitType);
     if (approvalChain.length === 0) {
       fire("⚠ Could not build approval chain. Ensure your company/platoon has assigned personnel."); return;
     }
@@ -2281,10 +2378,11 @@ function ChitsPage({ chits, setChits, userList }) {
       date: form.endDate && form.endDate !== form.startDate ? `${form.startDate} – ${form.endDate}` : form.startDate,
       reason: form.reason,
       notes: form.notes,
+      chitType: form.chitType,
       status: "Pending",
       currentStage: 1,
       stages,
-      docs: { routingSheet: form.routingSheet, chitDoc: form.chitDoc },
+      docs: { chitDoc: form.chitDoc },
     };
     setChits(prev => [...prev, c]);
     // Notify first approver
@@ -2302,22 +2400,12 @@ function ChitsPage({ chits, setChits, userList }) {
       }
     }
     setShowModal(false);
-    setForm({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", routingSheet:null, chitDoc:null });
+    setForm({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, chitType:"single" });
     setChitSubmitAttempted(false);
     fire("✅ CHIT submitted and routed to your chain of command.");
   };
 
-  const [reviewDoc, setReviewDoc] = useState(null);
-
-  const loadReviewDoc = (file) => {
-    if (!file || file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") { fire("⚠ Please select a DOCX file."); return; }
-    const reader = new FileReader();
-    reader.onload = e => setReviewDoc({ fileName: file.name, dataUrl: e.target.result });
-    reader.readAsDataURL(file);
-  };
-
   const advanceStage = (id, action) => {
-    if (action === "approved" && !reviewDoc) { fire("⚠ Please upload a signed routing sheet before approving."); return; }
     const comment = commentText.trim();
     const reviewerFullName = `${user.rank} ${user.name}`;
     const chit = chits.find(c => c.id === id);
@@ -2337,10 +2425,7 @@ function ChitsPage({ chits, setChits, userList }) {
         : action === "returned" ? "Returned"
         : next === c.stages.length - 1 ? "Approved"
         : "Pending";
-      const docs = action === "approved" && reviewDoc
-        ? { ...c.docs, routingSheet: reviewDoc }
-        : c.docs;
-      return { ...c, currentStage: next, stages: updated, status, docs };
+      return { ...c, currentStage: next, stages: updated, status };
     }));
     // ── Email notifications ──
     if (chit) {
@@ -2397,7 +2482,6 @@ function ChitsPage({ chits, setChits, userList }) {
     }
     setActiveComment(null);
     setCommentText("");
-    setReviewDoc(null);
     fire("CHIT updated.");
   };
 
@@ -2405,6 +2489,15 @@ function ChitsPage({ chits, setChits, userList }) {
   const needsAction = visible.filter(c => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
   const inPipeline = visible.filter(c => c.status === "Pending" && !canActOnChit(user, c));
   const completed = visible.filter(c => c.status === "Approved" || c.status === "Denied" || c.status === "Returned");
+  const myCompleted = completed.filter(c => c.userId === user.id);
+  const archiveBySemester = canSeeArchive(user) ? (() => {
+    const groups = {};
+    completed.forEach(c => {
+      const sem = getSemesterLabel(c.stages?.[0]?.completedAt || c.date);
+      (groups[sem] = groups[sem] || []).push(c);
+    });
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+  })() : [];
 
   const renderChitCard = (c) => {
     const canAct = canActOnChit(user, c);
@@ -2425,18 +2518,13 @@ function ChitsPage({ chits, setChits, userList }) {
             {canAct && !isDone && <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>}
           </div>
         </div>
-        <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · Absent: {c.date}</div>
+        <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · {c.chitType === "recurring" ? "Every LL/PT" : "Single Event"} · Absent: {c.date}</div>
         {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", marginTop:"0.2rem" }}>{c.notes}</div>}
 
-        {c.docs && (
+        {c.docs?.chitDoc && (
           <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginTop:"0.55rem" }}>
             <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
-            {c.docs.routingSheet && (
-              <a href={c.docs.routingSheet.dataUrl} download={c.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
-            )}
-            {c.docs.chitDoc && (
-              <a href={c.docs.chitDoc.dataUrl} download={c.docs.chitDoc.fileName} className="btn btn-outline btn-sm">📄 CHIT Document</a>
-            )}
+            <a href={c.docs.chitDoc.dataUrl} download={c.docs.chitDoc.fileName} className="btn btn-outline btn-sm">📄 CHIT Document</a>
           </div>
         )}
 
@@ -2459,7 +2547,8 @@ function ChitsPage({ chits, setChits, userList }) {
           </div>
         )}
 
-        {c.stages?.some(s => s.completedBy && s.comment) && (
+        {/* Comments: hidden from originator unless CHIT was returned */}
+        {c.stages?.some(s => s.completedBy && s.comment) && (user.id !== c.userId || c.status === "Returned" || c.status === "Denied") && (
           <div style={{ marginTop:"0.5rem" }}>
             {c.stages.map((s, j) => s.completedBy && s.comment ? (
               <div className="stage-comment" key={j}>
@@ -2483,25 +2572,15 @@ function ChitsPage({ chits, setChits, userList }) {
                   value={commentText}
                   onChange={e => setCommentText(e.target.value)}
                 />
-                <div className="input-group" style={{ marginBottom:"0.65rem" }}>
-                  <label className="input-label">Signed Routing Sheet <span style={{ color:"#C0392B" }}>*</span></label>
-                  <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
-                    <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
-                      {reviewDoc ? "↑ Replace DOCX" : "↑ Upload DOCX"}
-                      <input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display:"none" }} onChange={e => { loadReviewDoc(e.target.files[0]); e.target.value = ""; }} />
-                    </label>
-                    {reviewDoc && <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {reviewDoc.fileName}</span>}
-                  </div>
-                </div>
                 <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
                   <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
                   <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return</button>
                   <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "denied")}>✕ Deny</button>
-                  <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); setReviewDoc(null); }}>Cancel</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>Cancel</button>
                 </div>
               </>
             ) : (
-              <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(c.id); setCommentText(""); setReviewDoc(null); }}>
+              <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(c.id); setCommentText(""); }}>
                 ✏ Review CHIT
               </button>
             )}
@@ -2553,12 +2632,28 @@ function ChitsPage({ chits, setChits, userList }) {
         </div>
       )}
 
-      {completed.length > 0 && (
+      {!canSeeArchive(user) && myCompleted.length > 0 && (
         <div className="folder-section">
           <div className="folder-header" onClick={() => setChitFolders(f => ({ ...f, complete: !f.complete }))}>
-            <span>{chitFolders.complete ? "▼" : "▶"} Completed ({completed.length})</span>
+            <span>{chitFolders.complete ? "▼" : "▶"} My Completed ({myCompleted.length})</span>
           </div>
-          {chitFolders.complete && completed.map(renderChitCard)}
+          {chitFolders.complete && myCompleted.map(renderChitCard)}
+        </div>
+      )}
+
+      {canSeeArchive(user) && archiveBySemester.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setChitFolders(f => ({ ...f, complete: !f.complete }))}>
+            <span>{chitFolders.complete ? "▼" : "▶"} Archive ({completed.length})</span>
+          </div>
+          {chitFolders.complete && archiveBySemester.map(([sem, items]) => (
+            <div key={sem} style={{ marginLeft: "1rem" }}>
+              <div className="folder-header" onClick={() => setChitFolders(f => ({ ...f, [`sem_${sem}`]: !f[`sem_${sem}`] }))}>
+                <span>{chitFolders[`sem_${sem}`] ? "▼" : "▶"} {sem} ({items.length})</span>
+              </div>
+              {chitFolders[`sem_${sem}`] && items.map(renderChitCard)}
+            </div>
+          ))}
         </div>
       )}
 
@@ -2587,6 +2682,16 @@ function ChitsPage({ chits, setChits, userList }) {
             </>
           )}
           <div className="input-group">
+            <label className="input-label">Type of Absence <span style={{ color:"#C0392B" }}>*</span></label>
+            <select className="input" value={form.chitType} onChange={e => setForm(s => ({ ...s, chitType:e.target.value }))}>
+              <option value="single">Missing Single Event</option>
+              <option value="recurring">Missing Every LL/PT</option>
+            </select>
+            <div style={{ fontSize:"0.72rem", color:"#888", marginTop:"0.25rem" }}>
+              {form.chitType === "single" ? "Routes to your PC/CC for approval." : "Routes up through BNXO/BNCO for approval."}
+            </div>
+          </div>
+          <div className="input-group">
             <label className="input-label">Start Date <span style={{ color:"#C0392B" }}>*</span></label>
             <input className="input" type="date" value={form.startDate} onChange={e => setForm(s => ({ ...s, startDate:e.target.value }))} />
           </div>
@@ -2610,34 +2715,8 @@ function ChitsPage({ chits, setChits, userList }) {
             <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} maxLength={1000} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} placeholder={form.reason === "Other" ? "Please explain the reason for your absence" : ""} />
           </div>
 
-          {/* ── Required PDFs ── */}
+          {/* ── Required Document ── */}
           <div style={{ borderTop:"1px solid #eee", paddingTop:"0.85rem", marginTop:"0.25rem" }}>
-            <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.72rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.65rem" }}>
-              Required Documents
-            </div>
-
-            {/* Routing Sheet */}
-            <div className="input-group">
-              <label className="input-label">
-                Routing Sheet <span style={{ color:"#C0392B" }}>*</span>
-              </label>
-              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
-                <label htmlFor="chit-routing-sheet" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
-                  {form.routingSheet ? "↑ Replace DOCX" : "↑ Upload DOCX"}
-                </label>
-                <input
-                  id="chit-routing-sheet" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  style={{ display:"none" }}
-                  onChange={e => { loadChitFile("routingSheet", e.target.files[0], ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"], "⚠ Please select a DOCX file."); e.target.value = ""; }}
-                />
-                {form.routingSheet
-                  ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {form.routingSheet.fileName}</span>
-                  : <span style={{ fontSize:"0.75rem", color:"#C0392B" }}>Required</span>
-                }
-              </div>
-            </div>
-
-            {/* CHIT Document */}
             <div className="input-group">
               <label className="input-label">
                 CHIT Document <span style={{ color:"#C0392B" }}>*</span>
@@ -2717,7 +2796,7 @@ function RosterPage({ userList }) {
   );
 }
 
-function FormsPage({ forms, setForms }) {
+function FormsPage({ forms, setForms, userList }) {
   const { user } = useAuth();
   // Big Four (isSenior) + billets excluding PC (plt_cdr) and CC (co_cdr)
   const canManage = isSenior(user) || ["adj", "pto", "traino", "academics"].includes(user.role);
@@ -2787,34 +2866,39 @@ function FormsPage({ forms, setForms }) {
       )}
 
       {forms.map(f => {
-        const opened = !!f.clicks[user.id];
+        const opened = !!f.clicks?.[user.id];
         return (
-          <div className="form-row" key={f.id} style={{ alignItems:"center" }}>
-            <div style={{ flex:1 }}>
-              <div style={{ fontWeight:600, marginBottom:"0.2rem" }}>{f.title}</div>
-              <div style={{ fontSize:"0.78rem", color:"#888" }}>
-                <span className="tag">{f.category}</span>
-                {f.deadline && <span> · Due: {f.deadline}</span>}
-                <span> · Added by {f.addedBy} · {f.addedAt}</span>
+          <div className="form-row" key={f.id} style={{ alignItems:"flex-start", flexDirection:"column" }}>
+            <div style={{ display:"flex", width:"100%", alignItems:"center", gap:"1rem", flexWrap:"wrap" }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:600, marginBottom:"0.2rem" }}>{f.title}</div>
+                <div style={{ fontSize:"0.78rem", color:"#888" }}>
+                  <span className="tag">{f.category}</span>
+                  {f.deadline && <span> · Due: {f.deadline}</span>}
+                  <span> · Added by {f.addedBy} · {f.addedAt}</span>
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                {opened
+                  ? <span className="badge badge-green">✓ Opened</span>
+                  : <span className="badge" style={{ background:"#f5f2ee", color:"#bbb" }}>Not opened</span>
+                }
+                <button className="btn btn-orange btn-sm" onClick={() => handleFillOut(f.id)}>
+                  Fill Out ↗
+                </button>
+                {canManage && (
+                  <button
+                    className="btn btn-sm"
+                    style={{ background:"transparent", border:"1.5px solid #C0392B", color:"#C0392B" }}
+                    onClick={() => deleteForm(f.id)}
+                  >🗑</button>
+                )}
               </div>
             </div>
-
-            <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
-              {opened
-                ? <span className="badge badge-green">✓ Opened</span>
-                : <span className="badge" style={{ background:"#f5f2ee", color:"#bbb" }}>Not opened</span>
-              }
-              <button className="btn btn-orange btn-sm" onClick={() => handleFillOut(f.id)}>
-                Fill Out ↗
-              </button>
-              {canManage && (
-                <button
-                  className="btn btn-sm"
-                  style={{ background:"transparent", border:"1.5px solid #C0392B", color:"#C0392B" }}
-                  onClick={() => deleteForm(f.id)}
-                >🗑</button>
-              )}
-            </div>
+            {/* View tracker — visible to form managers */}
+            {canManage && (
+              <ViewTracker viewedBy={f.clicks || {}} userList={userList} />
+            )}
           </div>
         );
       })}
@@ -2989,22 +3073,14 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   const canSubmit = canSubmitChit(user); // same Big Four restriction
   const needsRouteSelect = requiresChitRouteSelection(user);
   const [showModal, setShowModal]         = useState(false);
-  const [submitForm, setSubmitForm]       = useState({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"", fitrepDoc:null, routingSheet:null });
+  const [submitForm, setSubmitForm]       = useState({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"", fitrepDoc:null });
   const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText]     = useState("");
   const [toast, setToast]                 = useState("");
   const [filter, setFilter]               = useState("");
-  const [reviewDoc, setReviewDoc]         = useState(null);
   const [fitrepFolders, setFitrepFolders] = useState({ action: false, pipeline: false, complete: false });
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
-
-  const loadReviewDoc = (file) => {
-    if (!file || file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") { fire("⚠ Please select a DOCX file."); return; }
-    const reader = new FileReader();
-    reader.onload = e => setReviewDoc({ fileName: file.name, dataUrl: e.target.result });
-    reader.readAsDataURL(file);
-  };
 
   const loadFitrepFile = (field, file, allowedTypes, errorMsg) => {
     if (!file || !allowedTypes.includes(file.type)) { fire(errorMsg); return; }
@@ -3031,8 +3107,8 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
 
   const handleSubmit = () => {
     if (!submitForm.period) return;
-    if (!submitForm.fitrepDoc || !submitForm.routingSheet) {
-      fire("⚠ Both PDFs are required: FITREP Document and Routing Sheet."); return;
+    if (!submitForm.fitrepDoc) {
+      fire("⚠ FITREP Document is required."); return;
     }
     if (needsRouteSelect && (!submitForm.routeCompany || !submitForm.routePlatoon)) {
       fire("⚠ Please select your company and platoon."); return;
@@ -3056,7 +3132,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
       status: "Pending",
       currentStage: 1,
       stages,
-      docs: { fitrepDoc: submitForm.fitrepDoc, routingSheet: submitForm.routingSheet },
+      docs: { fitrepDoc: submitForm.fitrepDoc },
     };
     setFitrebs(prev => [...prev, f]);
     // Notify first approver
@@ -3074,12 +3150,11 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
       }
     }
     setShowModal(false);
-    setSubmitForm({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"", fitrepDoc:null, routingSheet:null });
+    setSubmitForm({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"", fitrepDoc:null });
     fire("✅ FITREP submitted and routed to your chain of command.");
   };
 
   const advanceStage = (id, action = "approved") => {
-    if (action === "approved" && !reviewDoc) { fire("⚠ Please upload a signed routing sheet before approving."); return; }
     const comment = commentText.trim();
     const reviewerFullName = `${user.rank} ${user.name}`;
     const fitrep = fitrebs.find(f => f.id === id);
@@ -3099,10 +3174,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         : action === "returned" ? "Returned"
         : next === f.stages.length - 1 ? "Approved"
         : "Pending";
-      const docs = action === "approved" && reviewDoc
-        ? { ...f.docs, routingSheet: reviewDoc }
-        : f.docs;
-      return { ...f, currentStage: next, stages: updated, status, docs };
+      return { ...f, currentStage: next, stages: updated, status };
     }));
     // ── Email notifications ──
     if (fitrep) {
@@ -3155,7 +3227,6 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
     }
     setActiveComment(null);
     setCommentText("");
-    setReviewDoc(null);
     fire(action === "returned" ? "FITREP returned to originator." : "✅ FITREP advanced. Stage comments saved.");
   };
 
@@ -3164,6 +3235,15 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   const needsActionF = filtered.filter(f => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Denied" && f.status !== "Returned");
   const inPipelineF = filtered.filter(f => f.status === "Pending" && !canActOnFitrep(user, f));
   const completedF = filtered.filter(f => f.status === "Approved" || f.status === "Denied" || f.status === "Returned");
+  const myCompletedF = completedF.filter(f => f.subjectId === user.id);
+  const archiveBySemesterF = canSeeArchive(user) ? (() => {
+    const groups = {};
+    completedF.forEach(f => {
+      const sem = getSemesterLabel(f.stages?.[0]?.completedAt || "");
+      (groups[sem] = groups[sem] || []).push(f);
+    });
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+  })() : [];
 
   const renderFitrepCard = (f) => {
     const canAct = canActOnFitrep(user, f);
@@ -3194,15 +3274,10 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         </div>
 
         <div className="fitrep-body">
-          {f.docs && (
+          {f.docs?.fitrepDoc && (
             <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginBottom:"0.75rem" }}>
               <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
-              {f.docs.fitrepDoc && (
-                <a href={f.docs.fitrepDoc.dataUrl} download={f.docs.fitrepDoc.fileName} className="btn btn-outline btn-sm">📄 FITREP Document</a>
-              )}
-              {f.docs.routingSheet && (
-                <a href={f.docs.routingSheet.dataUrl} download={f.docs.routingSheet.fileName} className="btn btn-outline btn-sm">📄 Routing Sheet</a>
-              )}
+              <a href={f.docs.fitrepDoc.dataUrl} download={f.docs.fitrepDoc.fileName} className="btn btn-outline btn-sm">📄 FITREP Document</a>
             </div>
           )}
           <div className="stage-track">
@@ -3222,7 +3297,8 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
             })}
           </div>
 
-          {f.stages.some(s => s.completedBy && s.comment) && (
+          {/* Comments: hidden from subject unless returned/denied */}
+          {f.stages.some(s => s.completedBy && s.comment) && (user.id !== f.subjectId || f.status === "Returned" || f.status === "Denied") && (
             <div style={{ marginTop:"0.75rem" }}>
               <div style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.7rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888", marginBottom:"0.5rem" }}>Stage Comments</div>
               {f.stages.map((s, i) => s.completedBy && s.comment ? (
@@ -3247,25 +3323,15 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
                     value={commentText}
                     onChange={e => setCommentText(e.target.value)}
                   />
-                  <div className="input-group" style={{ marginBottom:"0.65rem" }}>
-                    <label className="input-label">Signed Routing Sheet <span style={{ color:"#C0392B" }}>*</span></label>
-                    <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
-                      <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
-                        {reviewDoc ? "↑ Replace DOCX" : "↑ Upload DOCX"}
-                        <input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display:"none" }} onChange={e => { loadReviewDoc(e.target.files[0]); e.target.value = ""; }} />
-                      </label>
-                      {reviewDoc && <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {reviewDoc.fileName}</span>}
-                    </div>
-                  </div>
                   <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
                     <button className="btn btn-green btn-sm" onClick={() => advanceStage(f.id, "approved")}>✓ Approve & Advance</button>
                     <button className="btn btn-red btn-sm" onClick={() => advanceStage(f.id, "returned")}>↩ Return</button>
                     <button className="btn btn-red btn-sm" onClick={() => advanceStage(f.id, "denied")}>✕ Deny</button>
-                    <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); setReviewDoc(null); }}>Cancel</button>
+                    <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>Cancel</button>
                   </div>
                 </>
               ) : (
-                <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(f.id); setCommentText(""); setReviewDoc(null); }}>
+                <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(f.id); setCommentText(""); }}>
                   ✏ Review FITREP
                 </button>
               )}
@@ -3328,12 +3394,28 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         </div>
       )}
 
-      {completedF.length > 0 && (
+      {!canSeeArchive(user) && myCompletedF.length > 0 && (
         <div className="folder-section">
           <div className="folder-header" onClick={() => setFitrepFolders(f => ({ ...f, complete: !f.complete }))}>
-            <span>{fitrepFolders.complete ? "▼" : "▶"} Completed ({completedF.length})</span>
+            <span>{fitrepFolders.complete ? "▼" : "▶"} My Completed ({myCompletedF.length})</span>
           </div>
-          {fitrepFolders.complete && completedF.map(renderFitrepCard)}
+          {fitrepFolders.complete && myCompletedF.map(renderFitrepCard)}
+        </div>
+      )}
+
+      {canSeeArchive(user) && archiveBySemesterF.length > 0 && (
+        <div className="folder-section">
+          <div className="folder-header" onClick={() => setFitrepFolders(f => ({ ...f, complete: !f.complete }))}>
+            <span>{fitrepFolders.complete ? "▼" : "▶"} Archive ({completedF.length})</span>
+          </div>
+          {fitrepFolders.complete && archiveBySemesterF.map(([sem, items]) => (
+            <div key={sem} style={{ marginLeft: "1rem" }}>
+              <div className="folder-header" onClick={() => setFitrepFolders(f => ({ ...f, [`sem_${sem}`]: !f[`sem_${sem}`] }))}>
+                <span>{fitrepFolders[`sem_${sem}`] ? "▼" : "▶"} {sem} ({items.length})</span>
+              </div>
+              {fitrepFolders[`sem_${sem}`] && items.map(renderFitrepCard)}
+            </div>
+          ))}
         </div>
       )}
 
@@ -3401,27 +3483,6 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
                 }
               </div>
             </div>
-
-            {/* Routing Sheet */}
-            <div className="input-group">
-              <label className="input-label">
-                Routing Sheet <span style={{ color:"#C0392B" }}>*</span>
-              </label>
-              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
-                <label htmlFor="fitrep-routing-sheet" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
-                  {submitForm.routingSheet ? "↑ Replace DOCX" : "↑ Upload DOCX"}
-                </label>
-                <input
-                  id="fitrep-routing-sheet" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  style={{ display:"none" }}
-                  onChange={e => { loadFitrepFile("routingSheet", e.target.files[0], ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"], "⚠ Please select a DOCX file."); e.target.value = ""; }}
-                />
-                {submitForm.routingSheet
-                  ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {submitForm.routingSheet.fileName}</span>
-                  : <span style={{ fontSize:"0.75rem", color:"#C0392B" }}>Required</span>
-                }
-              </div>
-            </div>
           </div>
 
           <div className="route-hint">
@@ -3437,10 +3498,123 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   );
 }
 
+// ─── WEEKLY WORD PAGE ────────────────────────────────────────
+function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
+  const { user } = useAuth();
+  const canManage = canPostAnnouncement(user);
+  const [showModal, setShowModal] = useState(false);
+  const [draft, setDraft] = useState({ title:"", body:"" });
+  const [toast, setToast] = useState("");
+
+  const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+
+  const postWord = () => {
+    const title = draft.title.trim();
+    const body = draft.body.trim();
+    if (!title || !body) { fire("⚠ Title and word content are required."); return; }
+    const entry = {
+      id: Date.now(),
+      title,
+      body,
+      author: `${user.rank} ${user.name}`,
+      date: new Date().toLocaleDateString(),
+      viewedBy: { [user.id]: true },
+    };
+    setWeeklyWords(prev => [entry, ...prev]);
+    setDraft({ title:"", body:"" });
+    setShowModal(false);
+    fire("✅ Weekly Word posted.");
+    // Email all BN members to check Quarterdeck
+    const subject = "New Weekly Word — Check The Quarterdeck";
+    const emailBody = "Hello,\n\nA new Weekly Word has been posted.\n\nPlease log in to The Quarterdeck to read it.\n\n— The Quarterdeck";
+    userList.forEach(u => {
+      if (u.email) sendNotification(u.email, subject, emailBody, "announcement", u.id);
+    });
+  };
+
+  const deleteWord = (id) => {
+    setWeeklyWords(prev => prev.filter(w => w.id !== id));
+    fire("Word removed.");
+  };
+
+  return (
+    <div>
+      <div className="page-title">Weekly <span>Word</span></div>
+      <div className="page-sub">Weekly messages from battalion leadership</div>
+
+      {toast && <div className={`alert ${toast.startsWith("⚠") ? "alert-red" : "alert-green"}`}>{toast}</div>}
+
+      {canManage && (
+        <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
+          <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Post Weekly Word</button>
+        </div>
+      )}
+
+      {weeklyWords.length === 0 && (
+        <div className="empty">
+          <div style={{ fontSize:"2rem" }}>📖</div>
+          <div style={{ marginTop:"0.5rem" }}>No Weekly Word posted yet.</div>
+        </div>
+      )}
+
+      {weeklyWords.map(w => {
+        // Mark as viewed
+        if (!w.viewedBy?.[user.id]) {
+          setTimeout(() => setWeeklyWords(prev => prev.map(x => x.id === w.id ? { ...x, viewedBy: { ...x.viewedBy, [user.id]: true } } : x)), 0);
+        }
+        return (
+          <div className="potw-card" key={w.id} style={{ marginBottom:"1rem" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+              <div>
+                <div className="potw-week">📖 Weekly Word</div>
+                <div className="potw-title">{w.title}</div>
+              </div>
+              {canManage && (
+                <button className="btn btn-sm" style={{ background:"rgba(255,255,255,0.15)", color:"white", border:"1px solid rgba(255,255,255,0.3)" }} onClick={() => deleteWord(w.id)}>✕</button>
+              )}
+            </div>
+            <div className="potw-body" style={{ whiteSpace:"pre-wrap" }}>{w.body}</div>
+            <div style={{ fontSize:"0.75rem", color:"rgba(255,255,255,0.5)" }}>— {w.author}, {w.date}</div>
+            {/* View tracker for leadership */}
+            {canManage && (
+              <div style={{ marginTop:"0.5rem", background:"rgba(255,255,255,0.08)", borderRadius:"6px", padding:"0.5rem" }}>
+                <ViewTracker viewedBy={w.viewedBy || {}} userList={userList} />
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {showModal && (
+        <Modal title="Post Weekly Word" onClose={() => setShowModal(false)}>
+          <div className="input-group">
+            <label className="input-label">Title <span style={{ color:"#C0392B" }}>*</span></label>
+            <input className="input" placeholder="e.g. Week 12 — Perseverance" value={draft.title} onChange={e => setDraft(s => ({ ...s, title:e.target.value }))} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Content <span style={{ color:"#C0392B" }}>*</span></label>
+            <textarea
+              className="input" style={{ minHeight:"150px", resize:"vertical" }}
+              maxLength={5000}
+              placeholder="Write the weekly word message…"
+              value={draft.body} onChange={e => setDraft(s => ({ ...s, body:e.target.value }))}
+            />
+          </div>
+          <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
+            <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-orange" onClick={postWord}>Post & Notify BN</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 // ─── ROOT APP ────────────────────────────────────────────────
 const NAV = [
   { id:"dashboard", label:"Dashboard",     icon:"🏠" },
   { id:"calendar",  label:"POTW",          icon:"📅" },
+  { id:"weeklyword",label:"Weekly Word",   icon:"📖" },
   { id:"structure", label:"BN Structure",  icon:"🖧" },
   { id:"training",  label:"PT & LL",       icon:"💪" },
   { id:"chits",     label:"CHITs",         icon:"📋" },
@@ -3471,6 +3645,8 @@ export default function App() {
   const [showAccount, setShowAccount] = useState(false);
   // Forms: posted by billets/Big Four, clicks tracked per user id.
   const [forms, setForms]         = useState([]);
+  // Weekly Word: posted by leadership, view tracked per user id.
+  const [weeklyWords, setWeeklyWords] = useState([]);
   // PT plan PDFs: one per session key (monday/wednesday/thursday). Null until OPS uploads.
   const [ptPlans, setPtPlans]     = useState({ monday:null, wed_bravo:null, wed_charlie:null, thursday:null });
   // LL session list: TRAINO manages text notes; everyone reads.
@@ -3544,12 +3720,13 @@ export default function App() {
   const renderPage = () => {
     if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} chits={chits} setChits={setChits} fitrebs={fitrebs} setFitrebs={setFitrebs} forms={forms} reminder={reminder} setReminder={setReminder} announcements={announcements} setAnnouncements={setAnnouncements} />;
     if (page === "calendar")   return <CalendarPage />;
+    if (page === "weeklyword") return <WeeklyWordPage weeklyWords={weeklyWords} setWeeklyWords={setWeeklyWords} userList={userList} />;
     if (page === "structure")  return <StructurePage userList={userList} />;
     if (page === "training")   return <TrainingPage ptPlans={ptPlans} setPtPlans={setPtPlans} llSessions={llSessions} setLlSessions={setLlSessions} />;
     if (page === "chits")      return <ChitsPage chits={chits} setChits={setChits} userList={userList} />;
     if (page === "fitreps")    return <FitrepsPage fitrebs={fitrebs} setFitrebs={setFitrebs} userList={userList} />;
     if (page === "roster")     return <RosterPage userList={userList} />;
-    if (page === "forms")      return <FormsPage forms={forms} setForms={setForms} />;
+    if (page === "forms")      return <FormsPage forms={forms} setForms={setForms} userList={userList} />;
     if (page === "academic")   return <AcademicPage />;
     return <Dashboard onNav={setPage} />;
   };
