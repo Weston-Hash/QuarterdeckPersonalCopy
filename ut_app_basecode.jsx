@@ -1,4 +1,5 @@
 import { useState, useEffect, createContext, useContext } from "react";
+import { PDFDocument } from "pdf-lib";
 
 // ─── AUTH ───────────────────────────────────────────────────
 const AuthContext = createContext(null);
@@ -3147,8 +3148,47 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   const [toast, setToast]                 = useState("");
   const [filter, setFilter]               = useState("");
   const [fitrepFolders, setFitrepFolders] = useState({ action: false, pipeline: false, complete: false });
+  const [showReport, setShowReport]       = useState(false);
+  const [reportSearch, setReportSearch]   = useState("");
+  const [reportBusy, setReportBusy]       = useState(false);
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
+
+  // Generate combined PDF of all approved FITREPs for a given member
+  const generateFitrepReport = async (memberId, memberName) => {
+    const approved = fitrebs.filter(f =>
+      f.subjectId === memberId && f.status === "Approved" && f.docs?.fitrepDoc?.dataUrl
+    );
+    if (approved.length === 0) {
+      fire("⚠ No approved FITREPs with attached documents found for " + memberName + ".");
+      return;
+    }
+    setReportBusy(true);
+    try {
+      const merged = await PDFDocument.create();
+      for (const f of approved) {
+        const base64 = f.docs.fitrepDoc.dataUrl.split(",")[1];
+        const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+        const src = await PDFDocument.load(bytes);
+        const pages = await merged.copyPages(src, src.getPageIndices());
+        pages.forEach(p => merged.addPage(p));
+      }
+      const pdfBytes = await merged.save();
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `FITREP_Report_${memberName.replace(/\s+/g, "_")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      fire(`✅ Report generated — ${approved.length} FITREP${approved.length !== 1 ? "s" : ""} combined.`);
+      setShowReport(false);
+      setReportSearch("");
+    } catch (err) {
+      fire("⚠ Error generating report: " + err.message);
+    }
+    setReportBusy(false);
+  };
 
   const loadFitrepFile = (field, file, allowedTypes, errorMsg) => {
     if (!file || !allowedTypes.includes(file.type)) { fire(errorMsg); return; }
@@ -3432,6 +3472,9 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         <span style={{ fontSize:"0.82rem", color:"#888", flex:1 }}>
           {filtered.length} report{filtered.length !== 1 ? "s" : ""} shown
         </span>
+        {canSeeFitrepArchive(user) && (
+          <button className="btn btn-navy" onClick={() => setShowReport(true)}>📄 Pull Report</button>
+        )}
         {canSubmit && (
           <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Submit FITREP</button>
         )}
@@ -3559,6 +3602,46 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
           <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
             <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
             <button className="btn btn-orange" onClick={handleSubmit}>Submit FITREP</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Pull FITREP Report modal */}
+      {showReport && (
+        <Modal title="Pull FITREP Report" onClose={() => { setShowReport(false); setReportSearch(""); }}>
+          <p style={{ fontSize:"0.85rem", color:"#555", marginBottom:"0.75rem" }}>
+            Select a BN member to generate a combined PDF of all their approved FITREPs.
+          </p>
+          <input
+            className="input"
+            placeholder="Search by name…"
+            value={reportSearch}
+            onChange={e => setReportSearch(e.target.value)}
+            style={{ marginBottom:"0.75rem" }}
+          />
+          <div style={{ maxHeight:"300px", overflowY:"auto" }}>
+            {userList
+              .filter(u => reportSearch.length >= 2 && u.name.toLowerCase().includes(reportSearch.toLowerCase()))
+              .slice(0, 20)
+              .map(u => {
+                const approvedCount = fitrebs.filter(f => f.subjectId === u.id && f.status === "Approved" && f.docs?.fitrepDoc?.dataUrl).length;
+                return (
+                  <div key={u.id} className="roster-row" style={{ cursor: approvedCount > 0 ? "pointer" : "default", opacity: approvedCount > 0 ? 1 : 0.5 }}
+                    onClick={() => approvedCount > 0 && !reportBusy && generateFitrepReport(u.id, u.name)}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontWeight:600, fontSize:"0.88rem" }}>{u.rank} {u.name}</div>
+                      <div style={{ fontSize:"0.78rem", color:"#888" }}>{getCompanyShortName(u.company)} · {approvedCount} approved FITREP{approvedCount !== 1 ? "s" : ""}</div>
+                    </div>
+                    {approvedCount > 0 && <span className="btn btn-navy btn-sm">{reportBusy ? "Generating…" : "📄 Generate"}</span>}
+                  </div>
+                );
+              })}
+            {reportSearch.length >= 2 && userList.filter(u => u.name.toLowerCase().includes(reportSearch.toLowerCase())).length === 0 && (
+              <div className="empty" style={{ padding:"1rem" }}>No members found.</div>
+            )}
+            {reportSearch.length < 2 && (
+              <div style={{ fontSize:"0.82rem", color:"#aaa", textAlign:"center", padding:"1rem" }}>Type at least 2 characters to search.</div>
+            )}
           </div>
         </Modal>
       )}
