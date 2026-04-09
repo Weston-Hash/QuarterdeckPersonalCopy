@@ -795,8 +795,8 @@ const BILLET_TO_ROLE = {
   "COC":    "mid",
   "CGC":    "mid",
   "MIR":    "mid",
-  "APTO":   "mid",
-  "ATRAINO":"mid",
+  "APTO":   "pto",
+  "ATRAINO":"traino",
   // Unit staff billets (match exact sheet values)
   "SUB":       "sub",
   "SWO":       "swo",
@@ -1927,6 +1927,7 @@ function StructurePage({ userList }) {
   const [open, setOpen] = useState({});
   const [billetsOpen, setBilletsOpen] = useState(false);
   const [unitStaffOpen, setUnitStaffOpen] = useState(false);
+  const [bigFourOpen, setBigFourOpen] = useState(false);
 
   // Helper: find user(s) by role/billet
   const byRole = (role) => userList.filter(u => u.role === role);
@@ -2005,32 +2006,32 @@ function StructurePage({ userList }) {
         </div>
       )}
 
-      {/* Big Four */}
-      <div className="card" style={{ padding:"1rem 1.2rem", marginBottom:"1rem" }}>
-        <div style={{ fontSize:"0.72rem", textTransform:"uppercase", letterSpacing:"1.5px", color:"#888", marginBottom:"0.6rem", fontWeight:600 }}>Battalion Leadership</div>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:"0.75rem" }}>
-          {[
-            { label:"BNCO", user:bnco },
-            { label:"BNXO", user:bnxo },
-            { label:"OPS",  user:ops },
-            { label:"SEL",  user:sel },
-          ].map(({ label, user:u }) => (
-            <div key={label} className="bn-leader-card">
-              <div style={{ fontSize:"0.68rem", textTransform:"uppercase", letterSpacing:"1px", color:"#BF5700", fontWeight:700 }}>{label}</div>
-              <div style={{ fontSize:"0.88rem", fontWeight:600, marginTop:"0.15rem" }}>{u ? fmt(u) : "—"}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Company Stats */}
-      <div className="grid3" style={{ marginBottom:"1rem" }}>
-        {companies.map((co, i) => (
-          <div className={`stat stat-company-${co.key.toLowerCase()}`} key={i} style={{ borderLeftColor: co.color }}>
-            <div className="stat-n" style={{ color: co.color }}>{co.total}</div>
-            <div className="stat-l">{co.name}</div>
+      {/* Big Four — collapsible */}
+      <div className="company-block">
+        <div className="company-header" style={{ background:"#BF5700" }} onClick={() => setBigFourOpen(s => !s)}>
+          <div>
+            <div className="company-name">Battalion Leadership</div>
+            <div className="company-co">Big Four · {userList.filter(u => normalizeCompany(u.company) === "BN").length} BN Staff</div>
           </div>
-        ))}
+          <span>{bigFourOpen ? "▲" : "▼"}</span>
+        </div>
+        {bigFourOpen && (
+          <div style={{ padding:"0.75rem 1rem" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:"0.75rem" }}>
+              {[
+                { label:"BNCO", user:bnco },
+                { label:"BNXO", user:bnxo },
+                { label:"OPS",  user:ops },
+                { label:"SEL",  user:sel },
+              ].map(({ label, user:u }) => (
+                <div key={label} className="bn-leader-card">
+                  <div style={{ fontSize:"0.68rem", textTransform:"uppercase", letterSpacing:"1px", color:"#BF5700", fontWeight:700 }}>{label}</div>
+                  <div style={{ fontSize:"0.88rem", fontWeight:600, marginTop:"0.15rem" }}>{u ? fmt(u) : "—"}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Billets Section */}
@@ -2061,7 +2062,7 @@ function StructurePage({ userList }) {
         <div className="company-block" key={ci}>
           <div className="company-header" style={{ background: co.color }} onClick={() => setOpen(s => ({ ...s, [ci]: !s[ci] }))}>
             <div>
-              <div className="company-name">{co.name}</div>
+              <div className="company-name">{co.name} — {co.total} Personnel</div>
               <div className="company-co">
                 CO: {co.co ? fmt(co.co) : "—"}
                 {co.sel ? ` · SEL: ${fmt(co.sel)}` : ""}

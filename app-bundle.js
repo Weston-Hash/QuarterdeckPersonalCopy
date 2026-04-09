@@ -7826,8 +7826,8 @@
     "COC": "mid",
     "CGC": "mid",
     "MIR": "mid",
-    "APTO": "mid",
-    "ATRAINO": "mid",
+    "APTO": "pto",
+    "ATRAINO": "traino",
     // Unit staff billets (match exact sheet values)
     "SUB": "sub",
     "SWO": "swo",
@@ -8904,6 +8904,7 @@
     const [open, setOpen] = (0, import_react.useState)({});
     const [billetsOpen, setBilletsOpen] = (0, import_react.useState)(false);
     const [unitStaffOpen, setUnitStaffOpen] = (0, import_react.useState)(false);
+    const [bigFourOpen, setBigFourOpen] = (0, import_react.useState)(false);
     const byRole = (role) => userList.filter((u) => u.role === role);
     const fmt = (u) => u ? `${u.rank} ${u.name}` : "\u2014";
     const unitStaffMembers = UNIT_ROSTER_ASSIGNMENT_ORDER.map((billet) => {
@@ -8962,9 +8963,19 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.88rem", fontWeight: 600, marginTop: "0.15rem" }, children: fmt(entry.user) })
         ] }, i)) }) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", style: { padding: "1rem 1.2rem", marginBottom: "1rem" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "#888", marginBottom: "0.6rem", fontWeight: 600 }, children: "Battalion Leadership" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-block", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-header", style: { background: "#BF5700" }, onClick: () => setBigFourOpen((s) => !s), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-name", children: "Battalion Leadership" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-co", children: [
+              "Big Four \xB7 ",
+              userList.filter((u) => normalizeCompany(u.company) === "BN").length,
+              " BN Staff"
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: bigFourOpen ? "\u25B2" : "\u25BC" })
+        ] }),
+        bigFourOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "0.75rem 1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }, children: [
           { label: "BNCO", user: bnco },
           { label: "BNXO", user: bnxo },
           { label: "OPS", user: ops },
@@ -8972,12 +8983,8 @@
         ].map(({ label, user: u }) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "bn-leader-card", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "1px", color: "#BF5700", fontWeight: 700 }, children: label }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.88rem", fontWeight: 600, marginTop: "0.15rem" }, children: u ? fmt(u) : "\u2014" })
-        ] }, label)) })
+        ] }, label)) }) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "grid3", style: { marginBottom: "1rem" }, children: companies.map((co, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `stat stat-company-${co.key.toLowerCase()}`, style: { borderLeftColor: co.color }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: co.color }, children: co.total }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: co.name })
-      ] }, i)) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-block", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-header", style: { background: "#333" }, onClick: () => setBilletsOpen((s) => !s), children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
@@ -8997,7 +9004,12 @@
       companies.map((co, ci) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-block", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-header", style: { background: co.color }, onClick: () => setOpen((s) => ({ ...s, [ci]: !s[ci] })), children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-name", children: co.name }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-name", children: [
+              co.name,
+              " \u2014 ",
+              co.total,
+              " Personnel"
+            ] }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-co", children: [
               "CO: ",
               co.co ? fmt(co.co) : "\u2014",
