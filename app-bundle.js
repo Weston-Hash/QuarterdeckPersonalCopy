@@ -28621,7 +28621,7 @@
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-block", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-header", style: { background: "#333" }, onClick: () => setBilletsOpen((s) => !s), children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-name", children: "Billet Holders" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-name", children: "BN Staff" }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: billetsOpen ? "\u25B2" : "\u25BC" })
         ] }),
         billetsOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "0.75rem 1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }, children: billetHolders.map((u, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "bn-leader-card", children: [

@@ -2078,7 +2078,7 @@ function StructurePage({ userList }) {
       <div className="company-block">
         <div className="company-header" style={{ background:"#333" }} onClick={() => setBilletsOpen(s => !s)}>
           <div>
-            <div className="company-name">Billet Holders</div>
+            <div className="company-name">BN Staff</div>
           </div>
           <span>{billetsOpen ? "▲" : "▼"}</span>
         </div>
