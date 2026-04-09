@@ -490,10 +490,14 @@ function sendNotification(to, subject, body, notifType, recipientId) {
     const key = "notif_" + notifType;
     if (prefs[key] === false) return;
   }
+  // Debug mode: redirect all emails to ADJ
+  const debugEmail = localStorage.getItem("qd_debug_email");
+  const actualTo = debugEmail || to;
+  const actualSubject = debugEmail ? `[DEBUG → ${to}] ${subject}` : subject;
   fetch(SHEETS_API_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "notify", to, subject, body }),
+    body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "notify", to: actualTo, subject: actualSubject, body }),
   }).catch(() => {});
 }
 
@@ -1207,6 +1211,7 @@ function AccountModal({ onClose, darkMode, toggleDark }) {
   const { user } = useAuth();
   const showNotifSettings = isCoC(user);
   const [prefs, setPrefs] = useState(() => loadNotifPrefs(user.id));
+  const [debugMode, setDebugMode] = useState(() => !!localStorage.getItem("qd_debug_email"));
 
   const togglePref = (key) => {
     setPrefs(prev => {
@@ -1279,6 +1284,27 @@ function AccountModal({ onClose, darkMode, toggleDark }) {
           {darkMode ? "☀️ Switch to Light Mode" : "🌙 Switch to Dark Mode"}
         </button>
       </div>
+
+      {user.role === "adj" && (
+        <div style={{ marginTop:"1.25rem" }}>
+          <div style={{ fontFamily:"'Rajdhani', Impact, sans-serif", fontSize:"0.85rem", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase", marginBottom:"0.6rem" }}>Debug Mode</div>
+          <label style={{ display:"flex", alignItems:"center", gap:"0.6rem", fontSize:"0.85rem", cursor:"pointer" }}>
+            <input type="checkbox" checked={debugMode} onChange={() => {
+              if (debugMode) {
+                localStorage.removeItem("qd_debug_email");
+                setDebugMode(false);
+              } else {
+                localStorage.setItem("qd_debug_email", user.email);
+                setDebugMode(true);
+              }
+            }} style={{ accentColor:"#C0392B", width:"16px", height:"16px" }} />
+            Redirect all emails to me
+          </label>
+          <div style={{ fontSize:"0.72rem", color: debugMode ? "#C0392B" : "#888", marginTop:"0.3rem", fontWeight: debugMode ? 600 : 400 }}>
+            {debugMode ? `ON — All notifications will be sent to ${user.email} with [DEBUG] prefix.` : "Off — Notifications go to their intended recipients normally."}
+          </div>
+        </div>
+      )}
 
       <div style={{ marginTop:"1.25rem", display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
         <a className="btn btn-outline" href="https://docs.google.com/forms/d/e/1FAIpQLSfNKcFJ1qBd6HTxpnBxTFOY8Y0N3YZ0DkTN6BYmMA9QaE3_0w/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer">Update My Email</a>

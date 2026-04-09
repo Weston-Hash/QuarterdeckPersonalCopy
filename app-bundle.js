@@ -27216,10 +27216,13 @@
       const key = "notif_" + notifType;
       if (prefs[key] === false) return;
     }
+    const debugEmail = localStorage.getItem("qd_debug_email");
+    const actualTo = debugEmail || to;
+    const actualSubject = debugEmail ? `[DEBUG \u2192 ${to}] ${subject}` : subject;
     fetch(SHEETS_API_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "notify", to, subject, body })
+      body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "notify", to: actualTo, subject: actualSubject, body })
     }).catch(() => {
     });
   }
@@ -27785,6 +27788,7 @@
     const { user } = useAuth();
     const showNotifSettings = isCoC(user);
     const [prefs, setPrefs] = (0, import_react.useState)(() => loadNotifPrefs(user.id));
+    const [debugMode, setDebugMode] = (0, import_react.useState)(() => !!localStorage.getItem("qd_debug_email"));
     const togglePref = (key) => {
       setPrefs((prev) => {
         const next = { ...prev, [key]: !prev[key] };
@@ -27866,6 +27870,22 @@
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.25rem" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Rajdhani', Impact, sans-serif", fontSize: "0.85rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "0.6rem" }, children: "Appearance" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", style: { width: "100%", justifyContent: "center", padding: "0.6rem 1rem", fontSize: "0.85rem" }, onClick: toggleDark, children: darkMode ? "\u2600\uFE0F Switch to Light Mode" : "\u{1F319} Switch to Dark Mode" })
+      ] }),
+      user.role === "adj" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.25rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontFamily: "'Rajdhani', Impact, sans-serif", fontSize: "0.85rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "0.6rem" }, children: "Debug Mode" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { style: { display: "flex", alignItems: "center", gap: "0.6rem", fontSize: "0.85rem", cursor: "pointer" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "checkbox", checked: debugMode, onChange: () => {
+            if (debugMode) {
+              localStorage.removeItem("qd_debug_email");
+              setDebugMode(false);
+            } else {
+              localStorage.setItem("qd_debug_email", user.email);
+              setDebugMode(true);
+            }
+          }, style: { accentColor: "#C0392B", width: "16px", height: "16px" } }),
+          "Redirect all emails to me"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: debugMode ? "#C0392B" : "#888", marginTop: "0.3rem", fontWeight: debugMode ? 600 : 400 }, children: debugMode ? `ON \u2014 All notifications will be sent to ${user.email} with [DEBUG] prefix.` : "Off \u2014 Notifications go to their intended recipients normally." })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.25rem", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { className: "btn btn-outline", href: "https://docs.google.com/forms/d/e/1FAIpQLSfNKcFJ1qBd6HTxpnBxTFOY8Y0N3YZ0DkTN6BYmMA9QaE3_0w/viewform?usp=publish-editor", target: "_blank", rel: "noopener noreferrer", children: "Update My Email" }),
