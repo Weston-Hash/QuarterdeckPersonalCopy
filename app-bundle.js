@@ -28590,10 +28590,7 @@
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-header", style: { background: COMPANY_COLORS.Unit }, onClick: () => setUnitStaffOpen((s) => !s), children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-name", children: "Unit Staff" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-co", children: [
-              unitStaffMembers.length,
-              " Active Duty Personnel"
-            ] })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-co", children: "Active Duty Staff" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: unitStaffOpen ? "\u25B2" : "\u25BC" })
         ] }),
@@ -28605,12 +28602,8 @@
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-block", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-header", style: { background: "#BF5700" }, onClick: () => setBigFourOpen((s) => !s), children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-name", children: "Battalion Leadership" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-co", children: [
-              "Big Four \xB7 ",
-              userList.filter((u) => normalizeCompany(u.company) === "BN").length,
-              " BN Staff"
-            ] })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-name", children: "Battalion Staff" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-co", children: "Big Four" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: bigFourOpen ? "\u25B2" : "\u25BC" })
         ] }),

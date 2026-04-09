@@ -2027,7 +2027,7 @@ function StructurePage({ userList }) {
           <div className="company-header" style={{ background: COMPANY_COLORS.Unit }} onClick={() => setUnitStaffOpen(s => !s)}>
             <div>
               <div className="company-name">Unit Staff</div>
-              <div className="company-co">{unitStaffMembers.length} Active Duty Personnel</div>
+              <div className="company-co">Active Duty Staff</div>
             </div>
             <span>{unitStaffOpen ? "▲" : "▼"}</span>
           </div>
@@ -2050,8 +2050,8 @@ function StructurePage({ userList }) {
       <div className="company-block">
         <div className="company-header" style={{ background:"#BF5700" }} onClick={() => setBigFourOpen(s => !s)}>
           <div>
-            <div className="company-name">Battalion Leadership</div>
-            <div className="company-co">Big Four · {userList.filter(u => normalizeCompany(u.company) === "BN").length} BN Staff</div>
+            <div className="company-name">Battalion Staff</div>
+            <div className="company-co">Big Four</div>
           </div>
           <span>{bigFourOpen ? "▲" : "▼"}</span>
         </div>
