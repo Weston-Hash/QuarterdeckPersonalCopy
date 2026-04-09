@@ -3677,30 +3677,53 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
 // ─── WEEKLY WORD PAGE ────────────────────────────────────────
 function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
   const { user } = useAuth();
-  const canManage = canPostAnnouncement(user);
+  const isBF = isBigFour(user);
+  const isXO = user.role === "xo";
+  const canViewTracker = isBF || user.role === "adj";
   const [showModal, setShowModal] = useState(false);
-  const [draft, setDraft] = useState({ title:"", body:"" });
+  const [editId, setEditId] = useState(null);
+  const [draft, setDraft] = useState({ title:"", body:"", files:[] });
   const [toast, setToast] = useState("");
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
-  const postWord = () => {
+  const loadFile = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => setDraft(s => ({ ...s, files: [...s.files, { fileName: file.name, dataUrl: e.target.result }] }));
+    reader.readAsDataURL(file);
+  };
+
+  const removeFile = (idx) => setDraft(s => ({ ...s, files: s.files.filter((_, i) => i !== idx) }));
+
+  // Save as draft (Big Four only, not published)
+  const saveDraft = () => {
     const title = draft.title.trim();
     const body = draft.body.trim();
-    if (!title || !body) { fire("⚠ Title and word content are required."); return; }
-    const entry = {
-      id: Date.now(),
-      title,
-      body,
-      author: `${user.rank} ${user.name}`,
-      date: new Date().toLocaleDateString(),
-      viewedBy: { [user.id]: true },
-    };
-    setWeeklyWords(prev => [entry, ...prev]);
-    setDraft({ title:"", body:"" });
+    if (!title || !body) { fire("⚠ Title and content are required."); return; }
+    if (editId) {
+      setWeeklyWords(prev => prev.map(w => w.id === editId ? { ...w, title, body, files: draft.files, lastEditBy: `${user.rank} ${user.name}` } : w));
+      fire("✅ Draft updated.");
+    } else {
+      const entry = {
+        id: Date.now(), title, body, files: draft.files,
+        author: `${user.rank} ${user.name}`,
+        lastEditBy: null,
+        date: new Date().toLocaleDateString(),
+        published: false, viewedBy: {},
+      };
+      setWeeklyWords(prev => [entry, ...prev]);
+      fire("✅ Draft saved. BNXO can publish when ready.");
+    }
+    setDraft({ title:"", body:"", files:[] });
+    setEditId(null);
     setShowModal(false);
-    fire("✅ Weekly Word posted.");
-    // Email all BN members to check Quarterdeck
+  };
+
+  // Publish (BNXO only) — makes visible to BN and sends email
+  const publishWord = (id) => {
+    setWeeklyWords(prev => prev.map(w => w.id === id ? { ...w, published: true, publishedBy: `${user.rank} ${user.name}`, publishedDate: new Date().toLocaleDateString(), viewedBy: { [user.id]: true } } : w));
+    fire("✅ Weekly Word published and BN notified.");
     const subject = "New Weekly Word — Check The Quarterdeck";
     const emailBody = "Hello,\n\nA new Weekly Word has been posted.\n\nPlease log in to The Quarterdeck to read it.\n\n— The Quarterdeck";
     userList.forEach(u => {
@@ -3713,6 +3736,16 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
     fire("Word removed.");
   };
 
+  const openEdit = (w) => {
+    setDraft({ title: w.title, body: w.body, files: w.files || [] });
+    setEditId(w.id);
+    setShowModal(true);
+  };
+
+  // Separate drafts from published
+  const drafts = weeklyWords.filter(w => !w.published);
+  const published = weeklyWords.filter(w => w.published);
+
   return (
     <div>
       <div className="page-title">Weekly <span>Word</span></div>
@@ -3720,20 +3753,55 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
 
       {toast && <div className={`alert ${toast.startsWith("⚠") ? "alert-red" : "alert-green"}`}>{toast}</div>}
 
-      {canManage && (
+      {isBF && (
         <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
-          <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Post Weekly Word</button>
+          <button className="btn btn-orange" onClick={() => { setEditId(null); setDraft({ title:"", body:"", files:[] }); setShowModal(true); }}>+ Draft Weekly Word</button>
         </div>
       )}
 
-      {weeklyWords.length === 0 && (
+      {/* Drafts — only visible to Big Four */}
+      {isBF && drafts.length > 0 && (
+        <div style={{ marginBottom:"1.5rem" }}>
+          <div style={{ fontSize:"0.72rem", textTransform:"uppercase", letterSpacing:"1.5px", color:"#888", fontWeight:600, marginBottom:"0.5rem" }}>Drafts (Big Four Only)</div>
+          {drafts.map(w => (
+            <div className="card" key={w.id} style={{ marginBottom:"0.75rem", border:"2px dashed #BF5700", background:"#FFF5EB" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"0.5rem" }}>
+                <div>
+                  <div style={{ fontWeight:700, fontSize:"1rem" }}>{w.title}</div>
+                  <div style={{ fontSize:"0.75rem", color:"#888" }}>Drafted by {w.author}{w.lastEditBy ? ` · Last edited by ${w.lastEditBy}` : ""} · {w.date}</div>
+                </div>
+                <div style={{ display:"flex", gap:"0.5rem" }}>
+                  <button className="btn btn-outline btn-sm" onClick={() => openEdit(w)}>✏ Edit</button>
+                  {isXO && <button className="btn btn-orange btn-sm" onClick={() => publishWord(w.id)}>Publish & Notify</button>}
+                  <button className="btn btn-sm" style={{ background:"#C0392B", color:"white" }} onClick={() => deleteWord(w.id)}>✕</button>
+                </div>
+              </div>
+              <div style={{ whiteSpace:"pre-wrap", fontSize:"0.9rem", color:"#333" }}>{w.body}</div>
+              {w.files?.length > 0 && (
+                <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginTop:"0.5rem" }}>
+                  {w.files.map((f, i) => <a key={i} href={f.dataUrl} download={f.fileName} className="btn btn-outline btn-sm">📎 {f.fileName}</a>)}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Published words — visible to everyone */}
+      {published.length === 0 && !isBF && (
         <div className="empty">
           <div style={{ fontSize:"2rem" }}>📖</div>
           <div style={{ marginTop:"0.5rem" }}>No Weekly Word posted yet.</div>
         </div>
       )}
+      {published.length === 0 && isBF && drafts.length === 0 && (
+        <div className="empty">
+          <div style={{ fontSize:"2rem" }}>📖</div>
+          <div style={{ marginTop:"0.5rem" }}>No Weekly Word posted yet. Draft one above.</div>
+        </div>
+      )}
 
-      {weeklyWords.map(w => {
+      {published.map(w => {
         // Mark as viewed
         if (!w.viewedBy?.[user.id]) {
           setTimeout(() => setWeeklyWords(prev => prev.map(x => x.id === w.id ? { ...x, viewedBy: { ...x.viewedBy, [user.id]: true } } : x)), 0);
@@ -3745,14 +3813,19 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
                 <div className="potw-week">📖 Weekly Word</div>
                 <div className="potw-title">{w.title}</div>
               </div>
-              {canManage && (
+              {isBF && (
                 <button className="btn btn-sm" style={{ background:"rgba(255,255,255,0.15)", color:"white", border:"1px solid rgba(255,255,255,0.3)" }} onClick={() => deleteWord(w.id)}>✕</button>
               )}
             </div>
             <div className="potw-body" style={{ whiteSpace:"pre-wrap" }}>{w.body}</div>
-            <div style={{ fontSize:"0.75rem", color:"rgba(255,255,255,0.5)" }}>— {w.author}, {w.date}</div>
-            {/* View tracker for leadership */}
-            {canManage && (
+            {w.files?.length > 0 && (
+              <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginTop:"0.5rem" }}>
+                {w.files.map((f, i) => <a key={i} href={f.dataUrl} download={f.fileName} className="btn btn-sm" style={{ background:"rgba(255,255,255,0.15)", color:"white", border:"1px solid rgba(255,255,255,0.3)", textDecoration:"none" }}>📎 {f.fileName}</a>)}
+              </div>
+            )}
+            <div style={{ fontSize:"0.75rem", color:"rgba(255,255,255,0.5)" }}>— {w.author}, {w.publishedDate || w.date}</div>
+            {/* View tracker for Big Four + ADJ */}
+            {canViewTracker && (
               <div style={{ marginTop:"0.5rem", background:"rgba(255,255,255,0.08)", borderRadius:"6px", padding:"0.5rem" }}>
                 <ViewTracker viewedBy={w.viewedBy || {}} userList={userList} />
               </div>
@@ -3762,7 +3835,7 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
       })}
 
       {showModal && (
-        <Modal title="Post Weekly Word" onClose={() => setShowModal(false)}>
+        <Modal title={editId ? "Edit Draft" : "Draft Weekly Word"} onClose={() => { setShowModal(false); setEditId(null); setDraft({ title:"", body:"", files:[] }); }}>
           <div className="input-group">
             <label className="input-label">Title <span style={{ color:"#C0392B" }}>*</span></label>
             <input className="input" placeholder="e.g. Week 12 — Perseverance" value={draft.title} onChange={e => setDraft(s => ({ ...s, title:e.target.value }))} />
@@ -3776,9 +3849,24 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
               value={draft.body} onChange={e => setDraft(s => ({ ...s, body:e.target.value }))}
             />
           </div>
+          <div className="input-group">
+            <label className="input-label">Attachments</label>
+            <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center" }}>
+              <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                📎 Add File
+                <input type="file" style={{ display:"none" }} onChange={e => { loadFile(e.target.files[0]); e.target.value = ""; }} />
+              </label>
+              {draft.files.map((f, i) => (
+                <span key={i} style={{ fontSize:"0.78rem", display:"inline-flex", alignItems:"center", gap:"0.3rem", background:"#f0f0f0", padding:"0.2rem 0.5rem", borderRadius:"4px" }}>
+                  📄 {f.fileName}
+                  <button style={{ background:"none", border:"none", cursor:"pointer", color:"#C0392B", fontWeight:700, fontSize:"0.9rem" }} onClick={() => removeFile(i)}>✕</button>
+                </span>
+              ))}
+            </div>
+          </div>
           <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
-            <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
-            <button className="btn btn-orange" onClick={postWord}>Post & Notify BN</button>
+            <button className="btn btn-outline" onClick={() => { setShowModal(false); setEditId(null); setDraft({ title:"", body:"", files:[] }); }}>Cancel</button>
+            <button className="btn btn-orange" onClick={saveDraft}>{editId ? "Update Draft" : "Save Draft"}</button>
           </div>
         </Modal>
       )}

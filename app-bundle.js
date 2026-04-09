@@ -30257,33 +30257,56 @@ Please log in to The Quarterdeck to review and take action.
   }
   function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
     const { user } = useAuth();
-    const canManage = canPostAnnouncement(user);
+    const isBF = isBigFour(user);
+    const isXO = user.role === "xo";
+    const canViewTracker = isBF || user.role === "adj";
     const [showModal, setShowModal] = (0, import_react.useState)(false);
-    const [draft, setDraft] = (0, import_react.useState)({ title: "", body: "" });
+    const [editId, setEditId] = (0, import_react.useState)(null);
+    const [draft, setDraft] = (0, import_react.useState)({ title: "", body: "", files: [] });
     const [toast, setToast] = (0, import_react.useState)("");
     const fire = (msg) => {
       setToast(msg);
       setTimeout(() => setToast(""), 3e3);
     };
-    const postWord = () => {
+    const loadFile = (file) => {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => setDraft((s) => ({ ...s, files: [...s.files, { fileName: file.name, dataUrl: e.target.result }] }));
+      reader.readAsDataURL(file);
+    };
+    const removeFile = (idx) => setDraft((s) => ({ ...s, files: s.files.filter((_, i) => i !== idx) }));
+    const saveDraft = () => {
       const title = draft.title.trim();
       const body = draft.body.trim();
       if (!title || !body) {
-        fire("\u26A0 Title and word content are required.");
+        fire("\u26A0 Title and content are required.");
         return;
       }
-      const entry = {
-        id: Date.now(),
-        title,
-        body,
-        author: `${user.rank} ${user.name}`,
-        date: (/* @__PURE__ */ new Date()).toLocaleDateString(),
-        viewedBy: { [user.id]: true }
-      };
-      setWeeklyWords((prev) => [entry, ...prev]);
-      setDraft({ title: "", body: "" });
+      if (editId) {
+        setWeeklyWords((prev) => prev.map((w) => w.id === editId ? { ...w, title, body, files: draft.files, lastEditBy: `${user.rank} ${user.name}` } : w));
+        fire("\u2705 Draft updated.");
+      } else {
+        const entry = {
+          id: Date.now(),
+          title,
+          body,
+          files: draft.files,
+          author: `${user.rank} ${user.name}`,
+          lastEditBy: null,
+          date: (/* @__PURE__ */ new Date()).toLocaleDateString(),
+          published: false,
+          viewedBy: {}
+        };
+        setWeeklyWords((prev) => [entry, ...prev]);
+        fire("\u2705 Draft saved. BNXO can publish when ready.");
+      }
+      setDraft({ title: "", body: "", files: [] });
+      setEditId(null);
       setShowModal(false);
-      fire("\u2705 Weekly Word posted.");
+    };
+    const publishWord = (id) => {
+      setWeeklyWords((prev) => prev.map((w) => w.id === id ? { ...w, published: true, publishedBy: `${user.rank} ${user.name}`, publishedDate: (/* @__PURE__ */ new Date()).toLocaleDateString(), viewedBy: { [user.id]: true } } : w));
+      fire("\u2705 Weekly Word published and BN notified.");
       const subject = "New Weekly Word \u2014 Check The Quarterdeck";
       const emailBody = "Hello,\n\nA new Weekly Word has been posted.\n\nPlease log in to The Quarterdeck to read it.\n\n\u2014 The Quarterdeck";
       userList.forEach((u) => {
@@ -30294,6 +30317,13 @@ Please log in to The Quarterdeck to review and take action.
       setWeeklyWords((prev) => prev.filter((w) => w.id !== id));
       fire("Word removed.");
     };
+    const openEdit = (w) => {
+      setDraft({ title: w.title, body: w.body, files: w.files || [] });
+      setEditId(w.id);
+      setShowModal(true);
+    };
+    const drafts = weeklyWords.filter((w) => !w.published);
+    const published = weeklyWords.filter((w) => w.published);
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-title", children: [
         "Weekly ",
@@ -30301,12 +30331,47 @@ Please log in to The Quarterdeck to review and take action.
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "page-sub", children: "Weekly messages from battalion leadership" }),
       toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `alert ${toast.startsWith("\u26A0") ? "alert-red" : "alert-green"}`, children: toast }),
-      canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: "+ Post Weekly Word" }) }),
-      weeklyWords.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
+      isBF && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => {
+        setEditId(null);
+        setDraft({ title: "", body: "", files: [] });
+        setShowModal(true);
+      }, children: "+ Draft Weekly Word" }) }),
+      isBF && drafts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: "1.5rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "#888", fontWeight: 600, marginBottom: "0.5rem" }, children: "Drafts (Big Four Only)" }),
+        drafts.map((w) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", style: { marginBottom: "0.75rem", border: "2px dashed #BF5700", background: "#FFF5EB" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontWeight: 700, fontSize: "1rem" }, children: w.title }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.75rem", color: "#888" }, children: [
+                "Drafted by ",
+                w.author,
+                w.lastEditBy ? ` \xB7 Last edited by ${w.lastEditBy}` : "",
+                " \xB7 ",
+                w.date
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => openEdit(w), children: "\u270F Edit" }),
+              isXO && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => publishWord(w.id), children: "Publish & Notify" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-sm", style: { background: "#C0392B", color: "white" }, onClick: () => deleteWord(w.id), children: "\u2715" })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { whiteSpace: "pre-wrap", fontSize: "0.9rem", color: "#333" }, children: w.body }),
+          w.files?.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" }, children: w.files.map((f, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: f.dataUrl, download: f.fileName, className: "btn btn-outline btn-sm", children: [
+            "\u{1F4CE} ",
+            f.fileName
+          ] }, i)) })
+        ] }, w.id))
+      ] }),
+      published.length === 0 && !isBF && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2rem" }, children: "\u{1F4D6}" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: "No Weekly Word posted yet." })
       ] }),
-      weeklyWords.map((w) => {
+      published.length === 0 && isBF && drafts.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2rem" }, children: "\u{1F4D6}" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: "No Weekly Word posted yet. Draft one above." })
+      ] }),
+      published.map((w) => {
         if (!w.viewedBy?.[user.id]) {
           setTimeout(() => setWeeklyWords((prev) => prev.map((x) => x.id === w.id ? { ...x, viewedBy: { ...x.viewedBy, [user.id]: true } } : x)), 0);
         }
@@ -30316,19 +30381,27 @@ Please log in to The Quarterdeck to review and take action.
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-week", children: "\u{1F4D6} Weekly Word" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-title", children: w.title })
             ] }),
-            canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-sm", style: { background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.3)" }, onClick: () => deleteWord(w.id), children: "\u2715" })
+            isBF && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-sm", style: { background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.3)" }, onClick: () => deleteWord(w.id), children: "\u2715" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-body", style: { whiteSpace: "pre-wrap" }, children: w.body }),
+          w.files?.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" }, children: w.files.map((f, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: f.dataUrl, download: f.fileName, className: "btn btn-sm", style: { background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.3)", textDecoration: "none" }, children: [
+            "\u{1F4CE} ",
+            f.fileName
+          ] }, i)) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }, children: [
             "\u2014 ",
             w.author,
             ", ",
-            w.date
+            w.publishedDate || w.date
           ] }),
-          canManage && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem", background: "rgba(255,255,255,0.08)", borderRadius: "6px", padding: "0.5rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ViewTracker, { viewedBy: w.viewedBy || {}, userList }) })
+          canViewTracker && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem", background: "rgba(255,255,255,0.08)", borderRadius: "6px", padding: "0.5rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ViewTracker, { viewedBy: w.viewedBy || {}, userList }) })
         ] }, w.id);
       }),
-      showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Post Weekly Word", onClose: () => setShowModal(false), children: [
+      showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: editId ? "Edit Draft" : "Draft Weekly Word", onClose: () => {
+        setShowModal(false);
+        setEditId(null);
+        setDraft({ title: "", body: "", files: [] });
+      }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
             "Title ",
@@ -30353,9 +30426,30 @@ Please log in to The Quarterdeck to review and take action.
             }
           )
         ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Attachments" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
+              "\u{1F4CE} Add File",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", style: { display: "none" }, onChange: (e) => {
+                loadFile(e.target.files[0]);
+                e.target.value = "";
+              } })
+            ] }),
+            draft.files.map((f, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "0.3rem", background: "#f0f0f0", padding: "0.2rem 0.5rem", borderRadius: "4px" }, children: [
+              "\u{1F4C4} ",
+              f.fileName,
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { style: { background: "none", border: "none", cursor: "pointer", color: "#C0392B", fontWeight: 700, fontSize: "0.9rem" }, onClick: () => removeFile(i), children: "\u2715" })
+            ] }, i))
+          ] })
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => setShowModal(false), children: "Cancel" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: postWord, children: "Post & Notify BN" })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => {
+            setShowModal(false);
+            setEditId(null);
+            setDraft({ title: "", body: "", files: [] });
+          }, children: "Cancel" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: saveDraft, children: editId ? "Update Draft" : "Save Draft" })
         ] })
       ] })
     ] });
