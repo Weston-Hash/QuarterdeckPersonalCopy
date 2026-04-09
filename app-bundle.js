@@ -26948,7 +26948,7 @@
     Charlie: { short: "Charlie", full: "Charlie Company" }
   };
   var COMPANY_COLORS = {
-    Unit: "#8B6914",
+    Unit: "#4A5A2B",
     Alpha: "#8B0000",
     Bravo: "#003087",
     Charlie: "#B8860B"
