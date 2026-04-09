@@ -21,6 +21,8 @@ const UNIT_STAFF_ROLES = ["unit_co", "unit_xo", "moi", "amoi", "sea", "sub", "sw
 const isUnitStaff = (u) => u && UNIT_STAFF_ROLES.includes(u.role);
 // Unit staff who can see archive (AMOI and SEA excluded)
 const canSeeArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role));
+// FITREP archive: only MOI/LTs/XO (and seniors/unit_co) can review completed FITREPs from all time
+const canSeeFitrepArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "unit_co", "unit_xo", "moi", "sub", "swo", "xo"].includes(u.role));
 // Who can post BN-wide announcements: Big Four + CCs + PCs + MOI + Unit CO + Unit XO
 const canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
 const ROLE_DISPLAY = { bn_cdr:"BNCO", xo:"BNXO", ops:"OPS", sel:"SEL", co_cdr:"CC", plt_cdr:"PC", adj:"ADJ", unit_co:"UNIT CO", unit_xo:"UNIT XO", moi:"MOI", amoi:"AMOI", sea:"SEA", sub:"SUBO", swo:"SWO" };
@@ -892,11 +894,22 @@ function canActOnFitrep(user, fitrep) {
 }
 
 // Only those in the routing chain (or the subject) can view a fitrep.
-// OPS and BN SEL are NOT in the pipeline and therefore cannot see fitreps.
+// AMOI/SEA: only FITREPs requiring their signature.
+// MOI/LTs/XO: completed FITREPs from all time + ones in their chain.
 function canViewFitrep(user, fitrep) {
   if (!user || !fitrep) return false;
   // Subject always sees their own
   if (matchesUserIdentity(user, { id: fitrep.subjectId, name: fitrep.subjectName })) return true;
+
+  // AMOI/SEA: only see FITREPs requiring their action right now
+  if (user.role === "amoi" || user.role === "sea") {
+    return canActOnFitrep(user, fitrep);
+  }
+
+  // MOI/LTs/XO/seniors/unit_co: can see all completed FITREPs
+  const isCompleted = fitrep.status === "Approved" || fitrep.status === "Denied" || fitrep.status === "Returned";
+  if (isCompleted && canSeeFitrepArchive(user)) return true;
+
   // Check if user is listed in any routing stage
   return !!fitrep.stages?.some(stage => {
     if (!stage.approverRole) return false;
@@ -3291,7 +3304,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   const inPipelineF = filtered.filter(f => f.status === "Pending" && !canActOnFitrep(user, f));
   const completedF = filtered.filter(f => f.status === "Approved" || f.status === "Denied" || f.status === "Returned");
   const myCompletedF = completedF.filter(f => f.subjectId === user.id);
-  const archiveBySemesterF = canSeeArchive(user) ? (() => {
+  const archiveBySemesterF = canSeeFitrepArchive(user) ? (() => {
     const groups = {};
     completedF.forEach(f => {
       const sem = getSemesterLabel(f.stages?.[0]?.completedAt || "");
@@ -3449,7 +3462,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         </div>
       )}
 
-      {!canSeeArchive(user) && myCompletedF.length > 0 && (
+      {!canSeeFitrepArchive(user) && myCompletedF.length > 0 && (
         <div className="folder-section">
           <div className="folder-header" onClick={() => setFitrepFolders(f => ({ ...f, complete: !f.complete }))}>
             <span>{fitrepFolders.complete ? "▼" : "▶"} My Completed ({myCompletedF.length})</span>
@@ -3458,7 +3471,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         </div>
       )}
 
-      {canSeeArchive(user) && archiveBySemesterF.length > 0 && (
+      {canSeeFitrepArchive(user) && archiveBySemesterF.length > 0 && (
         <div className="folder-section">
           <div className="folder-header" onClick={() => setFitrepFolders(f => ({ ...f, complete: !f.complete }))}>
             <span>{fitrepFolders.complete ? "▼" : "▶"} Archive ({completedF.length})</span>

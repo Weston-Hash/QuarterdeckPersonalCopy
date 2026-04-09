@@ -7293,6 +7293,7 @@
   var isCoC = (u) => u && [...SENIOR_ROLES, "co_cdr", "plt_cdr", "adj"].includes(u.role);
   var isBigFour = (u) => normalizeCompany(u?.company) === "BN" && ["bn_cdr", "xo", "ops", "sel"].includes(u?.role);
   var canSeeArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role));
+  var canSeeFitrepArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "unit_co", "unit_xo", "moi", "sub", "swo", "xo"].includes(u.role));
   var canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
   var ROLE_DISPLAY = { bn_cdr: "BNCO", xo: "BNXO", ops: "OPS", sel: "SEL", co_cdr: "CC", plt_cdr: "PC", adj: "ADJ", unit_co: "UNIT CO", unit_xo: "UNIT XO", moi: "MOI", amoi: "AMOI", sea: "SEA", sub: "SUBO", swo: "SWO" };
   var displayRole = (role) => ROLE_DISPLAY[role] || role.replace("_", " ").toUpperCase();
@@ -7885,6 +7886,11 @@
   function canViewFitrep(user, fitrep) {
     if (!user || !fitrep) return false;
     if (matchesUserIdentity(user, { id: fitrep.subjectId, name: fitrep.subjectName })) return true;
+    if (user.role === "amoi" || user.role === "sea") {
+      return canActOnFitrep(user, fitrep);
+    }
+    const isCompleted = fitrep.status === "Approved" || fitrep.status === "Denied" || fitrep.status === "Returned";
+    if (isCompleted && canSeeFitrepArchive(user)) return true;
     return !!fitrep.stages?.some((stage) => {
       if (!stage.approverRole) return false;
       if (stage.approverId && matchesUserIdentity(user, { id: stage.approverId })) return true;
@@ -10292,7 +10298,7 @@ Please log in to The Quarterdeck to review and take action.
     const inPipelineF = filtered.filter((f) => f.status === "Pending" && !canActOnFitrep(user, f));
     const completedF = filtered.filter((f) => f.status === "Approved" || f.status === "Denied" || f.status === "Returned");
     const myCompletedF = completedF.filter((f) => f.subjectId === user.id);
-    const archiveBySemesterF = canSeeArchive(user) ? (() => {
+    const archiveBySemesterF = canSeeFitrepArchive(user) ? (() => {
       const groups = {};
       completedF.forEach((f) => {
         const sem = getSemesterLabel(f.stages?.[0]?.completedAt || "");
@@ -10441,7 +10447,7 @@ Please log in to The Quarterdeck to review and take action.
         ] }) }),
         fitrepFolders.pipeline && inPipelineF.map(renderFitrepCard)
       ] }),
-      !canSeeArchive(user) && myCompletedF.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
+      !canSeeFitrepArchive(user) && myCompletedF.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setFitrepFolders((f) => ({ ...f, complete: !f.complete })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
           fitrepFolders.complete ? "\u25BC" : "\u25B6",
           " My Completed (",
@@ -10450,7 +10456,7 @@ Please log in to The Quarterdeck to review and take action.
         ] }) }),
         fitrepFolders.complete && myCompletedF.map(renderFitrepCard)
       ] }),
-      canSeeArchive(user) && archiveBySemesterF.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
+      canSeeFitrepArchive(user) && archiveBySemesterF.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "folder-section", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "folder-header", onClick: () => setFitrepFolders((f) => ({ ...f, complete: !f.complete })), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
           fitrepFolders.complete ? "\u25BC" : "\u25B6",
           " Archive (",
