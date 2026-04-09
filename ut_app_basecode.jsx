@@ -2036,7 +2036,7 @@ function StructurePage({ userList }) {
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:"0.75rem" }}>
                 {unitStaffMembers.map((entry, i) => (
                   <div key={i} className="bn-leader-card">
-                    <div style={{ fontSize:"0.68rem", textTransform:"uppercase", letterSpacing:"1px", color: COMPANY_COLORS.Unit, fontWeight:700 }}>{entry.displayBillet}</div>
+                    <div style={{ fontSize:"0.68rem", textTransform:"uppercase", letterSpacing:"1px", color:"#BF5700", fontWeight:700 }}>{entry.displayBillet}</div>
                     <div style={{ fontSize:"0.88rem", fontWeight:600, marginTop:"0.15rem" }}>{fmt(entry.user)}</div>
                   </div>
                 ))}
@@ -2079,7 +2079,6 @@ function StructurePage({ userList }) {
         <div className="company-header" style={{ background:"#333" }} onClick={() => setBilletsOpen(s => !s)}>
           <div>
             <div className="company-name">Billet Holders</div>
-            <div className="company-co">{billetHolders.length} billets assigned</div>
           </div>
           <span>{billetsOpen ? "▲" : "▼"}</span>
         </div>

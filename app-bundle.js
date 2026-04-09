@@ -28595,7 +28595,7 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: unitStaffOpen ? "\u25B2" : "\u25BC" })
         ] }),
         unitStaffOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "0.75rem 1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }, children: unitStaffMembers.map((entry, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "bn-leader-card", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "1px", color: COMPANY_COLORS.Unit, fontWeight: 700 }, children: entry.displayBillet }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "1px", color: "#BF5700", fontWeight: 700 }, children: entry.displayBillet }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.88rem", fontWeight: 600, marginTop: "0.15rem" }, children: fmt(entry.user) })
         ] }, i)) }) })
       ] }),
@@ -28619,13 +28619,7 @@
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-block", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-header", style: { background: "#333" }, onClick: () => setBilletsOpen((s) => !s), children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-name", children: "Billet Holders" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "company-co", children: [
-              billetHolders.length,
-              " billets assigned"
-            ] })
-          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "company-name", children: "Billet Holders" }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: billetsOpen ? "\u25B2" : "\u25BC" })
         ] }),
         billetsOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "0.75rem 1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }, children: billetHolders.map((u, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "bn-leader-card", children: [
