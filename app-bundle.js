@@ -26905,6 +26905,8 @@
   var isSenior = (u) => u && SENIOR_ROLES.includes(u.role);
   var isCoC = (u) => u && [...SENIOR_ROLES, "co_cdr", "plt_cdr", "adj"].includes(u.role);
   var isBigFour = (u) => normalizeCompany(u?.company) === "BN" && ["bn_cdr", "xo", "ops", "sel"].includes(u?.role);
+  var UNIT_STAFF_ROLES = ["unit_co", "unit_xo", "moi", "amoi", "sea", "sub", "swo"];
+  var isUnitStaff = (u) => u && UNIT_STAFF_ROLES.includes(u.role);
   var canSeeArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role));
   var canSeeFitrepArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "unit_co", "unit_xo", "moi", "sub", "swo", "xo"].includes(u.role));
   var canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
@@ -27074,7 +27076,7 @@
     return candidateId && user.id === candidateId || candidateEid && userEid === candidateEid || candidateEmail && userEmail === candidateEmail || candidateName && userName === candidateName || candidateNameKey && userNameKey === candidateNameKey;
   }
   function canSubmitChit(user) {
-    return !!user && !isBigFour(user);
+    return !!user && !isBigFour(user) && !isUnitStaff(user);
   }
   function requiresChitRouteSelection(user) {
     if (!user || isBigFour(user) || ["adj", "co_cdr", "plt_cdr"].includes(user.role)) return false;

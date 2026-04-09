@@ -318,7 +318,7 @@ function findMatchingUser(userList, candidate) {
 }
 
 function canSubmitChit(user) {
-  return !!user && !isBigFour(user);
+  return !!user && !isBigFour(user) && !isUnitStaff(user);
 }
 
 function requiresChitRouteSelection(user) {
