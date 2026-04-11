@@ -595,6 +595,26 @@ function getCurrentWeekMonday() {
 function getWeekNumber(mon) {
   return Math.round((mon - SEMESTER_START) / (7 * 24 * 3600 * 1000)) + 1;
 }
+function businessDaysSince(dateStr) {
+  if (!dateStr) return 0;
+  const start = new Date(dateStr);
+  const now = new Date();
+  let count = 0;
+  const d = new Date(start);
+  d.setDate(d.getDate() + 1);
+  while (d <= now) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+function getRoutingTimerInfo(dateStr) {
+  const days = businessDaysSince(dateStr);
+  if (days <= 2) return { days, color: "#2A7D4F", bg: "rgba(42,125,79,0.12)", label: `${days} business day${days !== 1 ? "s" : ""}`, status: "on-track" };
+  if (days <= 4) return { days, color: "#B8860B", bg: "rgba(184,134,11,0.12)", label: `${days} business days`, status: "warning" };
+  return { days, color: "#C0392B", bg: "rgba(192,57,43,0.12)", label: `${days} business days — overdue`, status: "overdue" };
+}
 function formatWeekRange(mon) {
   const fri = new Date(mon); fri.setDate(fri.getDate() + 4);
   const M = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
@@ -2598,6 +2618,8 @@ function ChitsPage({ chits, setChits, userList }) {
     const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
     const currentStageName = c.stages?.[c.currentStage]?.name || "";
 
+    const timer = !isDone ? getRoutingTimerInfo(c.stages?.[0]?.completedAt) : null;
+
     return (
       <div className="chit-card" key={c.id}>
         <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.3rem" }}>
@@ -2608,6 +2630,11 @@ function ChitsPage({ chits, setChits, userList }) {
             </span>
           </div>
           <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
+            {timer && (
+              <span className="badge" style={{ background: timer.bg, color: timer.color, fontWeight:600 }}>
+                {timer.status === "overdue" ? "⚠ " : "⏱ "}{timer.label}
+              </span>
+            )}
             <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" || c.status==="Returned" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
             {canAct && !isDone && <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>}
           </div>
