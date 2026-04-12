@@ -30280,15 +30280,25 @@ Please log in to The Quarterdeck to review and take action.
       ] })
     ] });
   }
-  function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
+  function WeeklyWordPage({ weeklyWords, setWeeklyWords, potwApprovals, setPotwApprovals, userList }) {
     const { user } = useAuth();
     const isBF = isBigFour(user);
     const isXO = user.role === "xo";
+    const isOPS = user.role === "ops";
+    const isMOI = user.role === "moi";
     const canViewTracker = isBF || user.role === "adj";
+    const canSeePotwFlow = isBF || isMOI || user.role === "adj";
     const [showModal, setShowModal] = (0, import_react.useState)(false);
     const [editId, setEditId] = (0, import_react.useState)(null);
     const [draft, setDraft] = (0, import_react.useState)({ title: "", body: "", files: [] });
     const [toast, setToast] = (0, import_react.useState)("");
+    const [potwFile, setPotwFile] = (0, import_react.useState)(null);
+    const [potwNote, setPotwNote] = (0, import_react.useState)("");
+    const [showPotwModal, setShowPotwModal] = (0, import_react.useState)(false);
+    const [responseId, setResponseId] = (0, import_react.useState)(null);
+    const [responseAction, setResponseAction] = (0, import_react.useState)(null);
+    const [responseComment, setResponseComment] = (0, import_react.useState)("");
+    const [signedFile, setSignedFile] = (0, import_react.useState)(null);
     const fire = (msg) => {
       setToast(msg);
       setTimeout(() => setToast(""), 3e3);
@@ -30349,6 +30359,131 @@ Please log in to The Quarterdeck to review and take action.
     };
     const drafts = weeklyWords.filter((w) => !w.published);
     const published = weeklyWords.filter((w) => w.published);
+    const moiUsers = userList.filter((u) => u.role === "moi");
+    const opsUsers = userList.filter((u) => u.role === "ops");
+    const loadPotwFile = (file) => {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => setPotwFile({ fileName: file.name, dataUrl: e.target.result });
+      reader.readAsDataURL(file);
+    };
+    const loadSignedFile = (file) => {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => setSignedFile({ fileName: file.name, dataUrl: e.target.result });
+      reader.readAsDataURL(file);
+    };
+    const submitPotwForApproval = () => {
+      if (!potwFile) {
+        fire("\u26A0 Please attach the POTW file.");
+        return;
+      }
+      const entry = {
+        id: Date.now(),
+        opsId: user.id,
+        opsName: `${user.rank} ${user.name}`,
+        opsEmail: user.email,
+        originalFile: potwFile,
+        note: potwNote.trim(),
+        status: "pending",
+        signedFile: null,
+        moiComment: "",
+        moiName: "",
+        respondedAt: null,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+        createdDate: (/* @__PURE__ */ new Date()).toLocaleDateString()
+      };
+      setPotwApprovals((prev) => [entry, ...prev]);
+      setPotwFile(null);
+      setPotwNote("");
+      setShowPotwModal(false);
+      fire("\u2705 POTW sent to MOI for approval.");
+      const subject = "POTW Awaiting Your Approval \u2014 The Quarterdeck";
+      const emailBody = `Hello,
+
+${entry.opsName} has submitted the Plan of the Week (POTW) for your review and approval.
+
+Please log in to The Quarterdeck \u2192 Weekly Word to approve or deny.
+
+\u2014 The Quarterdeck`;
+      moiUsers.forEach((m) => {
+        if (m.email) sendNotification(m.email, subject, emailBody, "submission", m.id);
+      });
+      if (user.email) {
+        sendNotification(user.email, "POTW Submitted to MOI \u2014 The Quarterdeck", `Hello,
+
+Your POTW has been sent to MOI for approval. You'll receive an email once they respond.
+
+\u2014 The Quarterdeck`, "submission", user.id);
+      }
+    };
+    const openResponseModal = (id, action) => {
+      setResponseId(id);
+      setResponseAction(action);
+      setResponseComment("");
+      setSignedFile(null);
+    };
+    const submitPotwResponse = () => {
+      const entry = potwApprovals.find((p) => p.id === responseId);
+      if (!entry) return;
+      if (responseAction === "approve" && !signedFile) {
+        fire("\u26A0 Please upload the signed POTW to approve.");
+        return;
+      }
+      if (responseAction === "deny" && !responseComment.trim()) {
+        fire("\u26A0 Please provide a comment explaining the denial.");
+        return;
+      }
+      const updated = {
+        ...entry,
+        status: responseAction === "approve" ? "approved" : "denied",
+        signedFile: responseAction === "approve" ? signedFile : null,
+        moiComment: responseComment.trim(),
+        moiName: `${user.rank} ${user.name}`,
+        respondedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        respondedDate: (/* @__PURE__ */ new Date()).toLocaleDateString()
+      };
+      setPotwApprovals((prev) => prev.map((p) => p.id === responseId ? updated : p));
+      setResponseId(null);
+      setResponseAction(null);
+      setResponseComment("");
+      setSignedFile(null);
+      fire(responseAction === "approve" ? "\u2705 POTW approved. Signed copy returned to OPS." : "POTW denied. OPS has been notified.");
+      const subjectOps = responseAction === "approve" ? "POTW Approved \u2014 Signed Copy Ready" : "POTW Returned \u2014 Action Required";
+      const bodyOps = responseAction === "approve" ? `Hello,
+
+MOI ${updated.moiName} has approved the POTW you submitted. A signed copy has been returned.
+
+${updated.moiComment ? `MOI comments:
+${updated.moiComment}
+
+` : ""}Please log in to The Quarterdeck \u2192 Weekly Word to download the signed POTW.
+
+\u2014 The Quarterdeck` : `Hello,
+
+MOI ${updated.moiName} has returned the POTW you submitted.
+
+MOI comments:
+${updated.moiComment}
+
+Please log in to The Quarterdeck \u2192 Weekly Word to review and resubmit.
+
+\u2014 The Quarterdeck`;
+      if (entry.opsEmail) sendNotification(entry.opsEmail, subjectOps, bodyOps, responseAction === "approve" ? "approval" : "return", entry.opsId);
+      if (user.email) {
+        sendNotification(user.email, `POTW Response Recorded \u2014 The Quarterdeck`, `Hello,
+
+Your ${responseAction === "approve" ? "approval" : "denial"} of the POTW submitted by ${entry.opsName} has been recorded.
+
+\u2014 The Quarterdeck`, responseAction === "approve" ? "approval" : "return", user.id);
+      }
+    };
+    const deletePotw = (id) => {
+      setPotwApprovals((prev) => prev.filter((p) => p.id !== id));
+      fire("POTW request removed.");
+    };
+    const pendingPotws = potwApprovals.filter((p) => p.status === "pending");
+    const resolvedPotws = potwApprovals.filter((p) => p.status !== "pending");
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-title", children: [
         "Weekly ",
@@ -30361,6 +30496,91 @@ Please log in to The Quarterdeck to review and take action.
         setDraft({ title: "", body: "", files: [] });
         setShowModal(true);
       }, children: "+ Draft Weekly Word" }) }),
+      canSeePotwFlow && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: "1.5rem", border: "1px solid #ddd", borderRadius: "8px", padding: "1rem", background: "#FAFBFC" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.95rem", fontWeight: 700, color: "#002B5C" }, children: "\u{1F4CB} POTW Pre-Approval (OPS \u2192 MOI)" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.75rem", color: "#666", marginTop: "0.15rem" }, children: "OPS submits Plan of the Week for MOI review before it publishes in Weekly Word." })
+          ] }),
+          isOPS && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => {
+            setPotwFile(null);
+            setPotwNote("");
+            setShowPotwModal(true);
+          }, children: "+ Send POTW to MOI" })
+        ] }),
+        potwApprovals.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.82rem", color: "#888", padding: "0.5rem 0" }, children: "No POTW submissions yet." }),
+        pendingPotws.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: "0.75rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "#B8860B", fontWeight: 600, marginBottom: "0.4rem" }, children: "\u23F3 Pending MOI Review" }),
+          pendingPotws.map((p) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { border: "1px solid #e8d28a", background: "#FFFBEB", borderRadius: "6px", padding: "0.75rem", marginBottom: "0.5rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem", flexWrap: "wrap" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { flex: "1 1 auto" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontWeight: 700, fontSize: "0.9rem" }, children: [
+                "POTW from ",
+                p.opsName
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.72rem", color: "#666" }, children: [
+                "Submitted ",
+                p.createdDate
+              ] }),
+              p.note && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.3rem", fontSize: "0.82rem", color: "#333", whiteSpace: "pre-wrap" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Note from OPS:" }),
+                " ",
+                p.note
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.4rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: p.originalFile.dataUrl, download: p.originalFile.fileName, className: "btn btn-outline btn-sm", children: [
+                "\u{1F4CE} ",
+                p.originalFile.fileName
+              ] }) })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.4rem", flexWrap: "wrap" }, children: [
+              isMOI && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-sm", style: { background: "#2A7D4F", color: "white" }, onClick: () => openResponseModal(p.id, "approve"), children: "\u2713 Approve & Sign" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-sm", style: { background: "#C0392B", color: "white" }, onClick: () => openResponseModal(p.id, "deny"), children: "\u2715 Deny" })
+              ] }),
+              (p.opsId === user.id || user.role === "adj") && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => deletePotw(p.id), children: "\u{1F5D1}" })
+            ] })
+          ] }) }, p.id))
+        ] }),
+        resolvedPotws.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "#666", fontWeight: 600, marginBottom: "0.4rem" }, children: "History" }),
+          resolvedPotws.map((p) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { border: "1px solid #ddd", background: "#fff", borderRadius: "6px", padding: "0.75rem", marginBottom: "0.5rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem", flexWrap: "wrap" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { flex: "1 1 auto" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontWeight: 700, fontSize: "0.9rem" }, children: [
+                  "POTW from ",
+                  p.opsName
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.7rem", fontWeight: 700, padding: "0.15rem 0.5rem", borderRadius: "10px", background: p.status === "approved" ? "rgba(42,125,79,0.15)" : "rgba(192,57,43,0.15)", color: p.status === "approved" ? "#2A7D4F" : "#C0392B" }, children: p.status === "approved" ? "\u2713 APPROVED" : "\u2715 DENIED" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.72rem", color: "#666" }, children: [
+                "Submitted ",
+                p.createdDate,
+                " \xB7 ",
+                p.status === "approved" ? "Approved" : "Denied",
+                " ",
+                p.respondedDate,
+                " by ",
+                p.moiName
+              ] }),
+              p.moiComment && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.3rem", fontSize: "0.82rem", color: "#333", whiteSpace: "pre-wrap" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "MOI comments:" }),
+                " ",
+                p.moiComment
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.4rem", display: "flex", gap: "0.4rem", flexWrap: "wrap" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: p.originalFile.dataUrl, download: p.originalFile.fileName, className: "btn btn-outline btn-sm", children: [
+                  "\u{1F4CE} Original: ",
+                  p.originalFile.fileName
+                ] }),
+                p.signedFile && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: p.signedFile.dataUrl, download: p.signedFile.fileName, className: "btn btn-sm", style: { background: "#2A7D4F", color: "white" }, children: [
+                  "\u2713 Signed: ",
+                  p.signedFile.fileName
+                ] })
+              ] })
+            ] }),
+            (p.opsId === user.id || user.role === "adj") && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => deletePotw(p.id), children: "\u{1F5D1}" })
+          ] }) }, p.id))
+        ] })
+      ] }),
       isBF && drafts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: "1.5rem" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "1.5px", color: "#888", fontWeight: 600, marginBottom: "0.5rem" }, children: "Drafts (Big Four Only)" }),
         drafts.map((w) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", style: { marginBottom: "0.75rem", border: "2px dashed #BF5700", background: "#FFF5EB" }, children: [
@@ -30476,7 +30696,125 @@ Please log in to The Quarterdeck to review and take action.
           }, children: "Cancel" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: saveDraft, children: editId ? "Update Draft" : "Save Draft" })
         ] })
-      ] })
+      ] }),
+      showPotwModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Send POTW to MOI for Approval", onClose: () => {
+        setShowPotwModal(false);
+        setPotwFile(null);
+        setPotwNote("");
+      }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+            "POTW File ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
+              "\u{1F4CE} Choose File",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", style: { display: "none" }, onChange: (e) => {
+                loadPotwFile(e.target.files[0]);
+                e.target.value = "";
+              } })
+            ] }),
+            potwFile && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "0.3rem", background: "#f0f0f0", padding: "0.2rem 0.5rem", borderRadius: "4px" }, children: [
+              "\u{1F4C4} ",
+              potwFile.fileName,
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { style: { background: "none", border: "none", cursor: "pointer", color: "#C0392B", fontWeight: 700, fontSize: "0.9rem" }, onClick: () => setPotwFile(null), children: "\u2715" })
+            ] })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Note to MOI (optional)" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "textarea",
+            {
+              className: "input",
+              style: { minHeight: "80px", resize: "vertical" },
+              maxLength: 1e3,
+              placeholder: "Any context or instructions for MOI\u2026",
+              value: potwNote,
+              onChange: (e) => setPotwNote(e.target.value)
+            }
+          )
+        ] }),
+        moiUsers.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#C0392B", marginBottom: "0.5rem" }, children: "\u26A0 No MOI assigned in the roster \u2014 email notification may not be delivered." }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => {
+            setShowPotwModal(false);
+            setPotwFile(null);
+            setPotwNote("");
+          }, children: "Cancel" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: submitPotwForApproval, children: "Send to MOI" })
+        ] })
+      ] }),
+      responseId && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+        Modal,
+        {
+          title: responseAction === "approve" ? "Approve POTW & Return Signed Copy" : "Deny POTW & Provide Comments",
+          onClose: () => {
+            setResponseId(null);
+            setResponseAction(null);
+            setResponseComment("");
+            setSignedFile(null);
+          },
+          children: [
+            responseAction === "approve" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+                "Signed POTW ",
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.75rem", color: "#666", marginBottom: "0.4rem" }, children: "Upload the signed POTW document to return to OPS." }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
+                  "\u{1F4CE} Choose Signed File",
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", style: { display: "none" }, onChange: (e) => {
+                    loadSignedFile(e.target.files[0]);
+                    e.target.value = "";
+                  } })
+                ] }),
+                signedFile && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "0.3rem", background: "#f0f0f0", padding: "0.2rem 0.5rem", borderRadius: "4px" }, children: [
+                  "\u{1F4C4} ",
+                  signedFile.fileName,
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { style: { background: "none", border: "none", cursor: "pointer", color: "#C0392B", fontWeight: 700, fontSize: "0.9rem" }, onClick: () => setSignedFile(null), children: "\u2715" })
+                ] })
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+                "Comments ",
+                responseAction === "deny" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "textarea",
+                {
+                  className: "input",
+                  style: { minHeight: "100px", resize: "vertical" },
+                  maxLength: 2e3,
+                  placeholder: responseAction === "approve" ? "Optional comments for OPS\u2026" : "Explain what needs to be changed\u2026",
+                  value: responseComment,
+                  onChange: (e) => setResponseComment(e.target.value)
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => {
+                setResponseId(null);
+                setResponseAction(null);
+                setResponseComment("");
+                setSignedFile(null);
+              }, children: "Cancel" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "button",
+                {
+                  className: "btn",
+                  style: { background: responseAction === "approve" ? "#2A7D4F" : "#C0392B", color: "white" },
+                  onClick: submitPotwResponse,
+                  children: responseAction === "approve" ? "Approve & Return Signed" : "Submit Denial"
+                }
+              )
+            ] })
+          ]
+        }
+      )
     ] });
   }
   var NAV = [
@@ -30515,6 +30853,7 @@ Please log in to The Quarterdeck to review and take action.
     const [showAccount, setShowAccount] = (0, import_react.useState)(false);
     const [forms, setForms] = (0, import_react.useState)([]);
     const [weeklyWords, setWeeklyWords] = (0, import_react.useState)([]);
+    const [potwApprovals, setPotwApprovals] = (0, import_react.useState)([]);
     const [ptPlans, setPtPlans] = (0, import_react.useState)({ monday: null, wed_bravo: null, wed_charlie: null, thursday: null });
     const [llSessions, setLlSessions] = (0, import_react.useState)(LEADLAB_INIT);
     const [userList, setUserList] = (0, import_react.useState)(cachedRoster);
@@ -30592,7 +30931,7 @@ Please log in to The Quarterdeck to review and take action.
     const renderPage = () => {
       if (page === "dashboard") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dashboard, { onNav: setPage, userList, chits, setChits, fitrebs, setFitrebs, forms, reminder, setReminder, announcements, setAnnouncements });
       if (page === "calendar") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CalendarPage, {});
-      if (page === "weeklyword") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WeeklyWordPage, { weeklyWords, setWeeklyWords, userList });
+      if (page === "weeklyword") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WeeklyWordPage, { weeklyWords, setWeeklyWords, potwApprovals, setPotwApprovals, userList });
       if (page === "structure") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StructurePage, { userList });
       if (page === "training") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TrainingPage, { ptPlans, setPtPlans, llSessions, setLlSessions });
       if (page === "chits") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChitsPage, { chits, setChits, userList });

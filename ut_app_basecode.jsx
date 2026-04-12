@@ -3702,15 +3702,27 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
 }
 
 // ─── WEEKLY WORD PAGE ────────────────────────────────────────
-function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
+function WeeklyWordPage({ weeklyWords, setWeeklyWords, potwApprovals, setPotwApprovals, userList }) {
   const { user } = useAuth();
   const isBF = isBigFour(user);
   const isXO = user.role === "xo";
+  const isOPS = user.role === "ops";
+  const isMOI = user.role === "moi";
   const canViewTracker = isBF || user.role === "adj";
+  const canSeePotwFlow = isBF || isMOI || user.role === "adj";
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [draft, setDraft] = useState({ title:"", body:"", files:[] });
   const [toast, setToast] = useState("");
+
+  // POTW approval flow state
+  const [potwFile, setPotwFile] = useState(null);
+  const [potwNote, setPotwNote] = useState("");
+  const [showPotwModal, setShowPotwModal] = useState(false);
+  const [responseId, setResponseId] = useState(null);
+  const [responseAction, setResponseAction] = useState(null); // "approve" | "deny"
+  const [responseComment, setResponseComment] = useState("");
+  const [signedFile, setSignedFile] = useState(null);
 
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
@@ -3773,6 +3785,103 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
   const drafts = weeklyWords.filter(w => !w.published);
   const published = weeklyWords.filter(w => w.published);
 
+  // ─── POTW approval helpers ────────────────────────────────
+  const moiUsers = userList.filter(u => u.role === "moi");
+  const opsUsers = userList.filter(u => u.role === "ops");
+
+  const loadPotwFile = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => setPotwFile({ fileName: file.name, dataUrl: e.target.result });
+    reader.readAsDataURL(file);
+  };
+
+  const loadSignedFile = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => setSignedFile({ fileName: file.name, dataUrl: e.target.result });
+    reader.readAsDataURL(file);
+  };
+
+  // OPS submits POTW to MOI for approval
+  const submitPotwForApproval = () => {
+    if (!potwFile) { fire("⚠ Please attach the POTW file."); return; }
+    const entry = {
+      id: Date.now(),
+      opsId: user.id,
+      opsName: `${user.rank} ${user.name}`,
+      opsEmail: user.email,
+      originalFile: potwFile,
+      note: potwNote.trim(),
+      status: "pending",
+      signedFile: null,
+      moiComment: "",
+      moiName: "",
+      respondedAt: null,
+      createdAt: new Date().toISOString(),
+      createdDate: new Date().toLocaleDateString(),
+    };
+    setPotwApprovals(prev => [entry, ...prev]);
+    setPotwFile(null);
+    setPotwNote("");
+    setShowPotwModal(false);
+    fire("✅ POTW sent to MOI for approval.");
+    // Email notifications: MOI receives, OPS gets confirmation
+    const subject = "POTW Awaiting Your Approval — The Quarterdeck";
+    const emailBody = `Hello,\n\n${entry.opsName} has submitted the Plan of the Week (POTW) for your review and approval.\n\nPlease log in to The Quarterdeck → Weekly Word to approve or deny.\n\n— The Quarterdeck`;
+    moiUsers.forEach(m => { if (m.email) sendNotification(m.email, subject, emailBody, "submission", m.id); });
+    if (user.email) {
+      sendNotification(user.email, "POTW Submitted to MOI — The Quarterdeck", `Hello,\n\nYour POTW has been sent to MOI for approval. You'll receive an email once they respond.\n\n— The Quarterdeck`, "submission", user.id);
+    }
+  };
+
+  const openResponseModal = (id, action) => {
+    setResponseId(id);
+    setResponseAction(action);
+    setResponseComment("");
+    setSignedFile(null);
+  };
+
+  // MOI approves or denies with comments; approval requires signed doc upload
+  const submitPotwResponse = () => {
+    const entry = potwApprovals.find(p => p.id === responseId);
+    if (!entry) return;
+    if (responseAction === "approve" && !signedFile) { fire("⚠ Please upload the signed POTW to approve."); return; }
+    if (responseAction === "deny" && !responseComment.trim()) { fire("⚠ Please provide a comment explaining the denial."); return; }
+    const updated = {
+      ...entry,
+      status: responseAction === "approve" ? "approved" : "denied",
+      signedFile: responseAction === "approve" ? signedFile : null,
+      moiComment: responseComment.trim(),
+      moiName: `${user.rank} ${user.name}`,
+      respondedAt: new Date().toISOString(),
+      respondedDate: new Date().toLocaleDateString(),
+    };
+    setPotwApprovals(prev => prev.map(p => p.id === responseId ? updated : p));
+    setResponseId(null);
+    setResponseAction(null);
+    setResponseComment("");
+    setSignedFile(null);
+    fire(responseAction === "approve" ? "✅ POTW approved. Signed copy returned to OPS." : "POTW denied. OPS has been notified.");
+    // Email notifications: OPS + MOI
+    const subjectOps = responseAction === "approve" ? "POTW Approved — Signed Copy Ready" : "POTW Returned — Action Required";
+    const bodyOps = responseAction === "approve"
+      ? `Hello,\n\nMOI ${updated.moiName} has approved the POTW you submitted. A signed copy has been returned.\n\n${updated.moiComment ? `MOI comments:\n${updated.moiComment}\n\n` : ""}Please log in to The Quarterdeck → Weekly Word to download the signed POTW.\n\n— The Quarterdeck`
+      : `Hello,\n\nMOI ${updated.moiName} has returned the POTW you submitted.\n\nMOI comments:\n${updated.moiComment}\n\nPlease log in to The Quarterdeck → Weekly Word to review and resubmit.\n\n— The Quarterdeck`;
+    if (entry.opsEmail) sendNotification(entry.opsEmail, subjectOps, bodyOps, responseAction === "approve" ? "approval" : "return", entry.opsId);
+    if (user.email) {
+      sendNotification(user.email, `POTW Response Recorded — The Quarterdeck`, `Hello,\n\nYour ${responseAction === "approve" ? "approval" : "denial"} of the POTW submitted by ${entry.opsName} has been recorded.\n\n— The Quarterdeck`, responseAction === "approve" ? "approval" : "return", user.id);
+    }
+  };
+
+  const deletePotw = (id) => {
+    setPotwApprovals(prev => prev.filter(p => p.id !== id));
+    fire("POTW request removed.");
+  };
+
+  const pendingPotws = potwApprovals.filter(p => p.status === "pending");
+  const resolvedPotws = potwApprovals.filter(p => p.status !== "pending");
+
   return (
     <div>
       <div className="page-title">Weekly <span>Word</span></div>
@@ -3783,6 +3892,89 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
       {isBF && (
         <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
           <button className="btn btn-orange" onClick={() => { setEditId(null); setDraft({ title:"", body:"", files:[] }); setShowModal(true); }}>+ Draft Weekly Word</button>
+        </div>
+      )}
+
+      {/* ─── POTW Approval Flow (OPS ↔ MOI) ─── */}
+      {canSeePotwFlow && (
+        <div style={{ marginBottom:"1.5rem", border:"1px solid #ddd", borderRadius:"8px", padding:"1rem", background:"#FAFBFC" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.75rem" }}>
+            <div>
+              <div style={{ fontSize:"0.95rem", fontWeight:700, color:"#002B5C" }}>📋 POTW Pre-Approval (OPS → MOI)</div>
+              <div style={{ fontSize:"0.75rem", color:"#666", marginTop:"0.15rem" }}>OPS submits Plan of the Week for MOI review before it publishes in Weekly Word.</div>
+            </div>
+            {isOPS && (
+              <button className="btn btn-orange btn-sm" onClick={() => { setPotwFile(null); setPotwNote(""); setShowPotwModal(true); }}>+ Send POTW to MOI</button>
+            )}
+          </div>
+
+          {potwApprovals.length === 0 && (
+            <div style={{ fontSize:"0.82rem", color:"#888", padding:"0.5rem 0" }}>No POTW submissions yet.</div>
+          )}
+
+          {pendingPotws.length > 0 && (
+            <div style={{ marginBottom:"0.75rem" }}>
+              <div style={{ fontSize:"0.7rem", textTransform:"uppercase", letterSpacing:"1.5px", color:"#B8860B", fontWeight:600, marginBottom:"0.4rem" }}>⏳ Pending MOI Review</div>
+              {pendingPotws.map(p => (
+                <div key={p.id} style={{ border:"1px solid #e8d28a", background:"#FFFBEB", borderRadius:"6px", padding:"0.75rem", marginBottom:"0.5rem" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:"0.5rem", flexWrap:"wrap" }}>
+                    <div style={{ flex:"1 1 auto" }}>
+                      <div style={{ fontWeight:700, fontSize:"0.9rem" }}>POTW from {p.opsName}</div>
+                      <div style={{ fontSize:"0.72rem", color:"#666" }}>Submitted {p.createdDate}</div>
+                      {p.note && <div style={{ marginTop:"0.3rem", fontSize:"0.82rem", color:"#333", whiteSpace:"pre-wrap" }}><strong>Note from OPS:</strong> {p.note}</div>}
+                      <div style={{ marginTop:"0.4rem" }}>
+                        <a href={p.originalFile.dataUrl} download={p.originalFile.fileName} className="btn btn-outline btn-sm">📎 {p.originalFile.fileName}</a>
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
+                      {isMOI && (
+                        <>
+                          <button className="btn btn-sm" style={{ background:"#2A7D4F", color:"white" }} onClick={() => openResponseModal(p.id, "approve")}>✓ Approve & Sign</button>
+                          <button className="btn btn-sm" style={{ background:"#C0392B", color:"white" }} onClick={() => openResponseModal(p.id, "deny")}>✕ Deny</button>
+                        </>
+                      )}
+                      {(p.opsId === user.id || user.role === "adj") && (
+                        <button className="btn btn-outline btn-sm" onClick={() => deletePotw(p.id)}>🗑</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {resolvedPotws.length > 0 && (
+            <div>
+              <div style={{ fontSize:"0.7rem", textTransform:"uppercase", letterSpacing:"1.5px", color:"#666", fontWeight:600, marginBottom:"0.4rem" }}>History</div>
+              {resolvedPotws.map(p => (
+                <div key={p.id} style={{ border:"1px solid #ddd", background:"#fff", borderRadius:"6px", padding:"0.75rem", marginBottom:"0.5rem" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:"0.5rem", flexWrap:"wrap" }}>
+                    <div style={{ flex:"1 1 auto" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" }}>
+                        <span style={{ fontWeight:700, fontSize:"0.9rem" }}>POTW from {p.opsName}</span>
+                        <span style={{ fontSize:"0.7rem", fontWeight:700, padding:"0.15rem 0.5rem", borderRadius:"10px", background: p.status === "approved" ? "rgba(42,125,79,0.15)" : "rgba(192,57,43,0.15)", color: p.status === "approved" ? "#2A7D4F" : "#C0392B" }}>
+                          {p.status === "approved" ? "✓ APPROVED" : "✕ DENIED"}
+                        </span>
+                      </div>
+                      <div style={{ fontSize:"0.72rem", color:"#666" }}>
+                        Submitted {p.createdDate} · {p.status === "approved" ? "Approved" : "Denied"} {p.respondedDate} by {p.moiName}
+                      </div>
+                      {p.moiComment && <div style={{ marginTop:"0.3rem", fontSize:"0.82rem", color:"#333", whiteSpace:"pre-wrap" }}><strong>MOI comments:</strong> {p.moiComment}</div>}
+                      <div style={{ marginTop:"0.4rem", display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
+                        <a href={p.originalFile.dataUrl} download={p.originalFile.fileName} className="btn btn-outline btn-sm">📎 Original: {p.originalFile.fileName}</a>
+                        {p.signedFile && (
+                          <a href={p.signedFile.dataUrl} download={p.signedFile.fileName} className="btn btn-sm" style={{ background:"#2A7D4F", color:"white" }}>✓ Signed: {p.signedFile.fileName}</a>
+                        )}
+                      </div>
+                    </div>
+                    {(p.opsId === user.id || user.role === "adj") && (
+                      <button className="btn btn-outline btn-sm" onClick={() => deletePotw(p.id)}>🗑</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -3897,6 +4089,89 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, userList }) {
           </div>
         </Modal>
       )}
+
+      {/* OPS submit POTW to MOI */}
+      {showPotwModal && (
+        <Modal title="Send POTW to MOI for Approval" onClose={() => { setShowPotwModal(false); setPotwFile(null); setPotwNote(""); }}>
+          <div className="input-group">
+            <label className="input-label">POTW File <span style={{ color:"#C0392B" }}>*</span></label>
+            <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+              <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                📎 Choose File
+                <input type="file" style={{ display:"none" }} onChange={e => { loadPotwFile(e.target.files[0]); e.target.value = ""; }} />
+              </label>
+              {potwFile && (
+                <span style={{ fontSize:"0.78rem", display:"inline-flex", alignItems:"center", gap:"0.3rem", background:"#f0f0f0", padding:"0.2rem 0.5rem", borderRadius:"4px" }}>
+                  📄 {potwFile.fileName}
+                  <button style={{ background:"none", border:"none", cursor:"pointer", color:"#C0392B", fontWeight:700, fontSize:"0.9rem" }} onClick={() => setPotwFile(null)}>✕</button>
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Note to MOI (optional)</label>
+            <textarea
+              className="input" style={{ minHeight:"80px", resize:"vertical" }}
+              maxLength={1000}
+              placeholder="Any context or instructions for MOI…"
+              value={potwNote} onChange={e => setPotwNote(e.target.value)}
+            />
+          </div>
+          {moiUsers.length === 0 && (
+            <div style={{ fontSize:"0.78rem", color:"#C0392B", marginBottom:"0.5rem" }}>⚠ No MOI assigned in the roster — email notification may not be delivered.</div>
+          )}
+          <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
+            <button className="btn btn-outline" onClick={() => { setShowPotwModal(false); setPotwFile(null); setPotwNote(""); }}>Cancel</button>
+            <button className="btn btn-orange" onClick={submitPotwForApproval}>Send to MOI</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* MOI approve/deny POTW */}
+      {responseId && (
+        <Modal
+          title={responseAction === "approve" ? "Approve POTW & Return Signed Copy" : "Deny POTW & Provide Comments"}
+          onClose={() => { setResponseId(null); setResponseAction(null); setResponseComment(""); setSignedFile(null); }}
+        >
+          {responseAction === "approve" && (
+            <div className="input-group">
+              <label className="input-label">Signed POTW <span style={{ color:"#C0392B" }}>*</span></label>
+              <div style={{ fontSize:"0.75rem", color:"#666", marginBottom:"0.4rem" }}>Upload the signed POTW document to return to OPS.</div>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                  📎 Choose Signed File
+                  <input type="file" style={{ display:"none" }} onChange={e => { loadSignedFile(e.target.files[0]); e.target.value = ""; }} />
+                </label>
+                {signedFile && (
+                  <span style={{ fontSize:"0.78rem", display:"inline-flex", alignItems:"center", gap:"0.3rem", background:"#f0f0f0", padding:"0.2rem 0.5rem", borderRadius:"4px" }}>
+                    📄 {signedFile.fileName}
+                    <button style={{ background:"none", border:"none", cursor:"pointer", color:"#C0392B", fontWeight:700, fontSize:"0.9rem" }} onClick={() => setSignedFile(null)}>✕</button>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="input-group">
+            <label className="input-label">Comments {responseAction === "deny" && <span style={{ color:"#C0392B" }}>*</span>}</label>
+            <textarea
+              className="input" style={{ minHeight:"100px", resize:"vertical" }}
+              maxLength={2000}
+              placeholder={responseAction === "approve" ? "Optional comments for OPS…" : "Explain what needs to be changed…"}
+              value={responseComment} onChange={e => setResponseComment(e.target.value)}
+            />
+          </div>
+          <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
+            <button className="btn btn-outline" onClick={() => { setResponseId(null); setResponseAction(null); setResponseComment(""); setSignedFile(null); }}>Cancel</button>
+            <button
+              className="btn"
+              style={{ background: responseAction === "approve" ? "#2A7D4F" : "#C0392B", color:"white" }}
+              onClick={submitPotwResponse}
+            >
+              {responseAction === "approve" ? "Approve & Return Signed" : "Submit Denial"}
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -3938,6 +4213,8 @@ export default function App() {
   const [forms, setForms]         = useState([]);
   // Weekly Word: posted by leadership, view tracked per user id.
   const [weeklyWords, setWeeklyWords] = useState([]);
+  // POTW approvals: OPS sends POTW file to MOI for pre-approval before Weekly Word publishes.
+  const [potwApprovals, setPotwApprovals] = useState([]);
   // PT plan PDFs: one per session key (monday/wednesday/thursday). Null until OPS uploads.
   const [ptPlans, setPtPlans]     = useState({ monday:null, wed_bravo:null, wed_charlie:null, thursday:null });
   // LL session list: TRAINO manages text notes; everyone reads.
@@ -4011,7 +4288,7 @@ export default function App() {
   const renderPage = () => {
     if (page === "dashboard")  return <Dashboard onNav={setPage} userList={userList} chits={chits} setChits={setChits} fitrebs={fitrebs} setFitrebs={setFitrebs} forms={forms} reminder={reminder} setReminder={setReminder} announcements={announcements} setAnnouncements={setAnnouncements} />;
     if (page === "calendar")   return <CalendarPage />;
-    if (page === "weeklyword") return <WeeklyWordPage weeklyWords={weeklyWords} setWeeklyWords={setWeeklyWords} userList={userList} />;
+    if (page === "weeklyword") return <WeeklyWordPage weeklyWords={weeklyWords} setWeeklyWords={setWeeklyWords} potwApprovals={potwApprovals} setPotwApprovals={setPotwApprovals} userList={userList} />;
     if (page === "structure")  return <StructurePage userList={userList} />;
     if (page === "training")   return <TrainingPage ptPlans={ptPlans} setPtPlans={setPtPlans} llSessions={llSessions} setLlSessions={setLlSessions} />;
     if (page === "chits")      return <ChitsPage chits={chits} setChits={setChits} userList={userList} />;
