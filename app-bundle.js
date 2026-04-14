@@ -29239,7 +29239,7 @@ Please log in to The Quarterdeck to review and take action.
         c.notes && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }, children: c.notes }),
         c.docs?.chitDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.55rem" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.chitDoc.dataUrl, download: c.docs.chitDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} CHIT Document" })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.chitDoc.dataUrl, target: "_blank", rel: "noopener noreferrer", className: "btn btn-outline btn-sm", children: "\u{1F4C4} CHIT Document" })
         ] }),
         c.stages && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-track", style: { marginTop: "0.75rem" }, children: c.stages.map((s, j) => {
           const done = j < c.currentStage;
@@ -29815,7 +29815,8 @@ Please log in to The Quarterdeck to review and take action.
     const canSubmit = canSubmitChit(user);
     const needsRouteSelect = requiresChitRouteSelection(user);
     const [showModal, setShowModal] = (0, import_react.useState)(false);
-    const [submitForm, setSubmitForm] = (0, import_react.useState)({ period: "Spring 2026", notes: "", routeCompany: "", routePlatoon: "", fitrepDoc: null });
+    const currentPeriod = getSemesterLabel((/* @__PURE__ */ new Date()).toISOString());
+    const [submitForm, setSubmitForm] = (0, import_react.useState)({ period: currentPeriod, notes: "", routeCompany: "", routePlatoon: "", fitrepDoc: null });
     const [activeComment, setActiveComment] = (0, import_react.useState)(null);
     const [commentText, setCommentText] = (0, import_react.useState)("");
     const [toast, setToast] = (0, import_react.useState)("");
@@ -29938,7 +29939,7 @@ Please log in to The Quarterdeck to review and take action.
         }
       }
       setShowModal(false);
-      setSubmitForm({ period: "Spring 2026", notes: "", routeCompany: "", routePlatoon: "", fitrepDoc: null });
+      setSubmitForm({ period: currentPeriod, notes: "", routeCompany: "", routePlatoon: "", fitrepDoc: null });
       fire("\u2705 FITREP submitted and routed to your chain of command.");
     };
     const advanceStage = (id, action = "approved") => {
@@ -30080,7 +30081,7 @@ Please log in to The Quarterdeck to review and take action.
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-body", children: [
           f.docs?.fitrepDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.75rem" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: f.docs.fitrepDoc.dataUrl, download: f.docs.fitrepDoc.fileName, className: "btn btn-outline btn-sm", children: "\u{1F4C4} FITREP Document" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: f.docs.fitrepDoc.dataUrl, target: "_blank", rel: "noopener noreferrer", className: "btn btn-outline btn-sm", children: "\u{1F4C4} FITREP Document" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-track", children: f.stages.map((s, i) => {
             const done = i < f.currentStage;
@@ -30242,11 +30243,7 @@ Please log in to The Quarterdeck to review and take action.
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Period" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: submitForm.period, onChange: (e) => setSubmitForm((s) => ({ ...s, period: e.target.value })), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Spring 2026" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Fall 2025" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Spring 2025" })
-          ] })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "input", style: { background: "#f5f5f5", color: "#333", cursor: "not-allowed" }, children: submitForm.period })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Notes (optional)" }),

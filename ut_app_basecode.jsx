@@ -2707,7 +2707,7 @@ function ChitsPage({ chits, setChits, userList }) {
         {c.docs?.chitDoc && (
           <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginTop:"0.55rem" }}>
             <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
-            <a href={c.docs.chitDoc.dataUrl} download={c.docs.chitDoc.fileName} className="btn btn-outline btn-sm">📄 CHIT Document</a>
+            <a href={c.docs.chitDoc.dataUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">📄 CHIT Document</a>
           </div>
         )}
 
@@ -3256,7 +3256,8 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   const canSubmit = canSubmitChit(user); // same Big Four restriction
   const needsRouteSelect = requiresChitRouteSelection(user);
   const [showModal, setShowModal]         = useState(false);
-  const [submitForm, setSubmitForm]       = useState({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"", fitrepDoc:null });
+  const currentPeriod = getSemesterLabel(new Date().toISOString());
+  const [submitForm, setSubmitForm]       = useState({ period:currentPeriod, notes:"", routeCompany:"", routePlatoon:"", fitrepDoc:null });
   const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText]     = useState("");
   const [toast, setToast]                 = useState("");
@@ -3372,7 +3373,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
       }
     }
     setShowModal(false);
-    setSubmitForm({ period:"Spring 2026", notes:"", routeCompany:"", routePlatoon:"", fitrepDoc:null });
+    setSubmitForm({ period:currentPeriod, notes:"", routeCompany:"", routePlatoon:"", fitrepDoc:null });
     fire("✅ FITREP submitted and routed to your chain of command.");
   };
 
@@ -3499,7 +3500,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
           {f.docs?.fitrepDoc && (
             <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginBottom:"0.75rem" }}>
               <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
-              <a href={f.docs.fitrepDoc.dataUrl} download={f.docs.fitrepDoc.fileName} className="btn btn-outline btn-sm">📄 FITREP Document</a>
+              <a href={f.docs.fitrepDoc.dataUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">📄 FITREP Document</a>
             </div>
           )}
           <div className="stage-track">
@@ -3671,11 +3672,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
           )}
           <div className="input-group">
             <label className="input-label">Period</label>
-            <select className="input" value={submitForm.period} onChange={e => setSubmitForm(s => ({ ...s, period:e.target.value }))}>
-              <option>Spring 2026</option>
-              <option>Fall 2025</option>
-              <option>Spring 2025</option>
-            </select>
+            <div className="input" style={{ background:"#f5f5f5", color:"#333", cursor:"not-allowed" }}>{submitForm.period}</div>
           </div>
           <div className="input-group">
             <label className="input-label">Notes (optional)</label>
