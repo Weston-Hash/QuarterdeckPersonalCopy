@@ -4,7 +4,7 @@ const SHEET_NAME = "MASTER WEBSITE";
 const MFA_EXPIRY_MS = 5 * 60 * 1000;
 const MFA_MAX_ATTEMPTS = 5;
 const MFA_LOCKOUT_MS = 15 * 60 * 1000; // 15 min lockout after max attempts
-const VALID_ACTIONS = ["refreshCache", "notify", "trackApproval", "clearApproval", "sendMFA", "verifyMFA"];
+const VALID_ACTIONS = ["refreshCache", "notify", "trackApproval", "clearApproval", "clearAllApprovals", "sendMFA", "verifyMFA"];
 
 const CACHE_TTL_USERS = 300;      // 5 min
 const CACHE_TTL_ROSTER = 21600;   // 6 hr
@@ -238,13 +238,20 @@ function checkPendingReminders() {
 
   var toRemind = [];
   var remaining = [];
+  // Auto-expire: drop entries older than this many business days.
+  // The front-end is in-memory only, so if a chit/fitrep resolution email
+  // never fired (app reloaded, demo data, etc.) the pending entry would
+  // otherwise nag forever. 10 biz days is far past the 3-5 day CHIT window.
+  var STALE_BIZ_DAYS = 10;
 
   for (var i = 0; i < pending.length; i++) {
     var p = pending[i];
+    var bizDays = businessDaysSince_(p.createdAt);
+    // Drop clearly stale entries — no further reminders.
+    if (bizDays >= STALE_BIZ_DAYS) { continue; }
     var threshold = (typeof p.reminderDays === "number") ? p.reminderDays : 1;
     // reminderDays=0 means reminders are disabled for this approver
     if (threshold <= 0) { remaining.push(p); continue; }
-    var bizDays = businessDaysSince_(p.createdAt);
     if (bizDays >= threshold) {
       toRemind.push(p);
       // Keep in list — will be reminded again tomorrow if still pending
@@ -365,6 +372,13 @@ function doPost(e) {
     pending = pending.filter(function(p) { return p.id !== clearId; });
     savePendingApprovals_(pending);
     return jsonOut({ ok: true });
+  }
+
+  // ── Clear ALL pending approvals (admin reset for stale reminders) ───────
+  if (action === "clearAllApprovals") {
+    var priorCount = getPendingApprovals_().length;
+    savePendingApprovals_([]);
+    return jsonOut({ ok: true, cleared: priorCount });
   }
 
   // ── MFA ──────────────────────────────────────────────────────────────────

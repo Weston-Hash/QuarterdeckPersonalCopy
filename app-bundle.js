@@ -27811,6 +27811,30 @@
     const showNotifSettings = isCoC(user);
     const [prefs, setPrefs] = (0, import_react.useState)(() => loadNotifPrefs(user.id));
     const [debugMode, setDebugMode] = (0, import_react.useState)(() => !!localStorage.getItem("qd_debug_email"));
+    const [clearMsg, setClearMsg] = (0, import_react.useState)("");
+    const clearStaleReminders = async () => {
+      if (!SHEETS_API_URL) {
+        setClearMsg("API not configured.");
+        return;
+      }
+      if (!window.confirm("Clear ALL pending approval reminders on the server? Active CHITs/FITREPs will re-register on their next stage advance.")) return;
+      setClearMsg("Clearing\u2026");
+      try {
+        const res = await fetch(SHEETS_API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "clearAllApprovals" })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data && data.ok) {
+          setClearMsg(`\u2705 Cleared ${data.cleared ?? 0} pending reminder${data.cleared === 1 ? "" : "s"}.`);
+        } else {
+          setClearMsg("\u26A0 Clear failed. Check Apps Script deployment.");
+        }
+      } catch (err) {
+        setClearMsg("\u26A0 Network error clearing reminders.");
+      }
+    };
     const togglePref = (key) => {
       setPrefs((prev) => {
         const next = { ...prev, [key]: !prev[key] };
@@ -27907,7 +27931,12 @@
           }, style: { accentColor: "#C0392B", width: "16px", height: "16px" } }),
           "Redirect all emails to me"
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: debugMode ? "#C0392B" : "#888", marginTop: "0.3rem", fontWeight: debugMode ? 600 : 400 }, children: debugMode ? `ON \u2014 All notifications will be sent to ${user.email} with [DEBUG] prefix.` : "Off \u2014 Notifications go to their intended recipients normally." })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: debugMode ? "#C0392B" : "#888", marginTop: "0.3rem", fontWeight: debugMode ? 600 : 400 }, children: debugMode ? `ON \u2014 All notifications will be sent to ${user.email} with [DEBUG] prefix.` : "Off \u2014 Notifications go to their intended recipients normally." }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.9rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", style: { width: "100%", justifyContent: "center", padding: "0.5rem 1rem", fontSize: "0.82rem" }, onClick: clearStaleReminders, children: "\u{1F9F9} Clear Stale Approval Reminders" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#888", marginTop: "0.3rem" }, children: "Wipes the server-side pending-approval queue. Use this when daily reminder emails are firing for CHITs/FITREPs that no longer exist (e.g. after the app reloads and in-memory state resets)." }),
+          clearMsg && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", marginTop: "0.35rem", color: clearMsg.startsWith("\u26A0") ? "#C0392B" : "#2A7D4F", fontWeight: 600 }, children: clearMsg })
+        ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.25rem", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { className: "btn btn-outline", href: "https://docs.google.com/forms/d/e/1FAIpQLSfNKcFJ1qBd6HTxpnBxTFOY8Y0N3YZ0DkTN6BYmMA9QaE3_0w/viewform?usp=publish-editor", target: "_blank", rel: "noopener noreferrer", children: "Update My Email" }),

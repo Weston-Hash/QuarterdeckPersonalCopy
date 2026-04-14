@@ -1232,6 +1232,28 @@ function AccountModal({ onClose, darkMode, toggleDark }) {
   const showNotifSettings = isCoC(user);
   const [prefs, setPrefs] = useState(() => loadNotifPrefs(user.id));
   const [debugMode, setDebugMode] = useState(() => !!localStorage.getItem("qd_debug_email"));
+  const [clearMsg, setClearMsg] = useState("");
+
+  const clearStaleReminders = async () => {
+    if (!SHEETS_API_URL) { setClearMsg("API not configured."); return; }
+    if (!window.confirm("Clear ALL pending approval reminders on the server? Active CHITs/FITREPs will re-register on their next stage advance.")) return;
+    setClearMsg("Clearing…");
+    try {
+      const res = await fetch(SHEETS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ token: SHEETS_API_TOKEN, action: "clearAllApprovals" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data && data.ok) {
+        setClearMsg(`✅ Cleared ${data.cleared ?? 0} pending reminder${data.cleared === 1 ? "" : "s"}.`);
+      } else {
+        setClearMsg("⚠ Clear failed. Check Apps Script deployment.");
+      }
+    } catch (err) {
+      setClearMsg("⚠ Network error clearing reminders.");
+    }
+  };
 
   const togglePref = (key) => {
     setPrefs(prev => {
@@ -1322,6 +1344,16 @@ function AccountModal({ onClose, darkMode, toggleDark }) {
           </label>
           <div style={{ fontSize:"0.72rem", color: debugMode ? "#C0392B" : "#888", marginTop:"0.3rem", fontWeight: debugMode ? 600 : 400 }}>
             {debugMode ? `ON — All notifications will be sent to ${user.email} with [DEBUG] prefix.` : "Off — Notifications go to their intended recipients normally."}
+          </div>
+
+          <div style={{ marginTop:"0.9rem" }}>
+            <button className="btn btn-outline" style={{ width:"100%", justifyContent:"center", padding:"0.5rem 1rem", fontSize:"0.82rem" }} onClick={clearStaleReminders}>
+              🧹 Clear Stale Approval Reminders
+            </button>
+            <div style={{ fontSize:"0.72rem", color:"#888", marginTop:"0.3rem" }}>
+              Wipes the server-side pending-approval queue. Use this when daily reminder emails are firing for CHITs/FITREPs that no longer exist (e.g. after the app reloads and in-memory state resets).
+            </div>
+            {clearMsg && <div style={{ fontSize:"0.78rem", marginTop:"0.35rem", color: clearMsg.startsWith("⚠") ? "#C0392B" : "#2A7D4F", fontWeight:600 }}>{clearMsg}</div>}
           </div>
         </div>
       )}
