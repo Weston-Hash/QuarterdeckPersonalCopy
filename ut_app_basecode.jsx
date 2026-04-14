@@ -1374,6 +1374,40 @@ function ViewTracker({ viewedBy, userList }) {
   const notViewed = userList.filter(u => !viewedBy?.[u.id]);
   const viewed = userList.filter(u => viewedBy?.[u.id]);
 
+  // Categorize: Unit Staff, Big Four, BN Staff, Alpha, Bravo, Charlie
+  const VIEW_GROUPS = ["Unit Staff", "Big Four", "BN Staff", "Alpha", "Bravo", "Charlie"];
+  const categoryFor = (u) => {
+    if (isUnitStaff(u) || normalizeCompany(u.company) === "Unit") return "Unit Staff";
+    if (isBigFour(u)) return "Big Four";
+    const co = normalizeCompany(u.company);
+    if (co === "BN") return "BN Staff";
+    if (co === "Alpha" || co === "Bravo" || co === "Charlie") return co;
+    return "BN Staff";
+  };
+  const groupUsers = (users) => {
+    const buckets = {};
+    VIEW_GROUPS.forEach(g => { buckets[g] = []; });
+    users.forEach(u => { buckets[categoryFor(u)].push(u); });
+    VIEW_GROUPS.forEach(g => buckets[g].sort((a, b) => (a.name || "").localeCompare(b.name || "")));
+    return buckets;
+  };
+  const viewedGroups = groupUsers(viewed);
+  const notViewedGroups = groupUsers(notViewed);
+
+  const renderGroup = (label, list, color) => {
+    if (!list.length) return null;
+    return (
+      <div key={label} style={{ marginTop:"0.35rem" }}>
+        <div style={{ fontSize:"0.62rem", textTransform:"uppercase", letterSpacing:"1px", fontWeight:700, color:"#666", marginBottom:"0.15rem" }}>{label} ({list.length})</div>
+        {list.map(u => (
+          <div key={u.id} style={{ padding:"0.1rem 0", color, fontSize:"0.74rem" }}>
+            {color === "#2A7D4F" ? "✓" : "✗"} {u.name}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div style={{ marginTop:"0.5rem", fontSize:"0.75rem" }}>
       <button
@@ -1383,18 +1417,14 @@ function ViewTracker({ viewedBy, userList }) {
         👁 {viewCount} viewed · {notViewed.length} not viewed {expanded ? "▲" : "▼"}
       </button>
       {expanded && (
-        <div style={{ marginTop:"0.4rem", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.5rem" }}>
+        <div style={{ marginTop:"0.4rem", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem" }}>
           <div>
-            <div style={{ fontWeight:600, color:"#2A7D4F", marginBottom:"0.2rem", textTransform:"uppercase", letterSpacing:"1px", fontSize:"0.65rem" }}>Viewed ({viewed.length})</div>
-            {viewed.map(u => (
-              <div key={u.id} style={{ padding:"0.15rem 0", color:"#2A7D4F" }}>✓ {u.name}</div>
-            ))}
+            <div style={{ fontWeight:700, color:"#2A7D4F", marginBottom:"0.2rem", textTransform:"uppercase", letterSpacing:"1px", fontSize:"0.65rem" }}>Viewed ({viewed.length})</div>
+            {VIEW_GROUPS.map(g => renderGroup(g, viewedGroups[g], "#2A7D4F"))}
           </div>
           <div>
-            <div style={{ fontWeight:600, color:"#C0392B", marginBottom:"0.2rem", textTransform:"uppercase", letterSpacing:"1px", fontSize:"0.65rem" }}>Not Viewed ({notViewed.length})</div>
-            {notViewed.map(u => (
-              <div key={u.id} style={{ padding:"0.15rem 0", color:"#C0392B" }}>✗ {u.name}</div>
-            ))}
+            <div style={{ fontWeight:700, color:"#C0392B", marginBottom:"0.2rem", textTransform:"uppercase", letterSpacing:"1px", fontSize:"0.65rem" }}>Not Viewed ({notViewed.length})</div>
+            {VIEW_GROUPS.map(g => renderGroup(g, notViewedGroups[g], "#C0392B"))}
           </div>
         </div>
       )}

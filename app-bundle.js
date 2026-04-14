@@ -27949,6 +27949,44 @@
     const viewCount = Object.keys(viewedBy || {}).length;
     const notViewed = userList.filter((u) => !viewedBy?.[u.id]);
     const viewed = userList.filter((u) => viewedBy?.[u.id]);
+    const VIEW_GROUPS = ["Unit Staff", "Big Four", "BN Staff", "Alpha", "Bravo", "Charlie"];
+    const categoryFor = (u) => {
+      if (isUnitStaff(u) || normalizeCompany(u.company) === "Unit") return "Unit Staff";
+      if (isBigFour(u)) return "Big Four";
+      const co = normalizeCompany(u.company);
+      if (co === "BN") return "BN Staff";
+      if (co === "Alpha" || co === "Bravo" || co === "Charlie") return co;
+      return "BN Staff";
+    };
+    const groupUsers = (users) => {
+      const buckets = {};
+      VIEW_GROUPS.forEach((g) => {
+        buckets[g] = [];
+      });
+      users.forEach((u) => {
+        buckets[categoryFor(u)].push(u);
+      });
+      VIEW_GROUPS.forEach((g) => buckets[g].sort((a, b) => (a.name || "").localeCompare(b.name || "")));
+      return buckets;
+    };
+    const viewedGroups = groupUsers(viewed);
+    const notViewedGroups = groupUsers(notViewed);
+    const renderGroup = (label, list, color) => {
+      if (!list.length) return null;
+      return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.35rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700, color: "#666", marginBottom: "0.15rem" }, children: [
+          label,
+          " (",
+          list.length,
+          ")"
+        ] }),
+        list.map((u) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { padding: "0.1rem 0", color, fontSize: "0.74rem" }, children: [
+          color === "#2A7D4F" ? "\u2713" : "\u2717",
+          " ",
+          u.name
+        ] }, u.id))
+      ] }, label);
+    };
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.5rem", fontSize: "0.75rem" }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
         "button",
@@ -27965,28 +28003,22 @@
           ]
         }
       ),
-      expanded && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.4rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }, children: [
+      expanded && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.4rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontWeight: 600, color: "#2A7D4F", marginBottom: "0.2rem", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.65rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontWeight: 700, color: "#2A7D4F", marginBottom: "0.2rem", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.65rem" }, children: [
             "Viewed (",
             viewed.length,
             ")"
           ] }),
-          viewed.map((u) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { padding: "0.15rem 0", color: "#2A7D4F" }, children: [
-            "\u2713 ",
-            u.name
-          ] }, u.id))
+          VIEW_GROUPS.map((g) => renderGroup(g, viewedGroups[g], "#2A7D4F"))
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontWeight: 600, color: "#C0392B", marginBottom: "0.2rem", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.65rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontWeight: 700, color: "#C0392B", marginBottom: "0.2rem", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.65rem" }, children: [
             "Not Viewed (",
             notViewed.length,
             ")"
           ] }),
-          notViewed.map((u) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { padding: "0.15rem 0", color: "#C0392B" }, children: [
-            "\u2717 ",
-            u.name
-          ] }, u.id))
+          VIEW_GROUPS.map((g) => renderGroup(g, notViewedGroups[g], "#C0392B"))
         ] })
       ] })
     ] });
