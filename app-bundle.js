@@ -30348,7 +30348,7 @@ Please log in to The Quarterdeck to review and take action.
     const isOPS = user.role === "ops";
     const isMOI = user.role === "moi";
     const canViewTracker = isBF || user.role === "adj";
-    const canSeePotwFlow = isBF || isMOI || user.role === "adj";
+    const canSeePotwFlow = isOPS || isMOI;
     const [showModal, setShowModal] = (0, import_react.useState)(false);
     const [editId, setEditId] = (0, import_react.useState)(null);
     const [draft, setDraft] = (0, import_react.useState)({ title: "", body: "", files: [] });

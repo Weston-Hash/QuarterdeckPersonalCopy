@@ -3771,7 +3771,7 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, potwApprovals, setPotwApp
   const isOPS = user.role === "ops";
   const isMOI = user.role === "moi";
   const canViewTracker = isBF || user.role === "adj";
-  const canSeePotwFlow = isBF || isMOI || user.role === "adj";
+  const canSeePotwFlow = isOPS || isMOI;
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [draft, setDraft] = useState({ title:"", body:"", files:[] });
