@@ -3786,6 +3786,11 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, potwApprovals, setPotwApp
   const [responseComment, setResponseComment] = useState("");
   const [signedFile, setSignedFile] = useState(null);
 
+  // Archive state
+  const [archiveSearch, setArchiveSearch] = useState("");
+  const [archiveSort, setArchiveSort] = useState("newest"); // "newest" | "oldest"
+  const [expandedArchiveId, setExpandedArchiveId] = useState(null);
+
   const fire = msg => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   const loadFile = (file) => {
@@ -4089,38 +4094,126 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, potwApprovals, setPotwApp
         </div>
       )}
 
-      {published.map(w => {
-        // Mark as viewed
-        if (!w.viewedBy?.[user.id]) {
-          setTimeout(() => setWeeklyWords(prev => prev.map(x => x.id === w.id ? { ...x, viewedBy: { ...x.viewedBy, [user.id]: true } } : x)), 0);
-        }
-        return (
-          <div className="potw-card" key={w.id} style={{ marginBottom:"1rem" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-              <div>
-                <div className="potw-week">📖 Weekly Word</div>
-                <div className="potw-title">{w.title}</div>
-              </div>
-              {isBF && (
-                <button className="btn btn-sm" style={{ background:"rgba(255,255,255,0.15)", color:"white", border:"1px solid rgba(255,255,255,0.3)" }} onClick={() => deleteWord(w.id)}>✕</button>
-              )}
-            </div>
-            <div className="potw-body" style={{ whiteSpace:"pre-wrap" }}>{w.body}</div>
-            {w.files?.length > 0 && (
-              <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginTop:"0.5rem" }}>
-                {w.files.map((f, i) => <a key={i} href={f.dataUrl} download={f.fileName} className="btn btn-sm" style={{ background:"rgba(255,255,255,0.15)", color:"white", border:"1px solid rgba(255,255,255,0.3)", textDecoration:"none" }}>📎 {f.fileName}</a>)}
-              </div>
-            )}
-            <div style={{ fontSize:"0.75rem", color:"rgba(255,255,255,0.5)" }}>— {w.author}, {w.publishedDate || w.date}</div>
-            {/* View tracker for Big Four + ADJ */}
-            {canViewTracker && (
-              <div style={{ marginTop:"0.5rem", background:"rgba(255,255,255,0.08)", borderRadius:"6px", padding:"0.5rem" }}>
-                <ViewTracker viewedBy={w.viewedBy || {}} userList={userList} />
-              </div>
-            )}
-          </div>
+      {(() => {
+        // Sort published by publish timestamp (fallback to id which is Date.now())
+        const sortedByNewest = [...published].sort((a, b) => (b.id || 0) - (a.id || 0));
+        const latest = sortedByNewest[0];
+        const older  = sortedByNewest.slice(1);
+
+        // Archive filter + sort
+        const needle = archiveSearch.trim().toLowerCase();
+        const filtered = older.filter(w =>
+          !needle ||
+          (w.title || "").toLowerCase().includes(needle) ||
+          (w.body  || "").toLowerCase().includes(needle) ||
+          (w.author|| "").toLowerCase().includes(needle)
         );
-      })}
+        const archiveList = archiveSort === "oldest"
+          ? [...filtered].sort((a, b) => (a.id || 0) - (b.id || 0))
+          : filtered; // already newest→oldest
+
+        return (
+          <>
+            {latest && (() => {
+              const w = latest;
+              if (!w.viewedBy?.[user.id]) {
+                setTimeout(() => setWeeklyWords(prev => prev.map(x => x.id === w.id ? { ...x, viewedBy: { ...x.viewedBy, [user.id]: true } } : x)), 0);
+              }
+              return (
+                <div className="potw-card" key={w.id} style={{ marginBottom:"1rem" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                    <div>
+                      <div className="potw-week">📖 Weekly Word</div>
+                      <div className="potw-title">{w.title}</div>
+                    </div>
+                    {isBF && (
+                      <button className="btn btn-sm" style={{ background:"rgba(255,255,255,0.15)", color:"white", border:"1px solid rgba(255,255,255,0.3)" }} onClick={() => deleteWord(w.id)}>✕</button>
+                    )}
+                  </div>
+                  <div className="potw-body" style={{ whiteSpace:"pre-wrap" }}>{w.body}</div>
+                  {w.files?.length > 0 && (
+                    <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginTop:"0.5rem" }}>
+                      {w.files.map((f, i) => <a key={i} href={f.dataUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm" style={{ background:"rgba(255,255,255,0.15)", color:"white", border:"1px solid rgba(255,255,255,0.3)", textDecoration:"none" }}>📎 {f.fileName}</a>)}
+                    </div>
+                  )}
+                  <div style={{ fontSize:"0.75rem", color:"rgba(255,255,255,0.5)" }}>— {w.author}, {w.publishedDate || w.date}</div>
+                  {canViewTracker && (
+                    <div style={{ marginTop:"0.5rem", background:"rgba(255,255,255,0.08)", borderRadius:"6px", padding:"0.5rem" }}>
+                      <ViewTracker viewedBy={w.viewedBy || {}} userList={userList} />
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {older.length > 0 && (
+              <div style={{ marginTop:"1.5rem", border:"1px solid #ddd", borderRadius:"8px", padding:"1rem", background:"#FAFBFC" }}>
+                <div style={{ fontSize:"0.95rem", fontWeight:700, color:"#002B5C", marginBottom:"0.6rem" }}>📚 Weekly Word Archive <span style={{ fontSize:"0.72rem", color:"#888", fontWeight:500 }}>({older.length})</span></div>
+                <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.75rem", alignItems:"center" }}>
+                  <input
+                    className="input"
+                    style={{ flex:"1 1 180px", fontSize:"0.85rem", padding:"0.4rem 0.6rem" }}
+                    placeholder="Search by title, author, or content…"
+                    value={archiveSearch}
+                    onChange={e => setArchiveSearch(e.target.value)}
+                  />
+                  <select
+                    className="input"
+                    style={{ width:"auto", fontSize:"0.85rem", padding:"0.4rem 0.6rem" }}
+                    value={archiveSort}
+                    onChange={e => setArchiveSort(e.target.value)}
+                  >
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                  </select>
+                </div>
+                {archiveList.length === 0 && (
+                  <div style={{ fontSize:"0.82rem", color:"#888", padding:"0.5rem 0" }}>No past Weekly Words match your search.</div>
+                )}
+                {archiveList.map(w => {
+                  const isOpen = expandedArchiveId === w.id;
+                  return (
+                    <div key={w.id} style={{ border:"1px solid #e5e5e5", background:"#fff", borderRadius:"6px", marginBottom:"0.5rem", overflow:"hidden" }}>
+                      <button
+                        onClick={() => setExpandedArchiveId(isOpen ? null : w.id)}
+                        style={{ width:"100%", textAlign:"left", padding:"0.6rem 0.8rem", background:"none", border:"none", cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" }}
+                      >
+                        <div style={{ flex:"1 1 auto" }}>
+                          <div style={{ fontWeight:700, fontSize:"0.88rem", color:"#002B5C" }}>{w.title}</div>
+                          <div style={{ fontSize:"0.72rem", color:"#666", marginTop:"0.1rem" }}>{w.author} · {w.publishedDate || w.date}{w.files?.length ? ` · ${w.files.length} file${w.files.length === 1 ? "" : "s"}` : ""}</div>
+                        </div>
+                        <span style={{ fontSize:"0.75rem", color:"#BF5700", fontWeight:600 }}>{isOpen ? "▲ Collapse" : "▼ Read"}</span>
+                      </button>
+                      {isOpen && (
+                        <div style={{ padding:"0 0.8rem 0.8rem 0.8rem", borderTop:"1px solid #eee" }}>
+                          <div style={{ whiteSpace:"pre-wrap", fontSize:"0.88rem", color:"#333", padding:"0.6rem 0" }}>{w.body}</div>
+                          {w.files?.length > 0 && (
+                            <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", marginBottom:"0.4rem" }}>
+                              {w.files.map((f, i) => (
+                                <a key={i} href={f.dataUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">📎 {f.fileName}</a>
+                              ))}
+                            </div>
+                          )}
+                          {canViewTracker && (
+                            <div style={{ background:"#f5f5f5", borderRadius:"6px", padding:"0.5rem" }}>
+                              <ViewTracker viewedBy={w.viewedBy || {}} userList={userList} />
+                            </div>
+                          )}
+                          {isBF && (
+                            <div style={{ marginTop:"0.5rem", textAlign:"right" }}>
+                              <button className="btn btn-sm" style={{ background:"#C0392B", color:"white" }} onClick={() => deleteWord(w.id)}>✕ Delete</button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {showModal && (
         <Modal title={editId ? "Edit Draft" : "Draft Weekly Word"} onClose={() => { setShowModal(false); setEditId(null); setDraft({ title:"", body:"", files:[] }); }}>

@@ -30360,6 +30360,9 @@ Please log in to The Quarterdeck to review and take action.
     const [responseAction, setResponseAction] = (0, import_react.useState)(null);
     const [responseComment, setResponseComment] = (0, import_react.useState)("");
     const [signedFile, setSignedFile] = (0, import_react.useState)(null);
+    const [archiveSearch, setArchiveSearch] = (0, import_react.useState)("");
+    const [archiveSort, setArchiveSort] = (0, import_react.useState)("newest");
+    const [expandedArchiveId, setExpandedArchiveId] = (0, import_react.useState)(null);
     const fire = (msg) => {
       setToast(msg);
       setTimeout(() => setToast(""), 3e3);
@@ -30682,32 +30685,114 @@ Your ${responseAction === "approve" ? "approval" : "denial"} of the POTW submitt
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2rem" }, children: "\u{1F4D6}" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: "No Weekly Word posted yet. Draft one above." })
       ] }),
-      published.map((w) => {
-        if (!w.viewedBy?.[user.id]) {
-          setTimeout(() => setWeeklyWords((prev) => prev.map((x) => x.id === w.id ? { ...x, viewedBy: { ...x.viewedBy, [user.id]: true } } : x)), 0);
-        }
-        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "potw-card", style: { marginBottom: "1rem" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-week", children: "\u{1F4D6} Weekly Word" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-title", children: w.title })
+      (() => {
+        const sortedByNewest = [...published].sort((a, b) => (b.id || 0) - (a.id || 0));
+        const latest = sortedByNewest[0];
+        const older = sortedByNewest.slice(1);
+        const needle = archiveSearch.trim().toLowerCase();
+        const filtered = older.filter(
+          (w) => !needle || (w.title || "").toLowerCase().includes(needle) || (w.body || "").toLowerCase().includes(needle) || (w.author || "").toLowerCase().includes(needle)
+        );
+        const archiveList = archiveSort === "oldest" ? [...filtered].sort((a, b) => (a.id || 0) - (b.id || 0)) : filtered;
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+          latest && (() => {
+            const w = latest;
+            if (!w.viewedBy?.[user.id]) {
+              setTimeout(() => setWeeklyWords((prev) => prev.map((x) => x.id === w.id ? { ...x, viewedBy: { ...x.viewedBy, [user.id]: true } } : x)), 0);
+            }
+            return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "potw-card", style: { marginBottom: "1rem" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-week", children: "\u{1F4D6} Weekly Word" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-title", children: w.title })
+                ] }),
+                isBF && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-sm", style: { background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.3)" }, onClick: () => deleteWord(w.id), children: "\u2715" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-body", style: { whiteSpace: "pre-wrap" }, children: w.body }),
+              w.files?.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" }, children: w.files.map((f, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: f.dataUrl, target: "_blank", rel: "noopener noreferrer", className: "btn btn-sm", style: { background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.3)", textDecoration: "none" }, children: [
+                "\u{1F4CE} ",
+                f.fileName
+              ] }, i)) }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }, children: [
+                "\u2014 ",
+                w.author,
+                ", ",
+                w.publishedDate || w.date
+              ] }),
+              canViewTracker && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem", background: "rgba(255,255,255,0.08)", borderRadius: "6px", padding: "0.5rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ViewTracker, { viewedBy: w.viewedBy || {}, userList }) })
+            ] }, w.id);
+          })(),
+          older.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "1.5rem", border: "1px solid #ddd", borderRadius: "8px", padding: "1rem", background: "#FAFBFC" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.95rem", fontWeight: 700, color: "#002B5C", marginBottom: "0.6rem" }, children: [
+              "\u{1F4DA} Weekly Word Archive ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.72rem", color: "#888", fontWeight: 500 }, children: [
+                "(",
+                older.length,
+                ")"
+              ] })
             ] }),
-            isBF && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-sm", style: { background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.3)" }, onClick: () => deleteWord(w.id), children: "\u2715" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "potw-body", style: { whiteSpace: "pre-wrap" }, children: w.body }),
-          w.files?.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" }, children: w.files.map((f, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: f.dataUrl, download: f.fileName, className: "btn btn-sm", style: { background: "rgba(255,255,255,0.15)", color: "white", border: "1px solid rgba(255,255,255,0.3)", textDecoration: "none" }, children: [
-            "\u{1F4CE} ",
-            f.fileName
-          ] }, i)) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }, children: [
-            "\u2014 ",
-            w.author,
-            ", ",
-            w.publishedDate || w.date
-          ] }),
-          canViewTracker && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem", background: "rgba(255,255,255,0.08)", borderRadius: "6px", padding: "0.5rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ViewTracker, { viewedBy: w.viewedBy || {}, userList }) })
-        ] }, w.id);
-      }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.75rem", alignItems: "center" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  className: "input",
+                  style: { flex: "1 1 180px", fontSize: "0.85rem", padding: "0.4rem 0.6rem" },
+                  placeholder: "Search by title, author, or content\u2026",
+                  value: archiveSearch,
+                  onChange: (e) => setArchiveSearch(e.target.value)
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                "select",
+                {
+                  className: "input",
+                  style: { width: "auto", fontSize: "0.85rem", padding: "0.4rem 0.6rem" },
+                  value: archiveSort,
+                  onChange: (e) => setArchiveSort(e.target.value),
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "newest", children: "Newest first" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "oldest", children: "Oldest first" })
+                  ]
+                }
+              )
+            ] }),
+            archiveList.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.82rem", color: "#888", padding: "0.5rem 0" }, children: "No past Weekly Words match your search." }),
+            archiveList.map((w) => {
+              const isOpen = expandedArchiveId === w.id;
+              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { border: "1px solid #e5e5e5", background: "#fff", borderRadius: "6px", marginBottom: "0.5rem", overflow: "hidden" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+                  "button",
+                  {
+                    onClick: () => setExpandedArchiveId(isOpen ? null : w.id),
+                    style: { width: "100%", textAlign: "left", padding: "0.6rem 0.8rem", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" },
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { flex: "1 1 auto" }, children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontWeight: 700, fontSize: "0.88rem", color: "#002B5C" }, children: w.title }),
+                        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.72rem", color: "#666", marginTop: "0.1rem" }, children: [
+                          w.author,
+                          " \xB7 ",
+                          w.publishedDate || w.date,
+                          w.files?.length ? ` \xB7 ${w.files.length} file${w.files.length === 1 ? "" : "s"}` : ""
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#BF5700", fontWeight: 600 }, children: isOpen ? "\u25B2 Collapse" : "\u25BC Read" })
+                    ]
+                  }
+                ),
+                isOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { padding: "0 0.8rem 0.8rem 0.8rem", borderTop: "1px solid #eee" }, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { whiteSpace: "pre-wrap", fontSize: "0.88rem", color: "#333", padding: "0.6rem 0" }, children: w.body }),
+                  w.files?.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.4rem" }, children: w.files.map((f, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: f.dataUrl, target: "_blank", rel: "noopener noreferrer", className: "btn btn-outline btn-sm", children: [
+                    "\u{1F4CE} ",
+                    f.fileName
+                  ] }, i)) }),
+                  canViewTracker && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: "#f5f5f5", borderRadius: "6px", padding: "0.5rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ViewTracker, { viewedBy: w.viewedBy || {}, userList }) }),
+                  isBF && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem", textAlign: "right" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-sm", style: { background: "#C0392B", color: "white" }, onClick: () => deleteWord(w.id), children: "\u2715 Delete" }) })
+                ] })
+              ] }, w.id);
+            })
+          ] })
+        ] });
+      })(),
       showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: editId ? "Edit Draft" : "Draft Weekly Word", onClose: () => {
         setShowModal(false);
         setEditId(null);
