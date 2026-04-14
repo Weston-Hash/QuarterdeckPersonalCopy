@@ -30392,12 +30392,20 @@ Please log in to The Quarterdeck to review and take action.
     const opsUsers = userList.filter((u) => u.role === "ops");
     const loadPotwFile = (file) => {
       if (!file) return;
+      if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) {
+        fire("\u26A0 POTW must be a PDF file.");
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (e) => setPotwFile({ fileName: file.name, dataUrl: e.target.result });
       reader.readAsDataURL(file);
     };
     const loadSignedFile = (file) => {
       if (!file) return;
+      if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) {
+        fire("\u26A0 Signed POTW must be a PDF file.");
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (e) => setSignedFile({ fileName: file.name, dataUrl: e.target.result });
       reader.readAsDataURL(file);
@@ -30527,10 +30535,7 @@ Your ${responseAction === "approve" ? "approval" : "denial"} of the POTW submitt
       }, children: "+ Draft Weekly Word" }) }),
       canSeePotwFlow && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: "1.5rem", border: "1px solid #ddd", borderRadius: "8px", padding: "1rem", background: "#FAFBFC" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.95rem", fontWeight: 700, color: "#002B5C" }, children: "\u{1F4CB} POTW Pre-Approval (OPS \u2192 MOI)" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.75rem", color: "#666", marginTop: "0.15rem" }, children: "OPS submits Plan of the Week for MOI review before it publishes in Weekly Word." })
-          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.95rem", fontWeight: 700, color: "#002B5C" }, children: "\u{1F4CB} POTW Pre-Approval (OPS \u2192 MOI)" }) }),
           isOPS && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => {
             setPotwFile(null);
             setPotwNote("");
@@ -30555,8 +30560,8 @@ Your ${responseAction === "approve" ? "approval" : "denial"} of the POTW submitt
                 " ",
                 p.note
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.4rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: p.originalFile.dataUrl, download: p.originalFile.fileName, className: "btn btn-outline btn-sm", children: [
-                "\u{1F4CE} ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.4rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: p.originalFile.dataUrl, target: "_blank", rel: "noopener noreferrer", className: "btn btn-outline btn-sm", children: [
+                "\u{1F4C4} ",
                 p.originalFile.fileName
               ] }) })
             ] }),
@@ -30596,11 +30601,11 @@ Your ${responseAction === "approve" ? "approval" : "denial"} of the POTW submitt
                 p.moiComment
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginTop: "0.4rem", display: "flex", gap: "0.4rem", flexWrap: "wrap" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: p.originalFile.dataUrl, download: p.originalFile.fileName, className: "btn btn-outline btn-sm", children: [
-                  "\u{1F4CE} Original: ",
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: p.originalFile.dataUrl, target: "_blank", rel: "noopener noreferrer", className: "btn btn-outline btn-sm", children: [
+                  "\u{1F4C4} Original: ",
                   p.originalFile.fileName
                 ] }),
-                p.signedFile && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: p.signedFile.dataUrl, download: p.signedFile.fileName, className: "btn btn-sm", style: { background: "#2A7D4F", color: "white" }, children: [
+                p.signedFile && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: p.signedFile.dataUrl, target: "_blank", rel: "noopener noreferrer", className: "btn btn-sm", style: { background: "#2A7D4F", color: "white", textDecoration: "none" }, children: [
                   "\u2713 Signed: ",
                   p.signedFile.fileName
                 ] })
@@ -30733,20 +30738,22 @@ Your ${responseAction === "approve" ? "approval" : "denial"} of the POTW submitt
       }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-            "POTW File ",
+            "POTW File (PDF) ",
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
-              "\u{1F4CE} Choose File",
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", style: { display: "none" }, onChange: (e) => {
+              "\u{1F4C4} Choose PDF",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", accept: "application/pdf,.pdf", style: { display: "none" }, onChange: (e) => {
                 loadPotwFile(e.target.files[0]);
                 e.target.value = "";
               } })
             ] }),
             potwFile && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "0.3rem", background: "#f0f0f0", padding: "0.2rem 0.5rem", borderRadius: "4px" }, children: [
-              "\u{1F4C4} ",
-              potwFile.fileName,
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: potwFile.dataUrl, target: "_blank", rel: "noopener noreferrer", style: { color: "#002B5C", textDecoration: "none" }, children: [
+                "\u{1F4C4} ",
+                potwFile.fileName
+              ] }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { style: { background: "none", border: "none", cursor: "pointer", color: "#C0392B", fontWeight: 700, fontSize: "0.9rem" }, onClick: () => setPotwFile(null), children: "\u2715" })
             ] })
           ] })
@@ -30788,21 +30795,23 @@ Your ${responseAction === "approve" ? "approval" : "denial"} of the POTW submitt
           children: [
             responseAction === "approve" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-                "Signed POTW ",
+                "Signed POTW (PDF) ",
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.75rem", color: "#666", marginBottom: "0.4rem" }, children: "Upload the signed POTW document to return to OPS." }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.75rem", color: "#666", marginBottom: "0.4rem" }, children: "Upload the signed POTW document (PDF) to return to OPS." }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
-                  "\u{1F4CE} Choose Signed File",
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", style: { display: "none" }, onChange: (e) => {
+                  "\u{1F4C4} Choose Signed PDF",
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "file", accept: "application/pdf,.pdf", style: { display: "none" }, onChange: (e) => {
                     loadSignedFile(e.target.files[0]);
                     e.target.value = "";
                   } })
                 ] }),
                 signedFile && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "0.3rem", background: "#f0f0f0", padding: "0.2rem 0.5rem", borderRadius: "4px" }, children: [
-                  "\u{1F4C4} ",
-                  signedFile.fileName,
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: signedFile.dataUrl, target: "_blank", rel: "noopener noreferrer", style: { color: "#002B5C", textDecoration: "none" }, children: [
+                    "\u{1F4C4} ",
+                    signedFile.fileName
+                  ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { style: { background: "none", border: "none", cursor: "pointer", color: "#C0392B", fontWeight: 700, fontSize: "0.9rem" }, onClick: () => setSignedFile(null), children: "\u2715" })
                 ] })
               ] })

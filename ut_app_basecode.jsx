@@ -3823,6 +3823,10 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, potwApprovals, setPotwApp
 
   const loadPotwFile = (file) => {
     if (!file) return;
+    if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) {
+      fire("⚠ POTW must be a PDF file.");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = e => setPotwFile({ fileName: file.name, dataUrl: e.target.result });
     reader.readAsDataURL(file);
@@ -3830,6 +3834,10 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, potwApprovals, setPotwApp
 
   const loadSignedFile = (file) => {
     if (!file) return;
+    if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) {
+      fire("⚠ Signed POTW must be a PDF file.");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = e => setSignedFile({ fileName: file.name, dataUrl: e.target.result });
     reader.readAsDataURL(file);
@@ -3933,7 +3941,6 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, potwApprovals, setPotwApp
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"0.75rem" }}>
             <div>
               <div style={{ fontSize:"0.95rem", fontWeight:700, color:"#002B5C" }}>📋 POTW Pre-Approval (OPS → MOI)</div>
-              <div style={{ fontSize:"0.75rem", color:"#666", marginTop:"0.15rem" }}>OPS submits Plan of the Week for MOI review before it publishes in Weekly Word.</div>
             </div>
             {isOPS && (
               <button className="btn btn-orange btn-sm" onClick={() => { setPotwFile(null); setPotwNote(""); setShowPotwModal(true); }}>+ Send POTW to MOI</button>
@@ -3955,7 +3962,7 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, potwApprovals, setPotwApp
                       <div style={{ fontSize:"0.72rem", color:"#666" }}>Submitted {p.createdDate}</div>
                       {p.note && <div style={{ marginTop:"0.3rem", fontSize:"0.82rem", color:"#333", whiteSpace:"pre-wrap" }}><strong>Note from OPS:</strong> {p.note}</div>}
                       <div style={{ marginTop:"0.4rem" }}>
-                        <a href={p.originalFile.dataUrl} download={p.originalFile.fileName} className="btn btn-outline btn-sm">📎 {p.originalFile.fileName}</a>
+                        <a href={p.originalFile.dataUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">📄 {p.originalFile.fileName}</a>
                       </div>
                     </div>
                     <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
@@ -3993,9 +4000,9 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, potwApprovals, setPotwApp
                       </div>
                       {p.moiComment && <div style={{ marginTop:"0.3rem", fontSize:"0.82rem", color:"#333", whiteSpace:"pre-wrap" }}><strong>MOI comments:</strong> {p.moiComment}</div>}
                       <div style={{ marginTop:"0.4rem", display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
-                        <a href={p.originalFile.dataUrl} download={p.originalFile.fileName} className="btn btn-outline btn-sm">📎 Original: {p.originalFile.fileName}</a>
+                        <a href={p.originalFile.dataUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">📄 Original: {p.originalFile.fileName}</a>
                         {p.signedFile && (
-                          <a href={p.signedFile.dataUrl} download={p.signedFile.fileName} className="btn btn-sm" style={{ background:"#2A7D4F", color:"white" }}>✓ Signed: {p.signedFile.fileName}</a>
+                          <a href={p.signedFile.dataUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm" style={{ background:"#2A7D4F", color:"white", textDecoration:"none" }}>✓ Signed: {p.signedFile.fileName}</a>
                         )}
                       </div>
                     </div>
@@ -4126,15 +4133,15 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, potwApprovals, setPotwApp
       {showPotwModal && (
         <Modal title="Send POTW to MOI for Approval" onClose={() => { setShowPotwModal(false); setPotwFile(null); setPotwNote(""); }}>
           <div className="input-group">
-            <label className="input-label">POTW File <span style={{ color:"#C0392B" }}>*</span></label>
+            <label className="input-label">POTW File (PDF) <span style={{ color:"#C0392B" }}>*</span></label>
             <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
               <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
-                📎 Choose File
-                <input type="file" style={{ display:"none" }} onChange={e => { loadPotwFile(e.target.files[0]); e.target.value = ""; }} />
+                📄 Choose PDF
+                <input type="file" accept="application/pdf,.pdf" style={{ display:"none" }} onChange={e => { loadPotwFile(e.target.files[0]); e.target.value = ""; }} />
               </label>
               {potwFile && (
                 <span style={{ fontSize:"0.78rem", display:"inline-flex", alignItems:"center", gap:"0.3rem", background:"#f0f0f0", padding:"0.2rem 0.5rem", borderRadius:"4px" }}>
-                  📄 {potwFile.fileName}
+                  <a href={potwFile.dataUrl} target="_blank" rel="noopener noreferrer" style={{ color:"#002B5C", textDecoration:"none" }}>📄 {potwFile.fileName}</a>
                   <button style={{ background:"none", border:"none", cursor:"pointer", color:"#C0392B", fontWeight:700, fontSize:"0.9rem" }} onClick={() => setPotwFile(null)}>✕</button>
                 </span>
               )}
@@ -4167,16 +4174,16 @@ function WeeklyWordPage({ weeklyWords, setWeeklyWords, potwApprovals, setPotwApp
         >
           {responseAction === "approve" && (
             <div className="input-group">
-              <label className="input-label">Signed POTW <span style={{ color:"#C0392B" }}>*</span></label>
-              <div style={{ fontSize:"0.75rem", color:"#666", marginBottom:"0.4rem" }}>Upload the signed POTW document to return to OPS.</div>
+              <label className="input-label">Signed POTW (PDF) <span style={{ color:"#C0392B" }}>*</span></label>
+              <div style={{ fontSize:"0.75rem", color:"#666", marginBottom:"0.4rem" }}>Upload the signed POTW document (PDF) to return to OPS.</div>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
                 <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
-                  📎 Choose Signed File
-                  <input type="file" style={{ display:"none" }} onChange={e => { loadSignedFile(e.target.files[0]); e.target.value = ""; }} />
+                  📄 Choose Signed PDF
+                  <input type="file" accept="application/pdf,.pdf" style={{ display:"none" }} onChange={e => { loadSignedFile(e.target.files[0]); e.target.value = ""; }} />
                 </label>
                 {signedFile && (
                   <span style={{ fontSize:"0.78rem", display:"inline-flex", alignItems:"center", gap:"0.3rem", background:"#f0f0f0", padding:"0.2rem 0.5rem", borderRadius:"4px" }}>
-                    📄 {signedFile.fileName}
+                    <a href={signedFile.dataUrl} target="_blank" rel="noopener noreferrer" style={{ color:"#002B5C", textDecoration:"none" }}>📄 {signedFile.fileName}</a>
                     <button style={{ background:"none", border:"none", cursor:"pointer", color:"#C0392B", fontWeight:700, fontSize:"0.9rem" }} onClick={() => setSignedFile(null)}>✕</button>
                   </span>
                 )}
