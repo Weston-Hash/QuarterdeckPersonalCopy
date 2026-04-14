@@ -27203,13 +27203,8 @@
   function saveNotifPrefs(userId, prefs) {
     localStorage.setItem("qd_notif_" + userId, JSON.stringify(prefs));
   }
-  function sendNotification(to, subject, body, notifType, recipientId) {
+  function sendNotification(to, subject, body, _notifType, _recipientId) {
     if (!to || !SHEETS_API_URL) return;
-    if (recipientId && notifType) {
-      const prefs = loadNotifPrefs(recipientId);
-      const key = "notif_" + notifType;
-      if (prefs[key] === false) return;
-    }
     const debugEmail = localStorage.getItem("qd_debug_email");
     const actualTo = debugEmail || to;
     const actualSubject = debugEmail ? `[DEBUG \u2192 ${to}] ${subject}` : subject;

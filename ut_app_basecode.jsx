@@ -487,16 +487,13 @@ function saveNotifPrefs(userId, prefs) {
 
 // ─── EMAIL NOTIFICATION HELPERS ─────────────────────────────
 // Fire-and-forget: send notification via Apps Script. Failures are silent.
-// notifType: "submission" | "approval" | "return" | "complete" | "announcement"
-// recipientId: the user ID of the recipient (to check their prefs). Pass null to skip pref check.
-function sendNotification(to, subject, body, notifType, recipientId) {
+// notifType / recipientId retained for signature compatibility — pref gating
+// was removed because localStorage is per-browser, so the sender never has
+// visibility into the recipient's prefs. That was silently dropping legitimate
+// approval emails. If per-user pref enforcement is wanted again, move it
+// server-side into the Apps Script.
+function sendNotification(to, subject, body, _notifType, _recipientId) {
   if (!to || !SHEETS_API_URL) return;
-  // Check recipient's notification preferences if we have their ID
-  if (recipientId && notifType) {
-    const prefs = loadNotifPrefs(recipientId);
-    const key = "notif_" + notifType;
-    if (prefs[key] === false) return;
-  }
   // Debug mode: redirect all emails to ADJ
   const debugEmail = localStorage.getItem("qd_debug_email");
   const actualTo = debugEmail || to;
