@@ -362,6 +362,21 @@ function resolveChitRoutingContext(user, form) {
   return { company, platoon, needsSelection };
 }
 
+// Resolve the submitter's Unit Staff Advisor from the live roster.
+// - Alpha company midshipmen (Marine option) → MOI
+// - OC + upperclass Navy mids (1/C, 2/C) not in Alpha → SWO (e.g., LT Linton)
+// - Navy underclass (3/C, 4/C) not in Alpha → SUB (e.g., LT Locha)
+// Returns null if no matching Unit Staff member is in the roster.
+function getUnitStaffAdvisor(userList, submitter) {
+  if (!submitter) return null;
+  const company = normalizeCompany(submitter.company);
+  if (company === "Alpha") return userList.find(u => u.role === "moi") || null;
+  const rank = (submitter.rank || "").toUpperCase();
+  const isUpperclassOrOC = rank.includes("OC") || rank.includes("1/C") || rank.includes("2/C");
+  const role = isUpperclassOrOC ? "swo" : "sub";
+  return userList.find(u => u.role === role) || null;
+}
+
 function makeChitChainNode(label, stageName, person, approverRole, icon) {
   return {
     label: formatRouteNode(label, person),
@@ -373,7 +388,10 @@ function makeChitChainNode(label, stageName, person, approverRole, icon) {
   };
 }
 
-// chitType: "single" (single event → short chain up to CC) or "recurring" (every LL/PT → full chain up to BNXO)
+// chitType:
+//   "single"    (missing a single LL/PT event)    → full chain up to BNCO, + Unit Staff Advisor
+//   "recurring" (missing every LL/PT recurring)   → full chain up to BNCO, + Unit Staff Advisor + Unit XO
+// Both routes now flow all the way through BNCO; the only difference is whether Unit XO is appended.
 function buildChitApprovalChain(userList, user, routeContext, chitType = "recurring") {
   const { company, platoon } = routeContext;
   const adj = userList.find(u => u.role === "adj");
@@ -381,52 +399,41 @@ function buildChitApprovalChain(userList, user, routeContext, chitType = "recurr
   const bnco = userList.find(u => u.role === "bn_cdr");
   const cc = getCompanyCommander(userList, company);
   const pc = getPlatoonCommander(userList, company, platoon);
+  // Unit Staff Advisor routing (by company + class year, all roles come from the sheet):
+  //   Alpha (Marine option)                           → MOI
+  //   Navy OC + upperclass (1/C, 2/C) not in Alpha    → SWO  (e.g., LT Linton)
+  //   Navy underclass (3/C, 4/C) not in Alpha         → SUB  (e.g., LT Locha)
+  const advisor = getUnitStaffAdvisor(userList, user);
+  const unitXo  = userList.find(u => u.role === "unit_xo");
+
   const chain = [];
 
-  if (chitType === "single") {
-    // Single event absence → short chain: PC → CC only
-    if (user.role === "co_cdr" || user.role === "plt_cdr") {
-      // CCs/PCs: just goes to CC (or ADJ if CC submitting)
-      if (user.role === "co_cdr") {
-        chain.push(makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"));
-      } else {
-        chain.push(makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"));
-      }
-    } else {
-      chain.push(
-        makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "👤"),
-        makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
-      );
-    }
+  // Build pre-BN portion, skipping steps the submitter already occupies.
+  if (user.role === "adj") {
+    // ADJ submits → skip PC/CC/ADJ
+  } else if (user.role === "co_cdr") {
+    chain.push(makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"));
+  } else if (user.role === "plt_cdr") {
+    chain.push(
+      makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
+    );
   } else {
-    // Recurring absence (every LL/PT) → full chain up to BNXO
-    if (user.role === "adj") {
-      chain.push(
-        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
-        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
-      );
-    } else if (user.role === "co_cdr") {
-      chain.push(
-        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
-        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
-      );
-    } else if (user.role === "plt_cdr") {
-      chain.push(
-        makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
-        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
-        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
-      );
-    } else {
-      chain.push(
-        makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "👤"),
-        makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
-        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-        makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
-        makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
-      );
-    }
+    chain.push(
+      makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "👤"),
+      makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
+      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
+    );
+  }
+
+  // BN + Unit Staff tail — identical for both types, then +Unit XO for recurring.
+  chain.push(
+    makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
+    makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
+    makeChitChainNode("Unit Staff Advisor", "Advisor Review", advisor, advisor?.role || "moi", "🎖"),
+  );
+  if (chitType === "recurring") {
+    chain.push(makeChitChainNode("Unit XO", "Unit XO Approval", unitXo, "unit_xo", "🏅"));
   }
 
   return chain.length > 0 && chain.every(node => node.approverId) ? chain : [];
@@ -2876,11 +2883,11 @@ function ChitsPage({ chits, setChits, userList }) {
           </div>
           <div className="input-group">
             <label className="input-label">Start Date <span style={{ color:"#C0392B" }}>*</span></label>
-            <input className="input" type="date" value={form.startDate} onChange={e => setForm(s => ({ ...s, startDate:e.target.value }))} />
+            <input className="input" type="date" min={new Date().toISOString().split("T")[0]} value={form.startDate} onChange={e => setForm(s => ({ ...s, startDate:e.target.value }))} />
           </div>
           <div className="input-group">
             <label className="input-label">End Date <span style={{ fontSize:"0.75rem", color:"#888" }}>(leave blank if single day)</span></label>
-            <input className="input" type="date" value={form.endDate} min={form.startDate} onChange={e => setForm(s => ({ ...s, endDate:e.target.value }))} />
+            <input className="input" type="date" value={form.endDate} min={form.startDate || new Date().toISOString().split("T")[0]} onChange={e => setForm(s => ({ ...s, endDate:e.target.value }))} />
           </div>
           <div className="input-group">
             <label className="input-label">Reason <span style={{ color:"#C0392B" }}>*</span></label>

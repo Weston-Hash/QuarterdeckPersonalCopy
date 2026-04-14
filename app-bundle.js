@@ -27107,6 +27107,15 @@
     );
     return { company, platoon, needsSelection };
   }
+  function getUnitStaffAdvisor(userList, submitter) {
+    if (!submitter) return null;
+    const company = normalizeCompany(submitter.company);
+    if (company === "Alpha") return userList.find((u) => u.role === "moi") || null;
+    const rank = (submitter.rank || "").toUpperCase();
+    const isUpperclassOrOC = rank.includes("OC") || rank.includes("1/C") || rank.includes("2/C");
+    const role = isUpperclassOrOC ? "swo" : "sub";
+    return userList.find((u) => u.role === role) || null;
+  }
   function makeChitChainNode(label, stageName, person, approverRole, icon) {
     return {
       label: formatRouteNode(label, person),
@@ -27124,48 +27133,31 @@
     const bnco = userList.find((u) => u.role === "bn_cdr");
     const cc = getCompanyCommander(userList, company);
     const pc = getPlatoonCommander(userList, company, platoon);
+    const advisor = getUnitStaffAdvisor(userList, user);
+    const unitXo = userList.find((u) => u.role === "unit_xo");
     const chain = [];
-    if (chitType === "single") {
-      if (user.role === "co_cdr" || user.role === "plt_cdr") {
-        if (user.role === "co_cdr") {
-          chain.push(makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"));
-        } else {
-          chain.push(makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"));
-        }
-      } else {
-        chain.push(
-          makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "\u{1F464}"),
-          makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50")
-        );
-      }
+    if (user.role === "adj") {
+    } else if (user.role === "co_cdr") {
+      chain.push(makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"));
+    } else if (user.role === "plt_cdr") {
+      chain.push(
+        makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
+        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F")
+      );
     } else {
-      if (user.role === "adj") {
-        chain.push(
-          makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
-          makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
-        );
-      } else if (user.role === "co_cdr") {
-        chain.push(
-          makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
-          makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
-          makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
-        );
-      } else if (user.role === "plt_cdr") {
-        chain.push(
-          makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
-          makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
-          makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
-          makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
-        );
-      } else {
-        chain.push(
-          makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "\u{1F464}"),
-          makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
-          makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"),
-          makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
-          makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}")
-        );
-      }
+      chain.push(
+        makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "\u{1F464}"),
+        makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
+        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F")
+      );
+    }
+    chain.push(
+      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
+      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}"),
+      makeChitChainNode("Unit Staff Advisor", "Advisor Review", advisor, advisor?.role || "moi", "\u{1F396}")
+    );
+    if (chitType === "recurring") {
+      chain.push(makeChitChainNode("Unit XO", "Unit XO Approval", unitXo, "unit_xo", "\u{1F3C5}"));
     }
     return chain.length > 0 && chain.every((node) => node.approverId) ? chain : [];
   }
@@ -29389,14 +29381,14 @@ Please log in to The Quarterdeck to review and take action.
             "Start Date ",
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "date", value: form.startDate, onChange: (e) => setForm((s) => ({ ...s, startDate: e.target.value })) })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "date", min: (/* @__PURE__ */ new Date()).toISOString().split("T")[0], value: form.startDate, onChange: (e) => setForm((s) => ({ ...s, startDate: e.target.value })) })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
             "End Date ",
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#888" }, children: "(leave blank if single day)" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "date", value: form.endDate, min: form.startDate, onChange: (e) => setForm((s) => ({ ...s, endDate: e.target.value })) })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "date", value: form.endDate, min: form.startDate || (/* @__PURE__ */ new Date()).toISOString().split("T")[0], onChange: (e) => setForm((s) => ({ ...s, endDate: e.target.value })) })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
