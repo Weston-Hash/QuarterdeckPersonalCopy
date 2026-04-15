@@ -4390,21 +4390,37 @@ export default function App() {
 
   const fetchRoster = (attempt = 0) => {
     if (!SHEETS_API_URL) { setSheetSynced(true); return; }
-    if (attempt === 0) { setSheetSynced(false); setSheetError(false); }
+    // On first attempt, only show the "syncing" lockout if we have no cached roster.
+    // With a cached roster, refresh in the background so login isn't blocked by a
+    // slow / hung Apps Script response.
+    if (attempt === 0) {
+      setSheetError(false);
+      if (cachedRoster.length === 0) setSheetSynced(false);
+    }
     const url = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}&_t=${Date.now()}`;
-    fetch(url)
+
+    // Hard timeout per attempt — Apps Script can stall indefinitely on misrouted
+    // deployments / dead redirects, which previously left the login screen stuck
+    // on "Syncing roster…" forever (no .then or .catch ever fired).
+    const controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    const timeoutId = setTimeout(() => { if (controller) controller.abort(); }, 8000);
+
+    fetch(url, controller ? { signal: controller.signal } : undefined)
       .then(res => { if (!res.ok) throw new Error(res.status); return res.json(); })
       .then(data => {
-        if (data.users && data.users.length > 0) {
+        clearTimeout(timeoutId);
+        if (data && data.users && data.users.length > 0) {
           const nextUsers = data.users.map((row, i) => sheetRowToUser(row, i));
           setUserList(nextUsers);
           saveCachedRoster(nextUsers);
+          setSheetError(false);
           setSheetSynced(true);
         } else {
           throw new Error("Empty roster");
         }
       })
       .catch(() => {
+        clearTimeout(timeoutId);
         if (attempt < 2) {
           setTimeout(() => fetchRoster(attempt + 1), 1500);
         } else {

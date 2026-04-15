@@ -31004,23 +31004,30 @@ Your ${responseAction === "approve" ? "approval" : "denial"} of the POTW submitt
         return;
       }
       if (attempt === 0) {
-        setSheetSynced(false);
         setSheetError(false);
+        if (cachedRoster.length === 0) setSheetSynced(false);
       }
       const url = `${SHEETS_API_URL}?token=${encodeURIComponent(SHEETS_API_TOKEN)}&_t=${Date.now()}`;
-      fetch(url).then((res) => {
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timeoutId = setTimeout(() => {
+        if (controller) controller.abort();
+      }, 8e3);
+      fetch(url, controller ? { signal: controller.signal } : void 0).then((res) => {
         if (!res.ok) throw new Error(res.status);
         return res.json();
       }).then((data) => {
-        if (data.users && data.users.length > 0) {
+        clearTimeout(timeoutId);
+        if (data && data.users && data.users.length > 0) {
           const nextUsers = data.users.map((row, i) => sheetRowToUser(row, i));
           setUserList(nextUsers);
           saveCachedRoster(nextUsers);
+          setSheetError(false);
           setSheetSynced(true);
         } else {
           throw new Error("Empty roster");
         }
       }).catch(() => {
+        clearTimeout(timeoutId);
         if (attempt < 2) {
           setTimeout(() => fetchRoster(attempt + 1), 1500);
         } else {
