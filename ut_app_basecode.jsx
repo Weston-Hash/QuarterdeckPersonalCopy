@@ -22,8 +22,9 @@ const UNIT_STAFF_ROLES = ["unit_co", "unit_xo", "moi", "amoi", "sea", "sub", "sw
 const isUnitStaff = (u) => u && UNIT_STAFF_ROLES.includes(u.role);
 // Unit staff who can see archive (AMOI and SEA excluded)
 const canSeeArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role));
-// FITREP archive: only MOI/LTs/XO (and seniors/unit_co) can review completed FITREPs from all time
-const canSeeFitrepArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "unit_co", "unit_xo", "moi", "sub", "swo", "xo"].includes(u.role));
+// FITREP archive: only Unit Staff (Unit CO, Unit XO, LTs, MOI) can review completed
+// FITREPs from past semesters. No other role (BN leadership, CCs, PCs, etc.) sees them.
+const canSeeFitrepArchive = (u) => u && ["unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role);
 // Who can post BN-wide announcements: Big Four + CCs + PCs + MOI + Unit CO + Unit XO
 const canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
 // Roles that can ever appear as a CHIT approver in the chain of command
@@ -932,10 +933,11 @@ function canActOnFitrep(user, fitrep) {
 
 // Only those in the routing chain (or the subject) can view a fitrep.
 // AMOI/SEA: only FITREPs requiring their signature.
-// MOI/LTs/XO: completed FITREPs from all time + ones in their chain.
+// Unit Staff (CO/XO/LTs/MOI): completed FITREPs from all time + ones in their chain.
+// All other chain members (BN leadership, CCs, PCs, etc.): only current-semester items.
 function canViewFitrep(user, fitrep) {
   if (!user || !fitrep) return false;
-  // Subject always sees their own
+  // Subject always sees their own — current or past semester.
   if (matchesUserIdentity(user, { id: fitrep.subjectId, name: fitrep.subjectName })) return true;
 
   // AMOI/SEA: only see FITREPs requiring their action right now
@@ -943,9 +945,16 @@ function canViewFitrep(user, fitrep) {
     return canActOnFitrep(user, fitrep);
   }
 
-  // MOI/LTs/XO/seniors/unit_co: can see all completed FITREPs
   const isCompleted = fitrep.status === "Approved" || fitrep.status === "Denied" || fitrep.status === "Returned";
-  if (isCompleted && canSeeFitrepArchive(user)) return true;
+
+  // Completed FITREPs from past semesters are restricted to Unit Staff only.
+  // Chain members who aren't Unit Staff can still see current-semester completed
+  // FITREPs they routed (falls through to the stages check below).
+  if (isCompleted) {
+    if (canSeeFitrepArchive(user)) return true;
+    const fitrepSemester = getSemesterLabel(fitrep.stages?.[0]?.completedAt || fitrep.date);
+    if (fitrepSemester !== SEMESTER_LABEL) return false;
+  }
 
   // Check if user is listed in any routing stage
   return !!fitrep.stages?.some(stage => {

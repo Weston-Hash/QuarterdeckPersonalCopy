@@ -26908,7 +26908,7 @@
   var UNIT_STAFF_ROLES = ["unit_co", "unit_xo", "moi", "amoi", "sea", "sub", "swo"];
   var isUnitStaff = (u) => u && UNIT_STAFF_ROLES.includes(u.role);
   var canSeeArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role));
-  var canSeeFitrepArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "unit_co", "unit_xo", "moi", "sub", "swo", "xo"].includes(u.role));
+  var canSeeFitrepArchive = (u) => u && ["unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role);
   var canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
   var CHIT_SIGNER_ROLES = ["adj", "plt_cdr", "co_cdr", "bn_cdr", "xo", "unit_xo", "moi", "swo", "sub"];
   var canSignChits = (u) => u && CHIT_SIGNER_ROLES.includes(u.role);
@@ -27519,7 +27519,11 @@
       return canActOnFitrep(user, fitrep);
     }
     const isCompleted = fitrep.status === "Approved" || fitrep.status === "Denied" || fitrep.status === "Returned";
-    if (isCompleted && canSeeFitrepArchive(user)) return true;
+    if (isCompleted) {
+      if (canSeeFitrepArchive(user)) return true;
+      const fitrepSemester = getSemesterLabel(fitrep.stages?.[0]?.completedAt || fitrep.date);
+      if (fitrepSemester !== SEMESTER_LABEL) return false;
+    }
     return !!fitrep.stages?.some((stage) => {
       if (!stage.approverRole) return false;
       if (stage.approverId && matchesUserIdentity(user, { id: stage.approverId })) return true;
