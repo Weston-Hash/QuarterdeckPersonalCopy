@@ -28043,20 +28043,31 @@
         setMfaSentAt(null);
       }
     };
-    const apiPost = (payload) => fetch(SHEETS_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(payload)
-    }).then((r) => {
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      return r.text();
-    }).then((text) => {
-      try {
-        return JSON.parse(text);
-      } catch (e) {
-        throw new Error("Invalid response from server");
-      }
-    });
+    const apiPost = (payload) => {
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timeoutId = setTimeout(() => {
+        if (controller) controller.abort();
+      }, 2e4);
+      return fetch(SHEETS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload),
+        signal: controller ? controller.signal : void 0
+      }).then((r) => {
+        clearTimeout(timeoutId);
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.text();
+      }).then((text) => {
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          throw new Error("Invalid response from server");
+        }
+      }).catch((err2) => {
+        clearTimeout(timeoutId);
+        throw err2;
+      });
+    };
     const resetMfa = () => {
       setMfaStep(false);
       setMfaUser(null);
@@ -31011,7 +31022,7 @@ Your ${responseAction === "approve" ? "approval" : "denial"} of the POTW submitt
       const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
       const timeoutId = setTimeout(() => {
         if (controller) controller.abort();
-      }, 8e3);
+      }, 15e3);
       fetch(url, controller ? { signal: controller.signal } : void 0).then((res) => {
         if (!res.ok) throw new Error(res.status);
         return res.json();

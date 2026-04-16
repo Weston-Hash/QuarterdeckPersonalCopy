@@ -1477,19 +1477,31 @@ function LoginPage({ onLogin, userList, sheetSynced, sheetError, onRetry }) {
     }
   };
 
-  // Helper: POST to Apps Script with retry on Google redirect failures
-  const apiPost = (payload) =>
-    fetch(SHEETS_API_URL, {
+  // Helper: POST to Apps Script with a hard timeout.
+  // Apps Script cold-cache responses can legitimately take 10-15s, but an
+  // indefinitely-hung fetch leaves the MFA spinner stuck forever (user sees
+  // no transition and no error). 20s is generous for warm cache, bounded for
+  // the pathological case.
+  const apiPost = (payload) => {
+    const controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    const timeoutId = setTimeout(() => { if (controller) controller.abort(); }, 20000);
+    return fetch(SHEETS_API_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
       body: JSON.stringify(payload),
+      signal: controller ? controller.signal : undefined,
     }).then(r => {
+      clearTimeout(timeoutId);
       if (!r.ok) throw new Error("HTTP " + r.status);
       return r.text();
     }).then(text => {
       try { return JSON.parse(text); }
       catch (e) { throw new Error("Invalid response from server"); }
+    }).catch(err => {
+      clearTimeout(timeoutId);
+      throw err;
     });
+  };
 
   // Reset all MFA state (used by Back button and logout)
   const resetMfa = () => {
@@ -4401,9 +4413,10 @@ export default function App() {
 
     // Hard timeout per attempt — Apps Script can stall indefinitely on misrouted
     // deployments / dead redirects, which previously left the login screen stuck
-    // on "Syncing roster…" forever (no .then or .catch ever fired).
+    // on "Syncing roster…" forever (no .then or .catch ever fired). 15s allows
+    // room for a legitimate cold-cache sheet read, but still bounded.
     const controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
-    const timeoutId = setTimeout(() => { if (controller) controller.abort(); }, 8000);
+    const timeoutId = setTimeout(() => { if (controller) controller.abort(); }, 15000);
 
     fetch(url, controller ? { signal: controller.signal } : undefined)
       .then(res => { if (!res.ok) throw new Error(res.status); return res.json(); })

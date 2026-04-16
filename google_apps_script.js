@@ -394,10 +394,17 @@ function doPost(e) {
       return jsonOut({ ok: false, error: "Too many failed attempts. Try again in 15 minutes." });
     }
 
-    var map = getEmailNameMap();
-    var userName = (json.name || "").toString().trim() || map[email];
-    if (!userName && map[email] === undefined) {
-      return jsonOut({ ok: false, error: "Email not found" });
+    // Fast path: front-end has already resolved the user against the roster
+    // and is passing the display name. Skip the getEmailNameMap() call (which
+    // can trigger a cold sheet read costing 5-10s) and just use the name.
+    // Slow path: no name provided — fall back to the sheet lookup.
+    var userName = (json.name || "").toString().trim();
+    if (!userName) {
+      var map = getEmailNameMap();
+      userName = map[email];
+      if (!userName && map[email] === undefined) {
+        return jsonOut({ ok: false, error: "Email not found" });
+      }
     }
 
     var code = Math.floor(100000 + Math.random() * 900000).toString();
