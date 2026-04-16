@@ -26,6 +26,9 @@ const canSeeArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "adj", "
 const canSeeFitrepArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "unit_co", "unit_xo", "moi", "sub", "swo", "xo"].includes(u.role));
 // Who can post BN-wide announcements: Big Four + CCs + PCs + MOI + Unit CO + Unit XO
 const canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
+// Roles that can ever appear as a CHIT approver in the chain of command
+const CHIT_SIGNER_ROLES = ["adj", "plt_cdr", "co_cdr", "bn_cdr", "xo", "unit_xo", "moi", "swo", "sub"];
+const canSignChits = (u) => u && CHIT_SIGNER_ROLES.includes(u.role);
 const ROLE_DISPLAY = { bn_cdr:"BNCO", xo:"BNXO", ops:"OPS", sel:"SEL", co_cdr:"CC", plt_cdr:"PC", adj:"ADJ", unit_co:"UNIT CO", unit_xo:"UNIT XO", moi:"MOI", amoi:"AMOI", sea:"SEA", sub:"SUBO", swo:"SWO" };
 const displayRole = (role) => ROLE_DISPLAY[role] || role.replace("_"," ").toUpperCase();
 
@@ -868,12 +871,17 @@ function sheetRowToUser(row, index) {
   // Name: strip rank prefix (MIDN, GySgt, SSgt, OC, Sgt, etc.)
   const name = nameRaw.replace(/^(MIDN|CAPT|CMDR|CDR|LCDR|LT|LTJG|ENS|SCPO|CPO|PO1|PO2|PO3|GySgt|GySGT|MSgt|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
 
-  // Rank: "1/C"→"MIDN 1/C", "GySgt"→"GySgt", etc.
-  const rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
-
   // Role from billet — strip company letter prefix for matching (e.g. "A 1st PC" → "1st PC")
   const billetNorm = billetRaw.replace(/^[ABC]\s+/, "");
   const role = BILLET_TO_ROLE[billetRaw] || BILLET_TO_ROLE[billetNorm] || "mid";
+
+  // Rank: "1/C"→"MIDN 1/C", "GySgt"→"GySgt", etc.
+  // Display normalization:
+  //  - Navy O-5 is "CDR" (sheet may carry the legacy "CMDR" spelling)
+  //  - MOI is a Marine officer, so "CAPT" (Navy O-6 form) is corrected to "Capt"
+  let rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
+  if (rank.toUpperCase() === "CMDR") rank = "CDR";
+  if (role === "moi" && rank.toUpperCase() === "CAPT") rank = "Capt";
 
   return {
     id:       (row.eid || `sheet-${index}`).trim(),
@@ -1122,6 +1130,9 @@ const CSS = `
   .stage-dot.pending  { border-color:#ddd; background:#f5f5f5; color:#aaa; }
   .stage-dot.returned { border-color:#9b1c1c; background:#9b1c1c; color:white; }
   .stage-item.returned::after { background:#9b1c1c; }
+  .stage-dot.denied { border-color:#9b1c1c; background:#9b1c1c; color:white; }
+  .stage-item.denied::after { background:#9b1c1c; }
+  .stage-label.denied { color:#9b1c1c; font-weight:700; }
   @keyframes pulse { 0%,100% { box-shadow:0 0 0 4px rgba(191,87,0,0.2); } 50% { box-shadow:0 0 0 8px rgba(191,87,0,0.08); } }
   .stage-label { font-size:0.65rem; text-align:center; margin-top:0.35rem; text-transform:uppercase; letter-spacing:0.5px; line-height:1.3; color:#888; font-family:'Barlow','Segoe UI',sans-serif; }
   .stage-label.active   { color:#BF5700; font-weight:700; }
@@ -1759,6 +1770,11 @@ function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, form
   const myFitreps = fitrebs.filter(f => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Denied" && f.status !== "Returned");
   const queueTotal = myChits.length + myFitreps.length;
 
+  // Personal CHIT stats: only the chits this user originated and that are still routing.
+  const canOriginateChits = canSubmitChit(user);
+  const userCanSignChits = canSignChits(user);
+  const myOpenSubmissions = chits.filter(c => c.userId === user.id && c.status === "Pending");
+
   const handleAnnouncementFiles = (e) => {
     const files = Array.from(e.target.files);
     files.forEach(file => {
@@ -1914,9 +1930,20 @@ function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, form
         </div>
       )}
 
-      <div className="grid3" style={{ marginBottom:"1rem" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:"1rem", marginBottom:"1rem" }}>
         <div className="stat"><div className="stat-n">{userList.length}</div><div className="stat-l">BN Strength</div></div>
-        <div className="stat stat-chits" style={{ borderLeftColor:"#0D1B2A" }}><div className="stat-n" style={{ color:"#0D1B2A" }}>{chits.filter(c => c.status !== "Complete").length}</div><div className="stat-l">Open CHITs</div></div>
+        {canOriginateChits && (
+          <div className="stat stat-chits" style={{ borderLeftColor:"#0D1B2A" }}>
+            <div className="stat-n" style={{ color:"#0D1B2A" }}>{myOpenSubmissions.length}</div>
+            <div className="stat-l">My Open CHITs</div>
+          </div>
+        )}
+        {userCanSignChits && (
+          <div className="stat" style={{ borderLeftColor:"#BF5700" }}>
+            <div className="stat-n" style={{ color:"#BF5700" }}>{myChits.length}</div>
+            <div className="stat-l">CHITs to Sign</div>
+          </div>
+        )}
         <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}><div className="stat-n" style={{ color:"#2A7D4F" }}>{forms.length}</div><div className="stat-l">Active Forms</div></div>
       </div>
 
@@ -2609,31 +2636,28 @@ function ChitsPage({ chits, setChits, userList }) {
         completedBy: reviewerFullName,
         completedAt: new Date().toISOString().split("T")[0],
         comment,
+        action, // "approved" | "denied" | "returned"
       };
-      const next = (action === "returned" || action === "denied")
+      // Returns bounce back to originator. Approvals AND denials advance through
+      // the chain so every member gets a chance to weigh in.
+      const next = action === "returned"
         ? c.currentStage
         : Math.min(c.currentStage + 1, c.stages.length - 1);
-      const status = action === "denied" ? "Denied"
-        : action === "returned" ? "Returned"
-        : next === c.stages.length - 1 ? "Approved"
-        : "Pending";
+      let status;
+      if (action === "returned") {
+        status = "Returned";
+      } else if (next === c.stages.length - 1) {
+        // Final stage reached — outcome reflects whether anyone in the chain denied.
+        status = updated.some(s => s.action === "denied") ? "Denied" : "Approved";
+      } else {
+        status = "Pending";
+      }
       return { ...c, currentStage: next, stages: updated, status };
     }));
     // ── Email notifications ──
     if (chit) {
       const originatorEmail = getUserEmail(userList, chit.userId);
-      if (action === "denied") {
-        // Notify originator of denial
-        clearApproval(id);
-        if (originatorEmail) {
-          sendNotification(originatorEmail,
-            `CHIT ${id} — Denied`,
-            `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has been denied by ${reviewerFullName}.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}— The Quarterdeck`,
-            "return", chit.userId
-          );
-        }
-      } else if (action === "returned") {
-        // Notify originator of return
+      if (action === "returned") {
         clearApproval(id);
         if (originatorEmail) {
           sendNotification(originatorEmail,
@@ -2644,18 +2668,39 @@ function ChitsPage({ chits, setChits, userList }) {
         }
       } else {
         const nextStageIdx = Math.min(chit.currentStage + 1, chit.stages.length - 1);
-        if (nextStageIdx >= chit.stages.length - 1) {
-          // Fully approved — notify originator
+        const isFinal = nextStageIdx >= chit.stages.length - 1;
+        // If denied mid-chain, give the originator a heads-up but routing continues.
+        if (action === "denied" && !isFinal && originatorEmail) {
+          sendNotification(originatorEmail,
+            `CHIT ${id} — ${reviewerFullName} disagreed`,
+            `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" was denied by ${reviewerFullName}, but it will continue routing through the rest of your chain of command for the remaining members to weigh in.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}— The Quarterdeck`,
+            "return", chit.userId
+          );
+        }
+        if (isFinal) {
+          // Chain complete — determine final outcome from the freshly-updated stages.
           clearApproval(id);
+          const finalStages = chit.stages.map((s, i) =>
+            i === chit.currentStage ? { ...s, action } : s
+          );
+          const anyDenied = finalStages.some(s => s.action === "denied");
           if (originatorEmail) {
-            sendNotification(originatorEmail,
-              `CHIT ${id} — Fully Approved`,
-              `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has been fully approved through the chain of command.\n\n— The Quarterdeck`,
-              "complete", chit.userId
-            );
+            if (anyDenied) {
+              sendNotification(originatorEmail,
+                `CHIT ${id} — Denied`,
+                `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has completed routing through the chain of command and was denied. See The Quarterdeck for per-stage decisions.\n\n— The Quarterdeck`,
+                "return", chit.userId
+              );
+            } else {
+              sendNotification(originatorEmail,
+                `CHIT ${id} — Fully Approved`,
+                `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has been fully approved through the chain of command.\n\n— The Quarterdeck`,
+                "complete", chit.userId
+              );
+            }
           }
         } else {
-          // Advanced to next approver — notify them
+          // Advanced to next approver — notify them.
           const nextStage = chit.stages[nextStageIdx];
           if (nextStage?.approverId) {
             const nextEmail = getUserEmail(userList, nextStage.approverId);
@@ -2674,7 +2719,11 @@ function ChitsPage({ chits, setChits, userList }) {
     }
     setActiveComment(null);
     setCommentText("");
-    fire("CHIT updated.");
+    fire(action === "denied"
+      ? "CHIT marked as denied — continues routing for remaining CoC review."
+      : action === "returned"
+      ? "CHIT returned to originator."
+      : "CHIT updated.");
   };
 
   const [chitFolders, setChitFolders] = useState({ action: false, pipeline: false, complete: false });
@@ -2695,6 +2744,7 @@ function ChitsPage({ chits, setChits, userList }) {
     const canAct = canActOnChit(user, c);
     const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
     const currentStageName = c.stages?.[c.currentStage]?.name || "";
+    const denialsSoFar = (c.stages || []).filter(s => s.action === "denied").length;
 
     const timer = !isDone ? getRoutingTimerInfo(c.stages?.[0]?.completedAt) : null;
 
@@ -2714,6 +2764,11 @@ function ChitsPage({ chits, setChits, userList }) {
               </span>
             )}
             <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" || c.status==="Returned" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
+            {!isDone && denialsSoFar > 0 && (
+              <span className="badge badge-red" title="One or more reviewers denied this CHIT. Routing continues so the rest of the chain can weigh in.">
+                ✕ {denialsSoFar} denial{denialsSoFar !== 1 ? "s" : ""}
+              </span>
+            )}
             {canAct && !isDone && <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>}
           </div>
         </div>
@@ -2731,14 +2786,16 @@ function ChitsPage({ chits, setChits, userList }) {
           <div className="stage-track" style={{ marginTop:"0.75rem" }}>
             {c.stages.map((s, j) => {
               const done     = j < c.currentStage;
+              const denied   = done && s.action === "denied";
               const returned = j === c.currentStage && c.status === "Returned";
               const active   = j === c.currentStage && !isDone;
+              const stageState = denied ? "denied" : done ? "done" : returned ? "returned" : active ? "active" : "";
+              const dotState   = denied ? "denied" : done ? "done" : returned ? "returned" : active ? "active" : "pending";
+              const dotIcon    = denied ? "✕" : done ? "✓" : returned ? "↩" : s.icon;
               return (
-                <div key={j} className={`stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>
-                  <div className={`stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`}>
-                    {done ? "✓" : returned ? "↩" : s.icon}
-                  </div>
-                  <div className={`stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`}>{s.name}</div>
+                <div key={j} className={`stage-item ${stageState}`}>
+                  <div className={`stage-dot ${dotState}`}>{dotIcon}</div>
+                  <div className={`stage-label ${stageState}`}>{s.name}</div>
                   {active && canAct && <div className="stage-approver active">● You</div>}
                 </div>
               );

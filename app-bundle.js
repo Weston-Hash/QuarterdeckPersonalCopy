@@ -26910,6 +26910,8 @@
   var canSeeArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role));
   var canSeeFitrepArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "unit_co", "unit_xo", "moi", "sub", "swo", "xo"].includes(u.role));
   var canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
+  var CHIT_SIGNER_ROLES = ["adj", "plt_cdr", "co_cdr", "bn_cdr", "xo", "unit_xo", "moi", "swo", "sub"];
+  var canSignChits = (u) => u && CHIT_SIGNER_ROLES.includes(u.role);
   var ROLE_DISPLAY = { bn_cdr: "BNCO", xo: "BNXO", ops: "OPS", sel: "SEL", co_cdr: "CC", plt_cdr: "PC", adj: "ADJ", unit_co: "UNIT CO", unit_xo: "UNIT XO", moi: "MOI", amoi: "AMOI", sea: "SEA", sub: "SUBO", swo: "SWO" };
   var displayRole = (role) => ROLE_DISPLAY[role] || role.replace("_", " ").toUpperCase();
   function canEdit(user, section) {
@@ -27478,9 +27480,11 @@
     const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i) || billetRaw.match(/(\d+(?:st|nd|rd|th))/i);
     const platoon = platoonMatch ? `${platoonMatch[1]} PLT` : /CC$/i.test(billetRaw) ? "CO" : /SEL$/i.test(billetRaw) ? "SEL" : billetRaw;
     const name = nameRaw.replace(/^(MIDN|CAPT|CMDR|CDR|LCDR|LT|LTJG|ENS|SCPO|CPO|PO1|PO2|PO3|GySgt|GySGT|MSgt|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
-    const rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
     const billetNorm = billetRaw.replace(/^[ABC]\s+/, "");
     const role = BILLET_TO_ROLE[billetRaw] || BILLET_TO_ROLE[billetNorm] || "mid";
+    let rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
+    if (rank.toUpperCase() === "CMDR") rank = "CDR";
+    if (role === "moi" && rank.toUpperCase() === "CAPT") rank = "Capt";
     return {
       id: (row.eid || `sheet-${index}`).trim(),
       name,
@@ -27693,6 +27697,9 @@
   .stage-dot.pending  { border-color:#ddd; background:#f5f5f5; color:#aaa; }
   .stage-dot.returned { border-color:#9b1c1c; background:#9b1c1c; color:white; }
   .stage-item.returned::after { background:#9b1c1c; }
+  .stage-dot.denied { border-color:#9b1c1c; background:#9b1c1c; color:white; }
+  .stage-item.denied::after { background:#9b1c1c; }
+  .stage-label.denied { color:#9b1c1c; font-weight:700; }
   @keyframes pulse { 0%,100% { box-shadow:0 0 0 4px rgba(191,87,0,0.2); } 50% { box-shadow:0 0 0 8px rgba(191,87,0,0.08); } }
   .stage-label { font-size:0.65rem; text-align:center; margin-top:0.35rem; text-transform:uppercase; letter-spacing:0.5px; line-height:1.3; color:#888; font-family:'Barlow','Segoe UI',sans-serif; }
   .stage-label.active   { color:#BF5700; font-weight:700; }
@@ -28296,6 +28303,9 @@
     const myChits = chits.filter((c) => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
     const myFitreps = fitrebs.filter((f) => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Denied" && f.status !== "Returned");
     const queueTotal = myChits.length + myFitreps.length;
+    const canOriginateChits = canSubmitChit(user);
+    const userCanSignChits = canSignChits(user);
+    const myOpenSubmissions = chits.filter((c) => c.userId === user.id && c.status === "Pending");
     const handleAnnouncementFiles = (e) => {
       const files = Array.from(e.target.files);
       files.forEach((file) => {
@@ -28436,14 +28446,18 @@
           }, children: "Cancel" })
         ] })
       ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => setShowAnnouncementForm(true), children: "\u{1F4E2} Post Announcement" }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "grid3", style: { marginBottom: "1rem" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1rem" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", children: userList.length }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "BN Strength" })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat stat-chits", style: { borderLeftColor: "#0D1B2A" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#0D1B2A" }, children: chits.filter((c) => c.status !== "Complete").length }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "Open CHITs" })
+        canOriginateChits && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat stat-chits", style: { borderLeftColor: "#0D1B2A" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#0D1B2A" }, children: myOpenSubmissions.length }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "My Open CHITs" })
+        ] }),
+        userCanSignChits && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#BF5700" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#BF5700" }, children: myChits.length }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "CHITs to Sign" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#2A7D4F" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#2A7D4F" }, children: forms.length }),
@@ -29102,30 +29116,24 @@ Please log in to The Quarterdeck to review and take action.
           ...updated[c.currentStage],
           completedBy: reviewerFullName,
           completedAt: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
-          comment
+          comment,
+          action
+          // "approved" | "denied" | "returned"
         };
-        const next = action === "returned" || action === "denied" ? c.currentStage : Math.min(c.currentStage + 1, c.stages.length - 1);
-        const status = action === "denied" ? "Denied" : action === "returned" ? "Returned" : next === c.stages.length - 1 ? "Approved" : "Pending";
+        const next = action === "returned" ? c.currentStage : Math.min(c.currentStage + 1, c.stages.length - 1);
+        let status;
+        if (action === "returned") {
+          status = "Returned";
+        } else if (next === c.stages.length - 1) {
+          status = updated.some((s) => s.action === "denied") ? "Denied" : "Approved";
+        } else {
+          status = "Pending";
+        }
         return { ...c, currentStage: next, stages: updated, status };
       }));
       if (chit) {
         const originatorEmail = getUserEmail(userList, chit.userId);
-        if (action === "denied") {
-          clearApproval(id);
-          if (originatorEmail) {
-            sendNotification(
-              originatorEmail,
-              `CHIT ${id} \u2014 Denied`,
-              `Hello ${chit.name},
-
-Your CHIT (${id}) for "${chit.reason}" has been denied by ${reviewerFullName}.
-
-${comment ? "Comments: " + comment + "\n\n" : ""}\u2014 The Quarterdeck`,
-              "return",
-              chit.userId
-            );
-          }
-        } else if (action === "returned") {
+        if (action === "returned") {
           clearApproval(id);
           if (originatorEmail) {
             sendNotification(
@@ -29144,20 +29152,52 @@ ${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdec
           }
         } else {
           const nextStageIdx = Math.min(chit.currentStage + 1, chit.stages.length - 1);
-          if (nextStageIdx >= chit.stages.length - 1) {
+          const isFinal = nextStageIdx >= chit.stages.length - 1;
+          if (action === "denied" && !isFinal && originatorEmail) {
+            sendNotification(
+              originatorEmail,
+              `CHIT ${id} \u2014 ${reviewerFullName} disagreed`,
+              `Hello ${chit.name},
+
+Your CHIT (${id}) for "${chit.reason}" was denied by ${reviewerFullName}, but it will continue routing through the rest of your chain of command for the remaining members to weigh in.
+
+${comment ? "Comments: " + comment + "\n\n" : ""}\u2014 The Quarterdeck`,
+              "return",
+              chit.userId
+            );
+          }
+          if (isFinal) {
             clearApproval(id);
+            const finalStages = chit.stages.map(
+              (s, i) => i === chit.currentStage ? { ...s, action } : s
+            );
+            const anyDenied = finalStages.some((s) => s.action === "denied");
             if (originatorEmail) {
-              sendNotification(
-                originatorEmail,
-                `CHIT ${id} \u2014 Fully Approved`,
-                `Hello ${chit.name},
+              if (anyDenied) {
+                sendNotification(
+                  originatorEmail,
+                  `CHIT ${id} \u2014 Denied`,
+                  `Hello ${chit.name},
+
+Your CHIT (${id}) for "${chit.reason}" has completed routing through the chain of command and was denied. See The Quarterdeck for per-stage decisions.
+
+\u2014 The Quarterdeck`,
+                  "return",
+                  chit.userId
+                );
+              } else {
+                sendNotification(
+                  originatorEmail,
+                  `CHIT ${id} \u2014 Fully Approved`,
+                  `Hello ${chit.name},
 
 Your CHIT (${id}) for "${chit.reason}" has been fully approved through the chain of command.
 
 \u2014 The Quarterdeck`,
-                "complete",
-                chit.userId
-              );
+                  "complete",
+                  chit.userId
+                );
+              }
             }
           } else {
             const nextStage = chit.stages[nextStageIdx];
@@ -29186,7 +29226,7 @@ Please log in to The Quarterdeck to review and take action.
       }
       setActiveComment(null);
       setCommentText("");
-      fire("CHIT updated.");
+      fire(action === "denied" ? "CHIT marked as denied \u2014 continues routing for remaining CoC review." : action === "returned" ? "CHIT returned to originator." : "CHIT updated.");
     };
     const [chitFolders, setChitFolders] = (0, import_react.useState)({ action: false, pipeline: false, complete: false });
     const needsAction = visible.filter((c) => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
@@ -29205,6 +29245,7 @@ Please log in to The Quarterdeck to review and take action.
       const canAct = canActOnChit(user, c);
       const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
       const currentStageName = c.stages?.[c.currentStage]?.name || "";
+      const denialsSoFar = (c.stages || []).filter((s) => s.action === "denied").length;
       const timer = !isDone ? getRoutingTimerInfo(c.stages?.[0]?.completedAt) : null;
       return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chit-card", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.3rem" }, children: [
@@ -29224,6 +29265,12 @@ Please log in to The Quarterdeck to review and take action.
               timer.label
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `badge ${c.status === "Approved" ? "badge-green" : c.status === "Denied" || c.status === "Returned" ? "badge-red" : "badge-orange"}`, children: c.status }),
+            !isDone && denialsSoFar > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "badge badge-red", title: "One or more reviewers denied this CHIT. Routing continues so the rest of the chain can weigh in.", children: [
+              "\u2715 ",
+              denialsSoFar,
+              " denial",
+              denialsSoFar !== 1 ? "s" : ""
+            ] }),
             canAct && !isDone && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { background: "rgba(42,125,79,0.15)", color: "#2A7D4F" }, children: "\u25CF Your Action" })
           ] })
         ] }),
@@ -29241,11 +29288,15 @@ Please log in to The Quarterdeck to review and take action.
         ] }),
         c.stages && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-track", style: { marginTop: "0.75rem" }, children: c.stages.map((s, j) => {
           const done = j < c.currentStage;
+          const denied = done && s.action === "denied";
           const returned = j === c.currentStage && c.status === "Returned";
           const active = j === c.currentStage && !isDone;
-          return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `stage-item ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-dot ${done ? "done" : returned ? "returned" : active ? "active" : "pending"}`, children: done ? "\u2713" : returned ? "\u21A9" : s.icon }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-label ${done ? "done" : returned ? "returned" : active ? "active" : ""}`, children: s.name }),
+          const stageState = denied ? "denied" : done ? "done" : returned ? "returned" : active ? "active" : "";
+          const dotState = denied ? "denied" : done ? "done" : returned ? "returned" : active ? "active" : "pending";
+          const dotIcon = denied ? "\u2715" : done ? "\u2713" : returned ? "\u21A9" : s.icon;
+          return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `stage-item ${stageState}`, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-dot ${dotState}`, children: dotIcon }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `stage-label ${stageState}`, children: s.name }),
             active && canAct && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-approver active", children: "\u25CF You" })
           ] }, j);
         }) }),
