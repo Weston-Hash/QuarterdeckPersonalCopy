@@ -30,6 +30,10 @@ const canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "
 // Roles that can ever appear as a CHIT approver in the chain of command
 const CHIT_SIGNER_ROLES = ["adj", "plt_cdr", "co_cdr", "bn_cdr", "xo", "unit_xo", "moi", "swo", "sub"];
 const canSignChits = (u) => u && CHIT_SIGNER_ROLES.includes(u.role);
+// Roles whose approval/denial requires uploading a signed copy of the CHIT PDF.
+// Follows the routing-sheet convention: only ADJ, BNXO, and BNCO sign the CHIT.
+const CHIT_SIGNATURE_ROLES = ["adj", "xo", "bn_cdr"];
+const stageRequiresSignature = (stage) => !!stage && CHIT_SIGNATURE_ROLES.includes(stage.approverRole);
 const ROLE_DISPLAY = { bn_cdr:"BNCO", xo:"BNXO", ops:"OPS", sel:"SEL", co_cdr:"CC", plt_cdr:"PC", adj:"ADJ", unit_co:"UNIT CO", unit_xo:"UNIT XO", moi:"MOI", amoi:"AMOI", sea:"SEA", sub:"SUBO", swo:"SWO" };
 const displayRole = (role) => ROLE_DISPLAY[role] || role.replace("_"," ").toUpperCase();
 
@@ -2539,6 +2543,11 @@ function ChitsPage({ chits, setChits, userList }) {
   const [chitSubmitAttempted, setChitSubmitAttempted] = useState(false);
   const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText] = useState("");
+  const [signedDoc, setSignedDoc] = useState(null);
+  const [reviseId, setReviseId] = useState(null);
+  const [reviseDoc, setReviseDoc] = useState(null);
+  const [reviseNotes, setReviseNotes] = useState("");
+  const [reviseReply, setReviseReply] = useState("");
 
   // Only show CHITs the logged-in user is permitted to see (routing line + subject)
   const visible = chits.filter(c => canViewChit(user, c));
@@ -2549,6 +2558,14 @@ function ChitsPage({ chits, setChits, userList }) {
     if (!file || !allowedTypes.includes(file.type)) { fire(errorMsg); return; }
     const reader = new FileReader();
     reader.onload = e => setForm(s => ({ ...s, [field]: { fileName: file.name, dataUrl: e.target.result } }));
+    reader.readAsDataURL(file);
+  };
+
+  const readPdf = (file, onLoaded) => {
+    if (!file) return;
+    if (file.type !== "application/pdf") { fire("⚠ Please select a PDF file."); return; }
+    const reader = new FileReader();
+    reader.onload = e => onLoaded({ fileName: file.name, dataUrl: e.target.result });
     reader.readAsDataURL(file);
   };
 
@@ -2637,6 +2654,13 @@ function ChitsPage({ chits, setChits, userList }) {
     const comment = commentText.trim();
     const reviewerFullName = `${user.rank} ${user.name}`;
     const chit = chits.find(c => c.id === id);
+    if (!chit) return;
+    const currentStage = chit.stages[chit.currentStage];
+    const needsSignature = action !== "returned" && stageRequiresSignature(currentStage);
+    if (needsSignature && !signedDoc) {
+      fire("⚠ Upload the signed CHIT document before approving or denying.");
+      return;
+    }
     setChits(prev => prev.map(c => {
       if (c.id !== id) return c;
       const updated = [...c.stages];
@@ -2646,6 +2670,7 @@ function ChitsPage({ chits, setChits, userList }) {
         completedAt: new Date().toISOString().split("T")[0],
         comment,
         action, // "approved" | "denied" | "returned"
+        signedDoc: needsSignature ? signedDoc : (updated[c.currentStage].signedDoc || null),
       };
       // Returns bounce back to originator. Approvals AND denials advance through
       // the chain so every member gets a chance to weigh in.
@@ -2661,7 +2686,10 @@ function ChitsPage({ chits, setChits, userList }) {
       } else {
         status = "Pending";
       }
-      return { ...c, currentStage: next, stages: updated, status };
+      // When the reviewer uploads a signed copy, it becomes the current CHIT doc so
+      // the next approver sees the progressively signed version.
+      const docs = needsSignature ? { ...c.docs, chitDoc: signedDoc } : c.docs;
+      return { ...c, currentStage: next, stages: updated, status, docs };
     }));
     // ── Email notifications ──
     if (chit) {
@@ -2728,11 +2756,69 @@ function ChitsPage({ chits, setChits, userList }) {
     }
     setActiveComment(null);
     setCommentText("");
+    setSignedDoc(null);
     fire(action === "denied"
       ? "CHIT marked as denied — continues routing for remaining CoC review."
       : action === "returned"
       ? "CHIT returned to originator."
       : "CHIT updated.");
+  };
+
+  // Originator revises a returned CHIT and sends it back to the reviewer who
+  // returned it. The reviewer's stage is reset (fresh review on the revision)
+  // and the routing timer restarts from the resubmit date.
+  const resubmitRevision = () => {
+    if (!reviseId) return;
+    if (!reviseDoc) { fire("⚠ Upload the revised CHIT document (PDF)."); return; }
+    const chit = chits.find(c => c.id === reviseId);
+    if (!chit) return;
+    const reviewerStage = chit.stages[chit.currentStage];
+    const today = new Date().toISOString().split("T")[0];
+    const resubmitEntry = {
+      at: today,
+      notes: reviseNotes.trim() || chit.notes,
+      reply: reviseReply.trim(),
+      previousReturn: {
+        by: reviewerStage?.completedBy || "",
+        at: reviewerStage?.completedAt || "",
+        comment: reviewerStage?.comment || "",
+      },
+      docFileName: reviseDoc.fileName,
+    };
+    setChits(prev => prev.map(c => {
+      if (c.id !== reviseId) return c;
+      const updatedStages = c.stages.map((s, i) => {
+        if (i === 0) return { ...s, completedAt: today }; // reset routing timer
+        if (i === c.currentStage) return { ...s, completedBy: null, completedAt: null, comment: "", action: null };
+        return s;
+      });
+      return {
+        ...c,
+        docs: { ...c.docs, chitDoc: reviseDoc },
+        notes: reviseNotes.trim() || c.notes,
+        status: "Pending",
+        stages: updatedStages,
+        resubmissions: [...(c.resubmissions || []), resubmitEntry],
+      };
+    }));
+    // Email the reviewer who returned — their stage is fresh again on the revised doc.
+    if (reviewerStage?.approverId) {
+      const reviewerEmail = getUserEmail(userList, reviewerStage.approverId);
+      if (reviewerEmail) {
+        sendNotification(reviewerEmail,
+          `CHIT ${reviseId} — Revised and Resubmitted`,
+          `Hello ${reviewerStage.approverName},\n\n${chit.name} has revised CHIT ${reviseId} in response to your return comments and resubmitted it for your review.\n\n${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" : ""}Please log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
+          "approval", reviewerStage.approverId
+        );
+        const prefs = loadNotifPrefs(reviewerStage.approverId);
+        trackApproval(reviseId, "CHIT", reviewerEmail, reviewerStage.approverName, chit.name, prefs.reminder_days);
+      }
+    }
+    setReviseId(null);
+    setReviseDoc(null);
+    setReviseNotes("");
+    setReviseReply("");
+    fire("✅ Revised CHIT resubmitted. Routing timer reset.");
   };
 
   const [chitFolders, setChitFolders] = useState({ action: false, pipeline: false, complete: false });
@@ -2824,31 +2910,73 @@ function ChitsPage({ chits, setChits, userList }) {
           </div>
         )}
 
-        {canAct && !isDone && (
-          <div className="stage-action-box" style={{ marginTop:"0.75rem" }}>
-            <div className="stage-action-label">⭐ Your Review — {currentStageName}</div>
-            {activeComment === c.id ? (
-              <>
-                <textarea
-                  className="input"
-                  style={{ minHeight:"70px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
-                  maxLength={1000}
-                  placeholder="Add comments (optional)…"
-                  value={commentText}
-                  onChange={e => setCommentText(e.target.value)}
-                />
-                <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-                  <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
-                  <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return</button>
-                  <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "denied")}>✕ Deny</button>
-                  <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>Cancel</button>
-                </div>
-              </>
-            ) : (
-              <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(c.id); setCommentText(""); }}>
-                ✏ Review CHIT
-              </button>
-            )}
+        {canAct && !isDone && (() => {
+          const needsSig = stageRequiresSignature(c.stages?.[c.currentStage]);
+          return (
+            <div className="stage-action-box" style={{ marginTop:"0.75rem" }}>
+              <div className="stage-action-label">⭐ Your Review — {currentStageName}</div>
+              {activeComment === c.id ? (
+                <>
+                  {needsSig && (
+                    <div style={{ marginBottom:"0.65rem" }}>
+                      <div style={{ fontSize:"0.75rem", color:"#666", marginBottom:"0.3rem" }}>
+                        Upload the signed CHIT document (PDF) <span style={{ color:"#C0392B" }}>*</span>
+                        <span style={{ display:"block", color:"#888", marginTop:"0.15rem" }}>Required for {displayRole(c.stages[c.currentStage].approverRole)} approval or denial. Replaces the current CHIT doc for the next reviewer.</span>
+                      </div>
+                      <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                        <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                          📄 {signedDoc ? "Replace Signed PDF" : "Upload Signed PDF"}
+                          <input type="file" accept="application/pdf,.pdf" style={{ display:"none" }}
+                            onChange={e => { readPdf(e.target.files[0], f => setSignedDoc(f)); e.target.value = ""; }} />
+                        </label>
+                        {signedDoc && (
+                          <span style={{ fontSize:"0.78rem", display:"inline-flex", alignItems:"center", gap:"0.3rem", background:"#f0f0f0", padding:"0.2rem 0.5rem", borderRadius:"4px" }}>
+                            <a href={signedDoc.dataUrl} target="_blank" rel="noopener noreferrer" style={{ color:"#002B5C", textDecoration:"none" }}>📄 {signedDoc.fileName}</a>
+                            <button style={{ background:"none", border:"none", cursor:"pointer", color:"#C0392B", fontWeight:700, fontSize:"0.9rem" }} onClick={() => setSignedDoc(null)}>✕</button>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <textarea
+                    className="input"
+                    style={{ minHeight:"70px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
+                    maxLength={1000}
+                    placeholder="Add comments (optional)…"
+                    value={commentText}
+                    onChange={e => setCommentText(e.target.value)}
+                  />
+                  <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                    <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
+                    <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return</button>
+                    <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "denied")}>✕ Deny</button>
+                    <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); setSignedDoc(null); }}>Cancel</button>
+                  </div>
+                </>
+              ) : (
+                <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(c.id); setCommentText(""); setSignedDoc(null); }}>
+                  ✏ Review CHIT
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Revise & resubmit — shown to originator when the CHIT was returned */}
+        {c.status === "Returned" && user.id === c.userId && (
+          <div className="stage-action-box" style={{ marginTop:"0.75rem", borderLeft:"4px solid #BF5700" }}>
+            <div className="stage-action-label">↩ Returned — Revise &amp; Resubmit</div>
+            <div style={{ fontSize:"0.8rem", color:"#666", marginBottom:"0.5rem" }}>
+              Update your CHIT based on the reviewer's comments, re-upload the document, and it will route back to the same reviewer. Your routing timer resets.
+            </div>
+            <button className="btn btn-orange btn-sm" onClick={() => {
+              setReviseId(c.id);
+              setReviseDoc(null);
+              setReviseNotes(c.notes || "");
+              setReviseReply("");
+            }}>
+              ✏ Revise &amp; Resubmit
+            </button>
           </div>
         )}
       </div>
@@ -3012,6 +3140,59 @@ function ChitsPage({ chits, setChits, userList }) {
           </div>
         </Modal>
       )}
+
+      {/* Revise & resubmit modal — originator fixes returned CHIT and sends it back */}
+      {reviseId && (() => {
+        const chit = chits.find(c => c.id === reviseId);
+        const reviewer = chit?.stages?.[chit.currentStage];
+        const returnComment = reviewer?.comment || "";
+        const returnedBy = reviewer?.completedBy || reviewer?.approverName || "the reviewer";
+        return (
+          <Modal title={`Revise & Resubmit ${reviseId}`} onClose={() => { setReviseId(null); setReviseDoc(null); setReviseNotes(""); setReviseReply(""); }}>
+            {toast && <div className={`alert ${toast.startsWith("⚠") ? "alert-red" : "alert-green"}`}>{toast}</div>}
+            <div style={{ fontSize:"0.82rem", color:"#666", marginBottom:"0.75rem" }}>
+              Returned by <strong>{returnedBy}</strong>. Address their comments, upload a revised PDF, and your CHIT will route directly back to them. Your routing timer will reset.
+            </div>
+            {returnComment && (
+              <div className="stage-comment" style={{ marginBottom:"0.75rem" }}>
+                <div className="stage-comment-by">Reviewer comments</div>
+                {returnComment}
+              </div>
+            )}
+            <div className="input-group">
+              <label className="input-label">Revised CHIT Document (PDF) <span style={{ color:"#C0392B" }}>*</span></label>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                  📄 {reviseDoc ? "Replace PDF" : "Upload Revised PDF"}
+                  <input type="file" accept="application/pdf,.pdf" style={{ display:"none" }}
+                    onChange={e => { readPdf(e.target.files[0], f => setReviseDoc(f)); e.target.value = ""; }} />
+                </label>
+                {reviseDoc && (
+                  <span style={{ fontSize:"0.78rem", display:"inline-flex", alignItems:"center", gap:"0.3rem", background:"#f0f0f0", padding:"0.2rem 0.5rem", borderRadius:"4px" }}>
+                    <a href={reviseDoc.dataUrl} target="_blank" rel="noopener noreferrer" style={{ color:"#002B5C", textDecoration:"none" }}>📄 {reviseDoc.fileName}</a>
+                    <button style={{ background:"none", border:"none", cursor:"pointer", color:"#C0392B", fontWeight:700, fontSize:"0.9rem" }} onClick={() => setReviseDoc(null)}>✕</button>
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="input-group">
+              <label className="input-label">Notes (optional)</label>
+              <textarea className="input" style={{ minHeight:"70px", resize:"vertical" }} maxLength={1000}
+                value={reviseNotes} onChange={e => setReviseNotes(e.target.value)} />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Reply to Reviewer (optional)</label>
+              <textarea className="input" style={{ minHeight:"70px", resize:"vertical" }} maxLength={1000}
+                placeholder="Briefly explain what you changed…"
+                value={reviseReply} onChange={e => setReviseReply(e.target.value)} />
+            </div>
+            <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
+              <button className="btn btn-outline" onClick={() => { setReviseId(null); setReviseDoc(null); setReviseNotes(""); setReviseReply(""); }}>Cancel</button>
+              <button className="btn btn-orange" onClick={resubmitRevision}>Resubmit to {reviewer?.approverName?.split(" ").slice(-1)[0] || "Reviewer"}</button>
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
