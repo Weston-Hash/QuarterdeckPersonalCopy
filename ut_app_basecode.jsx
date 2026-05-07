@@ -2539,15 +2539,16 @@ function ChitsPage({ chits, setChits, userList }) {
   const needsRouteSelect = requiresChitRouteSelection(user);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState("");
-  const [form, setForm] = useState({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, chitType:"single" });
+  const [form, setForm] = useState({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType:"single" });
   const [chitSubmitAttempted, setChitSubmitAttempted] = useState(false);
   const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText] = useState("");
   const [signedDoc, setSignedDoc] = useState(null);
   const [reviseId, setReviseId] = useState(null);
-  const [reviseDoc, setReviseDoc] = useState(null);
-  const [reviseNotes, setReviseNotes] = useState("");
-  const [reviseReply, setReviseReply] = useState("");
+  // Working copy of the submission while the originator edits a returned CHIT
+  const [reviseDraft, setReviseDraft] = useState({ chitDoc:null, corroboratingDocs:[], notes:"", reply:"" });
+  const [showLegend, setShowLegend] = useState(false);
+  const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
   // Only show CHITs the logged-in user is permitted to see (routing line + subject)
   const visible = chits.filter(c => canViewChit(user, c));
@@ -2564,8 +2565,23 @@ function ChitsPage({ chits, setChits, userList }) {
   const readPdf = (file, onLoaded) => {
     if (!file) return;
     if (file.type !== "application/pdf") { fire("⚠ Please select a PDF file."); return; }
+    if (file.size > MAX_FILE_BYTES) { fire("⚠ File too large (max 10 MB)."); return; }
     const reader = new FileReader();
     reader.onload = e => onLoaded({ fileName: file.name, dataUrl: e.target.result });
+    reader.readAsDataURL(file);
+  };
+
+  // Corroborating docs: any common attachment type, multiple files, 10 MB each.
+  const CORROBORATING_TYPES = ["application/pdf","image/png","image/jpeg","image/jpg","image/heic","image/heif","application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+  const readCorroboratingFile = (file, onLoaded) => {
+    if (!file) return;
+    if (file.size > MAX_FILE_BYTES) { fire("⚠ File too large (max 10 MB)."); return; }
+    if (!CORROBORATING_TYPES.includes(file.type) && !/\.(pdf|png|jpe?g|heic|heif|docx?|txt)$/i.test(file.name)) {
+      fire("⚠ Unsupported file type. Allowed: PDF, image, Word doc.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => onLoaded({ fileName: file.name, dataUrl: e.target.result, mimeType: file.type || "" });
     reader.readAsDataURL(file);
   };
 
@@ -2627,7 +2643,7 @@ function ChitsPage({ chits, setChits, userList }) {
       status: "Pending",
       currentStage: 1,
       stages,
-      docs: { chitDoc: form.chitDoc },
+      docs: { chitDoc: form.chitDoc, corroborating: form.corroboratingDocs || [] },
     };
     setChits(prev => [...prev, c]);
     // Notify first approver
@@ -2645,7 +2661,7 @@ function ChitsPage({ chits, setChits, userList }) {
       }
     }
     setShowModal(false);
-    setForm({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, chitType:"single" });
+    setForm({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType:"single" });
     setChitSubmitAttempted(false);
     fire("✅ CHIT submitted and routed to your chain of command.");
   };
@@ -2766,24 +2782,40 @@ function ChitsPage({ chits, setChits, userList }) {
 
   // Originator revises a returned CHIT and sends it back to the reviewer who
   // returned it. The reviewer's stage is reset (fresh review on the revision)
-  // and the routing timer restarts from the resubmit date.
+  // and the routing timer restarts from the resubmit date. The originator can
+  // edit the submission directly: replace the CHIT PDF, add or remove
+  // corroborating documents, and edit notes.
+  const openReviseModal = (chit) => {
+    setReviseId(chit.id);
+    setReviseDraft({
+      chitDoc: chit.docs?.chitDoc || null,
+      corroboratingDocs: chit.docs?.corroborating ? [...chit.docs.corroborating] : [],
+      notes: chit.notes || "",
+      reply: "",
+    });
+  };
+  const closeReviseModal = () => {
+    setReviseId(null);
+    setReviseDraft({ chitDoc:null, corroboratingDocs:[], notes:"", reply:"" });
+  };
   const resubmitRevision = () => {
     if (!reviseId) return;
-    if (!reviseDoc) { fire("⚠ Upload the revised CHIT document (PDF)."); return; }
+    if (!reviseDraft.chitDoc) { fire("⚠ A CHIT document is required."); return; }
     const chit = chits.find(c => c.id === reviseId);
     if (!chit) return;
     const reviewerStage = chit.stages[chit.currentStage];
     const today = new Date().toISOString().split("T")[0];
     const resubmitEntry = {
       at: today,
-      notes: reviseNotes.trim() || chit.notes,
-      reply: reviseReply.trim(),
+      notes: reviseDraft.notes.trim(),
+      reply: reviseDraft.reply.trim(),
       previousReturn: {
         by: reviewerStage?.completedBy || "",
         at: reviewerStage?.completedAt || "",
         comment: reviewerStage?.comment || "",
       },
-      docFileName: reviseDoc.fileName,
+      docFileName: reviseDraft.chitDoc.fileName,
+      corroboratingFileNames: reviseDraft.corroboratingDocs.map(f => f.fileName),
     };
     setChits(prev => prev.map(c => {
       if (c.id !== reviseId) return c;
@@ -2794,8 +2826,12 @@ function ChitsPage({ chits, setChits, userList }) {
       });
       return {
         ...c,
-        docs: { ...c.docs, chitDoc: reviseDoc },
-        notes: reviseNotes.trim() || c.notes,
+        docs: {
+          ...c.docs,
+          chitDoc: reviseDraft.chitDoc,
+          corroborating: reviseDraft.corroboratingDocs,
+        },
+        notes: reviseDraft.notes.trim(),
         status: "Pending",
         stages: updatedStages,
         resubmissions: [...(c.resubmissions || []), resubmitEntry],
@@ -2807,17 +2843,14 @@ function ChitsPage({ chits, setChits, userList }) {
       if (reviewerEmail) {
         sendNotification(reviewerEmail,
           `CHIT ${reviseId} — Revised and Resubmitted`,
-          `Hello ${reviewerStage.approverName},\n\n${chit.name} has revised CHIT ${reviseId} in response to your return comments and resubmitted it for your review.\n\n${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" : ""}Please log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
+          `Hello ${reviewerStage.approverName},\n\n${chit.name} has revised CHIT ${reviseId} in response to your return comments and resubmitted it for your review.\n\n${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim() + "\n\n" : ""}Please log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
           "approval", reviewerStage.approverId
         );
         const prefs = loadNotifPrefs(reviewerStage.approverId);
         trackApproval(reviseId, "CHIT", reviewerEmail, reviewerStage.approverName, chit.name, prefs.reminder_days);
       }
     }
-    setReviseId(null);
-    setReviseDoc(null);
-    setReviseNotes("");
-    setReviseReply("");
+    closeReviseModal();
     fire("✅ Revised CHIT resubmitted. Routing timer reset.");
   };
 
@@ -2870,10 +2903,15 @@ function ChitsPage({ chits, setChits, userList }) {
         <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · {c.chitType === "recurring" ? "Every LL/PT" : "Single Event"} · Absent: {c.date}</div>
         {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", marginTop:"0.2rem" }}>{c.notes}</div>}
 
-        {c.docs?.chitDoc && (
+        {(c.docs?.chitDoc || (c.docs?.corroborating?.length > 0)) && (
           <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center", marginTop:"0.55rem" }}>
             <span style={{ fontFamily:"'Barlow', 'Segoe UI', sans-serif", fontSize:"0.65rem", letterSpacing:"1.5px", textTransform:"uppercase", color:"#888" }}>Docs:</span>
-            <a href={c.docs.chitDoc.dataUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">📄 CHIT Document</a>
+            {c.docs?.chitDoc && (
+              <a href={c.docs.chitDoc.dataUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">📄 CHIT Document</a>
+            )}
+            {(c.docs?.corroborating || []).map((f, i) => (
+              <a key={i} href={f.dataUrl} download={f.fileName} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">📎 {f.fileName}</a>
+            ))}
           </div>
         )}
 
@@ -2898,17 +2936,38 @@ function ChitsPage({ chits, setChits, userList }) {
           </div>
         )}
 
-        {/* Comments: hidden from originator unless CHIT was returned */}
-        {c.stages?.some(s => s.completedBy && s.comment) && (user.id !== c.userId || c.status === "Returned" || c.status === "Denied") && (
-          <div style={{ marginTop:"0.5rem" }}>
-            {c.stages.map((s, j) => s.completedBy && s.comment ? (
-              <div className="stage-comment" key={j}>
-                <div className="stage-comment-by">{s.name} · {s.completedBy} · {s.completedAt}</div>
-                {s.comment}
-              </div>
-            ) : null)}
-          </div>
-        )}
+        {/*
+          Comment visibility:
+          • CoC viewers see every reviewer's comment.
+          • Originator only ever sees the most-recent returner's comment, and
+            only while the CHIT is in the "Returned" state. Prior CoC comments
+            (PC/CC reviews, approvals, denials, older returns) stay hidden.
+        */}
+        {(() => {
+          const isOriginator = user.id === c.userId;
+          let visibleComments = [];
+          if (isOriginator) {
+            if (c.status === "Returned") {
+              const returner = c.stages?.[c.currentStage];
+              if (returner?.comment) visibleComments = [{ idx: c.currentStage, stage: returner }];
+            }
+          } else {
+            visibleComments = (c.stages || [])
+              .map((s, j) => ({ idx: j, stage: s }))
+              .filter(({ stage }) => stage.completedBy && stage.comment);
+          }
+          if (visibleComments.length === 0) return null;
+          return (
+            <div style={{ marginTop:"0.5rem" }}>
+              {visibleComments.map(({ idx, stage }) => (
+                <div className="stage-comment" key={idx}>
+                  <div className="stage-comment-by">{stage.name} · {stage.completedBy} · {stage.completedAt}</div>
+                  {stage.comment}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {canAct && !isDone && (() => {
           const needsSig = stageRequiresSignature(c.stages?.[c.currentStage]);
@@ -2967,14 +3026,9 @@ function ChitsPage({ chits, setChits, userList }) {
           <div className="stage-action-box" style={{ marginTop:"0.75rem", borderLeft:"4px solid #BF5700" }}>
             <div className="stage-action-label">↩ Returned — Revise &amp; Resubmit</div>
             <div style={{ fontSize:"0.8rem", color:"#666", marginBottom:"0.5rem" }}>
-              Update your CHIT based on the reviewer's comments, re-upload the document, and it will route back to the same reviewer. Your routing timer resets.
+              Edit your submission directly — replace the CHIT PDF, add or remove corroborating documents, update notes — and it will route back to the same reviewer. Your routing timer resets.
             </div>
-            <button className="btn btn-orange btn-sm" onClick={() => {
-              setReviseId(c.id);
-              setReviseDoc(null);
-              setReviseNotes(c.notes || "");
-              setReviseReply("");
-            }}>
+            <button className="btn btn-orange btn-sm" onClick={() => openReviseModal(c)}>
               ✏ Revise &amp; Resubmit
             </button>
           </div>
@@ -2993,6 +3047,33 @@ function ChitsPage({ chits, setChits, userList }) {
       <div className="privacy-note">
         🔒 <strong>Private.</strong> Only you and your chain of command can see your CHITs.
       </div>
+
+      {/* Action legend — only visible to chain-of-command members who actually
+          act on CHITs. Explains what each button does so reviewers don't have
+          to guess. */}
+      {canSignChits(user) && (
+        <div style={{ marginBottom:"1rem" }}>
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={() => setShowLegend(s => !s)}
+            aria-expanded={showLegend}
+          >
+            {showLegend ? "▼ Hide CoC Action Legend" : "ⓘ Show CoC Action Legend"}
+          </button>
+          {showLegend && (
+            <div className="card" style={{ marginTop:"0.5rem", padding:"0.85rem 1rem", fontSize:"0.85rem" }}>
+              <div style={{ display:"grid", gap:"0.5rem" }}>
+                <div><span className="badge badge-green" style={{ marginRight:"0.5rem" }}>✓ Approve</span>Sign off on the CHIT and advance it to the next reviewer in the chain. ADJ, BNXO, and BNCO must upload a signed copy of the CHIT PDF — that signed copy then becomes the working CHIT document for everyone above them.</div>
+                <div><span className="badge badge-red" style={{ marginRight:"0.5rem" }}>✕ Deny</span>Record your disagreement, but routing <em>continues up the chain</em> so every reviewer still gets a chance to weigh in. The CHIT's final outcome is "Denied" if anyone in the chain denied; otherwise "Approved" once it reaches the top. ADJ/BNXO/BNCO denials also require a signed PDF.</div>
+                <div><span className="badge" style={{ marginRight:"0.5rem", background:"#9b1c1c", color:"white" }}>↩ Return</span>Send the CHIT back to the originator to fix or add documentation. They edit the submission directly (replace the CHIT PDF, add/remove corroborating files, update notes) and resubmit; it routes <em>back to you</em>, not to the top, and the routing timer resets. No signature required to return.</div>
+                <div style={{ fontSize:"0.78rem", color:"#666", borderTop:"1px solid #eee", paddingTop:"0.4rem", marginTop:"0.2rem" }}>
+                  Comments you leave are visible to other CoC reviewers but never to the originator — except for the comment from the most recent return, which the originator sees so they can fix what you flagged.
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {canSubmit && (
         <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
@@ -3129,6 +3210,31 @@ function ChitsPage({ chits, setChits, userList }) {
                 }
               </div>
             </div>
+            {/* Corroborating documentation — optional, multi-file */}
+            <div className="input-group">
+              <label className="input-label">Corroborating Documentation <span style={{ fontSize:"0.72rem", color:"#888" }}>(optional)</span></label>
+              <div style={{ fontSize:"0.72rem", color:"#666", marginBottom:"0.4rem" }}>
+                Attach any supporting documents (medical notes, screenshots, schedules, etc.). Max 10 MB per file.
+              </div>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                  + Add File
+                  <input type="file" accept=".pdf,.png,.jpg,.jpeg,.heic,.heif,.doc,.docx,.txt"
+                    style={{ display:"none" }}
+                    onChange={e => { readCorroboratingFile(e.target.files[0], f => setForm(s => ({ ...s, corroboratingDocs: [...s.corroboratingDocs, f] }))); e.target.value = ""; }} />
+                </label>
+              </div>
+              {form.corroboratingDocs.length > 0 && (
+                <div style={{ display:"flex", flexWrap:"wrap", gap:"0.4rem", marginTop:"0.5rem" }}>
+                  {form.corroboratingDocs.map((f, i) => (
+                    <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:"0.3rem", background:"rgba(13,27,42,0.06)", border:"1px solid rgba(13,27,42,0.18)", borderRadius:"4px", padding:"0.2rem 0.5rem", fontSize:"0.78rem" }}>
+                      📎 {f.fileName}
+                      <button style={{ background:"none", border:"none", cursor:"pointer", color:"#C0392B", fontWeight:700, fontSize:"0.85rem", lineHeight:1, padding:0 }} onClick={() => setForm(s => ({ ...s, corroboratingDocs: s.corroboratingDocs.filter((_, j) => j !== i) }))}>✕</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="route-hint">
@@ -3141,17 +3247,19 @@ function ChitsPage({ chits, setChits, userList }) {
         </Modal>
       )}
 
-      {/* Revise & resubmit modal — originator fixes returned CHIT and sends it back */}
+      {/* Revise & resubmit modal — originator edits the submission and sends it
+          back to the reviewer who returned it. */}
       {reviseId && (() => {
         const chit = chits.find(c => c.id === reviseId);
         const reviewer = chit?.stages?.[chit.currentStage];
         const returnComment = reviewer?.comment || "";
         const returnedBy = reviewer?.completedBy || reviewer?.approverName || "the reviewer";
+        const reviewerLast = reviewer?.approverName?.split(" ").slice(-1)[0] || "Reviewer";
         return (
-          <Modal title={`Revise & Resubmit ${reviseId}`} onClose={() => { setReviseId(null); setReviseDoc(null); setReviseNotes(""); setReviseReply(""); }}>
+          <Modal title={`Revise & Resubmit ${reviseId}`} onClose={closeReviseModal}>
             {toast && <div className={`alert ${toast.startsWith("⚠") ? "alert-red" : "alert-green"}`}>{toast}</div>}
             <div style={{ fontSize:"0.82rem", color:"#666", marginBottom:"0.75rem" }}>
-              Returned by <strong>{returnedBy}</strong>. Address their comments, upload a revised PDF, and your CHIT will route directly back to them. Your routing timer will reset.
+              Returned by <strong>{returnedBy}</strong>. Edit anything below, then resubmit. Your CHIT routes directly back to them and the routing timer resets.
             </div>
             {returnComment && (
               <div className="stage-comment" style={{ marginBottom:"0.75rem" }}>
@@ -3159,36 +3267,69 @@ function ChitsPage({ chits, setChits, userList }) {
                 {returnComment}
               </div>
             )}
+
             <div className="input-group">
-              <label className="input-label">Revised CHIT Document (PDF) <span style={{ color:"#C0392B" }}>*</span></label>
+              <label className="input-label">CHIT Document (PDF) <span style={{ color:"#C0392B" }}>*</span></label>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
-                <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
-                  📄 {reviseDoc ? "Replace PDF" : "Upload Revised PDF"}
-                  <input type="file" accept="application/pdf,.pdf" style={{ display:"none" }}
-                    onChange={e => { readPdf(e.target.files[0], f => setReviseDoc(f)); e.target.value = ""; }} />
-                </label>
-                {reviseDoc && (
-                  <span style={{ fontSize:"0.78rem", display:"inline-flex", alignItems:"center", gap:"0.3rem", background:"#f0f0f0", padding:"0.2rem 0.5rem", borderRadius:"4px" }}>
-                    <a href={reviseDoc.dataUrl} target="_blank" rel="noopener noreferrer" style={{ color:"#002B5C", textDecoration:"none" }}>📄 {reviseDoc.fileName}</a>
-                    <button style={{ background:"none", border:"none", cursor:"pointer", color:"#C0392B", fontWeight:700, fontSize:"0.9rem" }} onClick={() => setReviseDoc(null)}>✕</button>
-                  </span>
+                {reviseDraft.chitDoc ? (
+                  <>
+                    <a href={reviseDraft.chitDoc.dataUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">📄 {reviseDraft.chitDoc.fileName}</a>
+                    <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                      ↑ Replace
+                      <input type="file" accept="application/pdf,.pdf" style={{ display:"none" }}
+                        onChange={e => { readPdf(e.target.files[0], f => setReviseDraft(d => ({ ...d, chitDoc: f }))); e.target.value = ""; }} />
+                    </label>
+                    <button className="btn btn-red btn-sm" onClick={() => setReviseDraft(d => ({ ...d, chitDoc: null }))}>✕ Delete</button>
+                  </>
+                ) : (
+                  <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                    ↑ Upload PDF
+                    <input type="file" accept="application/pdf,.pdf" style={{ display:"none" }}
+                      onChange={e => { readPdf(e.target.files[0], f => setReviseDraft(d => ({ ...d, chitDoc: f }))); e.target.value = ""; }} />
+                  </label>
                 )}
               </div>
             </div>
+
+            <div className="input-group">
+              <label className="input-label">Corroborating Documentation <span style={{ fontSize:"0.72rem", color:"#888" }}>(optional)</span></label>
+              <div style={{ fontSize:"0.72rem", color:"#666", marginBottom:"0.4rem" }}>
+                Add or remove supporting documents (medical notes, screenshots, etc.). Max 10 MB per file.
+              </div>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                  + Add File
+                  <input type="file" accept=".pdf,.png,.jpg,.jpeg,.heic,.heif,.doc,.docx,.txt"
+                    style={{ display:"none" }}
+                    onChange={e => { readCorroboratingFile(e.target.files[0], f => setReviseDraft(d => ({ ...d, corroboratingDocs: [...d.corroboratingDocs, f] }))); e.target.value = ""; }} />
+                </label>
+              </div>
+              {reviseDraft.corroboratingDocs.length > 0 && (
+                <div style={{ display:"flex", flexWrap:"wrap", gap:"0.4rem", marginTop:"0.5rem" }}>
+                  {reviseDraft.corroboratingDocs.map((f, i) => (
+                    <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:"0.3rem", background:"rgba(13,27,42,0.06)", border:"1px solid rgba(13,27,42,0.18)", borderRadius:"4px", padding:"0.2rem 0.5rem", fontSize:"0.78rem" }}>
+                      <a href={f.dataUrl} download={f.fileName} target="_blank" rel="noopener noreferrer" style={{ color:"#002B5C", textDecoration:"none" }}>📎 {f.fileName}</a>
+                      <button style={{ background:"none", border:"none", cursor:"pointer", color:"#C0392B", fontWeight:700, fontSize:"0.85rem", lineHeight:1, padding:0 }} onClick={() => setReviseDraft(d => ({ ...d, corroboratingDocs: d.corroboratingDocs.filter((_, j) => j !== i) }))}>✕</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="input-group">
               <label className="input-label">Notes (optional)</label>
               <textarea className="input" style={{ minHeight:"70px", resize:"vertical" }} maxLength={1000}
-                value={reviseNotes} onChange={e => setReviseNotes(e.target.value)} />
+                value={reviseDraft.notes} onChange={e => setReviseDraft(d => ({ ...d, notes: e.target.value }))} />
             </div>
             <div className="input-group">
               <label className="input-label">Reply to Reviewer (optional)</label>
               <textarea className="input" style={{ minHeight:"70px", resize:"vertical" }} maxLength={1000}
                 placeholder="Briefly explain what you changed…"
-                value={reviseReply} onChange={e => setReviseReply(e.target.value)} />
+                value={reviseDraft.reply} onChange={e => setReviseDraft(d => ({ ...d, reply: e.target.value }))} />
             </div>
             <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
-              <button className="btn btn-outline" onClick={() => { setReviseId(null); setReviseDoc(null); setReviseNotes(""); setReviseReply(""); }}>Cancel</button>
-              <button className="btn btn-orange" onClick={resubmitRevision}>Resubmit to {reviewer?.approverName?.split(" ").slice(-1)[0] || "Reviewer"}</button>
+              <button className="btn btn-outline" onClick={closeReviseModal}>Cancel</button>
+              <button className="btn btn-orange" onClick={resubmitRevision}>Resubmit to {reviewerLast}</button>
             </div>
           </Modal>
         );

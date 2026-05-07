@@ -29001,15 +29001,15 @@
     const needsRouteSelect = requiresChitRouteSelection(user);
     const [showModal, setShowModal] = (0, import_react.useState)(false);
     const [toast, setToast] = (0, import_react.useState)("");
-    const [form, setForm] = (0, import_react.useState)({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, chitType: "single" });
+    const [form, setForm] = (0, import_react.useState)({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: "single" });
     const [chitSubmitAttempted, setChitSubmitAttempted] = (0, import_react.useState)(false);
     const [activeComment, setActiveComment] = (0, import_react.useState)(null);
     const [commentText, setCommentText] = (0, import_react.useState)("");
     const [signedDoc, setSignedDoc] = (0, import_react.useState)(null);
     const [reviseId, setReviseId] = (0, import_react.useState)(null);
-    const [reviseDoc, setReviseDoc] = (0, import_react.useState)(null);
-    const [reviseNotes, setReviseNotes] = (0, import_react.useState)("");
-    const [reviseReply, setReviseReply] = (0, import_react.useState)("");
+    const [reviseDraft, setReviseDraft] = (0, import_react.useState)({ chitDoc: null, corroboratingDocs: [], notes: "", reply: "" });
+    const [showLegend, setShowLegend] = (0, import_react.useState)(false);
+    const MAX_FILE_BYTES = 10 * 1024 * 1024;
     const visible = chits.filter((c) => canViewChit(user, c));
     const fire = (msg) => {
       setToast(msg);
@@ -29030,8 +29030,27 @@
         fire("\u26A0 Please select a PDF file.");
         return;
       }
+      if (file.size > MAX_FILE_BYTES) {
+        fire("\u26A0 File too large (max 10 MB).");
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (e) => onLoaded({ fileName: file.name, dataUrl: e.target.result });
+      reader.readAsDataURL(file);
+    };
+    const CORROBORATING_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/jpg", "image/heic", "image/heif", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    const readCorroboratingFile = (file, onLoaded) => {
+      if (!file) return;
+      if (file.size > MAX_FILE_BYTES) {
+        fire("\u26A0 File too large (max 10 MB).");
+        return;
+      }
+      if (!CORROBORATING_TYPES.includes(file.type) && !/\.(pdf|png|jpe?g|heic|heif|docx?|txt)$/i.test(file.name)) {
+        fire("\u26A0 Unsupported file type. Allowed: PDF, image, Word doc.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => onLoaded({ fileName: file.name, dataUrl: e.target.result, mimeType: file.type || "" });
       reader.readAsDataURL(file);
     };
     const getPlatoons = (company) => {
@@ -29097,7 +29116,7 @@
         status: "Pending",
         currentStage: 1,
         stages,
-        docs: { chitDoc: form.chitDoc }
+        docs: { chitDoc: form.chitDoc, corroborating: form.corroboratingDocs || [] }
       };
       setChits((prev) => [...prev, c]);
       const firstStage = stages[1];
@@ -29122,7 +29141,7 @@ Please log in to The Quarterdeck to review and take action.
         }
       }
       setShowModal(false);
-      setForm({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, chitType: "single" });
+      setForm({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: "single" });
       setChitSubmitAttempted(false);
       fire("\u2705 CHIT submitted and routed to your chain of command.");
     };
@@ -29259,10 +29278,23 @@ Please log in to The Quarterdeck to review and take action.
       setSignedDoc(null);
       fire(action === "denied" ? "CHIT marked as denied \u2014 continues routing for remaining CoC review." : action === "returned" ? "CHIT returned to originator." : "CHIT updated.");
     };
+    const openReviseModal = (chit) => {
+      setReviseId(chit.id);
+      setReviseDraft({
+        chitDoc: chit.docs?.chitDoc || null,
+        corroboratingDocs: chit.docs?.corroborating ? [...chit.docs.corroborating] : [],
+        notes: chit.notes || "",
+        reply: ""
+      });
+    };
+    const closeReviseModal = () => {
+      setReviseId(null);
+      setReviseDraft({ chitDoc: null, corroboratingDocs: [], notes: "", reply: "" });
+    };
     const resubmitRevision = () => {
       if (!reviseId) return;
-      if (!reviseDoc) {
-        fire("\u26A0 Upload the revised CHIT document (PDF).");
+      if (!reviseDraft.chitDoc) {
+        fire("\u26A0 A CHIT document is required.");
         return;
       }
       const chit = chits.find((c) => c.id === reviseId);
@@ -29271,14 +29303,15 @@ Please log in to The Quarterdeck to review and take action.
       const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
       const resubmitEntry = {
         at: today,
-        notes: reviseNotes.trim() || chit.notes,
-        reply: reviseReply.trim(),
+        notes: reviseDraft.notes.trim(),
+        reply: reviseDraft.reply.trim(),
         previousReturn: {
           by: reviewerStage?.completedBy || "",
           at: reviewerStage?.completedAt || "",
           comment: reviewerStage?.comment || ""
         },
-        docFileName: reviseDoc.fileName
+        docFileName: reviseDraft.chitDoc.fileName,
+        corroboratingFileNames: reviseDraft.corroboratingDocs.map((f) => f.fileName)
       };
       setChits((prev) => prev.map((c) => {
         if (c.id !== reviseId) return c;
@@ -29289,8 +29322,12 @@ Please log in to The Quarterdeck to review and take action.
         });
         return {
           ...c,
-          docs: { ...c.docs, chitDoc: reviseDoc },
-          notes: reviseNotes.trim() || c.notes,
+          docs: {
+            ...c.docs,
+            chitDoc: reviseDraft.chitDoc,
+            corroborating: reviseDraft.corroboratingDocs
+          },
+          notes: reviseDraft.notes.trim(),
           status: "Pending",
           stages: updatedStages,
           resubmissions: [...c.resubmissions || [], resubmitEntry]
@@ -29306,7 +29343,7 @@ Please log in to The Quarterdeck to review and take action.
 
 ${chit.name} has revised CHIT ${reviseId} in response to your return comments and resubmitted it for your review.
 
-${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" : ""}Please log in to The Quarterdeck to review and take action.
+${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim() + "\n\n" : ""}Please log in to The Quarterdeck to review and take action.
 
 \u2014 The Quarterdeck`,
             "approval",
@@ -29316,10 +29353,7 @@ ${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" :
           trackApproval(reviseId, "CHIT", reviewerEmail, reviewerStage.approverName, chit.name, prefs.reminder_days);
         }
       }
-      setReviseId(null);
-      setReviseDoc(null);
-      setReviseNotes("");
-      setReviseReply("");
+      closeReviseModal();
       fire("\u2705 Revised CHIT resubmitted. Routing timer reset.");
     };
     const [chitFolders, setChitFolders] = (0, import_react.useState)({ action: false, pipeline: false, complete: false });
@@ -29376,9 +29410,13 @@ ${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" :
           c.date
         ] }),
         c.notes && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }, children: c.notes }),
-        c.docs?.chitDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.55rem" }, children: [
+        (c.docs?.chitDoc || c.docs?.corroborating?.length > 0) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.55rem" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.chitDoc.dataUrl, target: "_blank", rel: "noopener noreferrer", className: "btn btn-outline btn-sm", children: "\u{1F4C4} CHIT Document" })
+          c.docs?.chitDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: c.docs.chitDoc.dataUrl, target: "_blank", rel: "noopener noreferrer", className: "btn btn-outline btn-sm", children: "\u{1F4C4} CHIT Document" }),
+          (c.docs?.corroborating || []).map((f, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: f.dataUrl, download: f.fileName, target: "_blank", rel: "noopener noreferrer", className: "btn btn-outline btn-sm", children: [
+            "\u{1F4CE} ",
+            f.fileName
+          ] }, i))
         ] }),
         c.stages && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-track", style: { marginTop: "0.75rem" }, children: c.stages.map((s, j) => {
           const done = j < c.currentStage;
@@ -29394,16 +29432,29 @@ ${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" :
             active && canAct && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-approver active", children: "\u25CF You" })
           ] }, j);
         }) }),
-        c.stages?.some((s) => s.completedBy && s.comment) && (user.id !== c.userId || c.status === "Returned" || c.status === "Denied") && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: c.stages.map((s, j) => s.completedBy && s.comment ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment-by", children: [
-            s.name,
-            " \xB7 ",
-            s.completedBy,
-            " \xB7 ",
-            s.completedAt
-          ] }),
-          s.comment
-        ] }, j) : null) }),
+        (() => {
+          const isOriginator = user.id === c.userId;
+          let visibleComments = [];
+          if (isOriginator) {
+            if (c.status === "Returned") {
+              const returner = c.stages?.[c.currentStage];
+              if (returner?.comment) visibleComments = [{ idx: c.currentStage, stage: returner }];
+            }
+          } else {
+            visibleComments = (c.stages || []).map((s, j) => ({ idx: j, stage: s })).filter(({ stage }) => stage.completedBy && stage.comment);
+          }
+          if (visibleComments.length === 0) return null;
+          return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: visibleComments.map(({ idx, stage }) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment-by", children: [
+              stage.name,
+              " \xB7 ",
+              stage.completedBy,
+              " \xB7 ",
+              stage.completedAt
+            ] }),
+            stage.comment
+          ] }, idx)) });
+        })(),
         canAct && !isDone && (() => {
           const needsSig = stageRequiresSignature(c.stages?.[c.currentStage]);
           return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", style: { marginTop: "0.75rem" }, children: [
@@ -29478,13 +29529,8 @@ ${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" :
         })(),
         c.status === "Returned" && user.id === c.userId && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", style: { marginTop: "0.75rem", borderLeft: "4px solid #BF5700" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-action-label", children: "\u21A9 Returned \u2014 Revise & Resubmit" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#666", marginBottom: "0.5rem" }, children: "Update your CHIT based on the reviewer's comments, re-upload the document, and it will route back to the same reviewer. Your routing timer resets." }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => {
-            setReviseId(c.id);
-            setReviseDoc(null);
-            setReviseNotes(c.notes || "");
-            setReviseReply("");
-          }, children: "\u270F Revise & Resubmit" })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#666", marginBottom: "0.5rem" }, children: "Edit your submission directly \u2014 replace the CHIT PDF, add or remove corroborating documents, update notes \u2014 and it will route back to the same reviewer. Your routing timer resets." }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => openReviseModal(c), children: "\u270F Revise & Resubmit" })
         ] })
       ] }, c.id);
     };
@@ -29496,6 +29542,36 @@ ${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" :
         "\u{1F512} ",
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Private." }),
         " Only you and your chain of command can see your CHITs."
+      ] }),
+      canSignChits(user) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: "1rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "button",
+          {
+            className: "btn btn-outline btn-sm",
+            onClick: () => setShowLegend((s) => !s),
+            "aria-expanded": showLegend,
+            children: showLegend ? "\u25BC Hide CoC Action Legend" : "\u24D8 Show CoC Action Legend"
+          }
+        ),
+        showLegend && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "card", style: { marginTop: "0.5rem", padding: "0.85rem 1rem", fontSize: "0.85rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "grid", gap: "0.5rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-green", style: { marginRight: "0.5rem" }, children: "\u2713 Approve" }),
+            "Sign off on the CHIT and advance it to the next reviewer in the chain. ADJ, BNXO, and BNCO must upload a signed copy of the CHIT PDF \u2014 that signed copy then becomes the working CHIT document for everyone above them."
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-red", style: { marginRight: "0.5rem" }, children: "\u2715 Deny" }),
+            "Record your disagreement, but routing ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "continues up the chain" }),
+            ` so every reviewer still gets a chance to weigh in. The CHIT's final outcome is "Denied" if anyone in the chain denied; otherwise "Approved" once it reaches the top. ADJ/BNXO/BNCO denials also require a signed PDF.`
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { marginRight: "0.5rem", background: "#9b1c1c", color: "white" }, children: "\u21A9 Return" }),
+            "Send the CHIT back to the originator to fix or add documentation. They edit the submission directly (replace the CHIT PDF, add/remove corroborating files, update notes) and resubmit; it routes ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "back to you" }),
+            ", not to the top, and the routing timer resets. No signature required to return."
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#666", borderTop: "1px solid #eee", paddingTop: "0.4rem", marginTop: "0.2rem" }, children: "Comments you leave are visible to other CoC reviewers but never to the originator \u2014 except for the comment from the most recent return, which the originator sees so they can fix what you flagged." })
+        ] }) })
       ] }),
       canSubmit && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: "+ Submit New CHIT" }) }),
       visible.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
@@ -29613,32 +29689,61 @@ ${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" :
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, maxLength: 1e3, value: form.notes, onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })), placeholder: form.reason === "Other" ? "Please explain the reason for your absence" : "" })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-            "CHIT Document ",
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "chit-doc", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: form.chitDoc ? "\u2191 Replace PDF" : "\u2191 Upload PDF" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-              "input",
-              {
-                id: "chit-doc",
-                type: "file",
-                accept: ".pdf,application/pdf",
-                style: { display: "none" },
-                onChange: (e) => {
-                  loadChitFile("chitDoc", e.target.files[0], ["application/pdf"], "\u26A0 Please select a PDF file.");
-                  e.target.value = "";
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+              "CHIT Document ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { htmlFor: "chit-doc", className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: form.chitDoc ? "\u2191 Replace PDF" : "\u2191 Upload PDF" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  id: "chit-doc",
+                  type: "file",
+                  accept: ".pdf,application/pdf",
+                  style: { display: "none" },
+                  onChange: (e) => {
+                    loadChitFile("chitDoc", e.target.files[0], ["application/pdf"], "\u26A0 Please select a PDF file.");
+                    e.target.value = "";
+                  }
                 }
-              }
-            ),
-            form.chitDoc ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
-              "\u{1F4C4} ",
-              form.chitDoc.fileName
-            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#C0392B" }, children: "Required" })
+              ),
+              form.chitDoc ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", color: "#2A7D4F", fontWeight: 600 }, children: [
+                "\u{1F4C4} ",
+                form.chitDoc.fileName
+              ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#C0392B" }, children: "Required" })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+              "Corroborating Documentation ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.72rem", color: "#888" }, children: "(optional)" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#666", marginBottom: "0.4rem" }, children: "Attach any supporting documents (medical notes, screenshots, schedules, etc.). Max 10 MB per file." }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
+              "+ Add File",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  type: "file",
+                  accept: ".pdf,.png,.jpg,.jpeg,.heic,.heif,.doc,.docx,.txt",
+                  style: { display: "none" },
+                  onChange: (e) => {
+                    readCorroboratingFile(e.target.files[0], (f) => setForm((s) => ({ ...s, corroboratingDocs: [...s.corroboratingDocs, f] })));
+                    e.target.value = "";
+                  }
+                }
+              )
+            ] }) }),
+            form.corroboratingDocs.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", flexWrap: "wrap", gap: "0.4rem", marginTop: "0.5rem" }, children: form.corroboratingDocs.map((f, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { display: "inline-flex", alignItems: "center", gap: "0.3rem", background: "rgba(13,27,42,0.06)", border: "1px solid rgba(13,27,42,0.18)", borderRadius: "4px", padding: "0.2rem 0.5rem", fontSize: "0.78rem" }, children: [
+              "\u{1F4CE} ",
+              f.fileName,
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { style: { background: "none", border: "none", cursor: "pointer", color: "#C0392B", fontWeight: 700, fontSize: "0.85rem", lineHeight: 1, padding: 0 }, onClick: () => setForm((s) => ({ ...s, corroboratingDocs: s.corroboratingDocs.filter((_, j) => j !== i) })), children: "\u2715" })
+            ] }, i)) })
           ] })
-        ] }) }),
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "route-hint", children: [
           "Your CHIT routes to: ",
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: routeHint() })
@@ -29653,17 +29758,13 @@ ${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" :
         const reviewer = chit?.stages?.[chit.currentStage];
         const returnComment = reviewer?.comment || "";
         const returnedBy = reviewer?.completedBy || reviewer?.approverName || "the reviewer";
-        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: `Revise & Resubmit ${reviseId}`, onClose: () => {
-          setReviseId(null);
-          setReviseDoc(null);
-          setReviseNotes("");
-          setReviseReply("");
-        }, children: [
+        const reviewerLast = reviewer?.approverName?.split(" ").slice(-1)[0] || "Reviewer";
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: `Revise & Resubmit ${reviseId}`, onClose: closeReviseModal, children: [
           toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `alert ${toast.startsWith("\u26A0") ? "alert-red" : "alert-green"}`, children: toast }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.82rem", color: "#666", marginBottom: "0.75rem" }, children: [
             "Returned by ",
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: returnedBy }),
-            ". Address their comments, upload a revised PDF, and your CHIT will route directly back to them. Your routing timer will reset."
+            ". Edit anything below, then resubmit. Your CHIT routes directly back to them and the routing timer resets."
           ] }),
           returnComment && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-comment", style: { marginBottom: "0.75rem" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-comment-by", children: "Reviewer comments" }),
@@ -29671,13 +29772,16 @@ ${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" :
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-              "Revised CHIT Document (PDF) ",
+              "CHIT Document (PDF) ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: reviseDraft.chitDoc ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: reviseDraft.chitDoc.dataUrl, target: "_blank", rel: "noopener noreferrer", className: "btn btn-outline btn-sm", children: [
                 "\u{1F4C4} ",
-                reviseDoc ? "Replace PDF" : "Upload Revised PDF",
+                reviseDraft.chitDoc.fileName
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
+                "\u2191 Replace",
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                   "input",
                   {
@@ -29685,20 +29789,57 @@ ${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" :
                     accept: "application/pdf,.pdf",
                     style: { display: "none" },
                     onChange: (e) => {
-                      readPdf(e.target.files[0], (f) => setReviseDoc(f));
+                      readPdf(e.target.files[0], (f) => setReviseDraft((d) => ({ ...d, chitDoc: f })));
                       e.target.value = "";
                     }
                   }
                 )
               ] }),
-              reviseDoc && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "0.3rem", background: "#f0f0f0", padding: "0.2rem 0.5rem", borderRadius: "4px" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: reviseDoc.dataUrl, target: "_blank", rel: "noopener noreferrer", style: { color: "#002B5C", textDecoration: "none" }, children: [
-                  "\u{1F4C4} ",
-                  reviseDoc.fileName
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { style: { background: "none", border: "none", cursor: "pointer", color: "#C0392B", fontWeight: 700, fontSize: "0.9rem" }, onClick: () => setReviseDoc(null), children: "\u2715" })
-              ] })
-            ] })
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => setReviseDraft((d) => ({ ...d, chitDoc: null })), children: "\u2715 Delete" })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
+              "\u2191 Upload PDF",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  type: "file",
+                  accept: "application/pdf,.pdf",
+                  style: { display: "none" },
+                  onChange: (e) => {
+                    readPdf(e.target.files[0], (f) => setReviseDraft((d) => ({ ...d, chitDoc: f })));
+                    e.target.value = "";
+                  }
+                }
+              )
+            ] }) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+              "Corroborating Documentation ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.72rem", color: "#888" }, children: "(optional)" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#666", marginBottom: "0.4rem" }, children: "Add or remove supporting documents (medical notes, screenshots, etc.). Max 10 MB per file." }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
+              "+ Add File",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  type: "file",
+                  accept: ".pdf,.png,.jpg,.jpeg,.heic,.heif,.doc,.docx,.txt",
+                  style: { display: "none" },
+                  onChange: (e) => {
+                    readCorroboratingFile(e.target.files[0], (f) => setReviseDraft((d) => ({ ...d, corroboratingDocs: [...d.corroboratingDocs, f] })));
+                    e.target.value = "";
+                  }
+                }
+              )
+            ] }) }),
+            reviseDraft.corroboratingDocs.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", flexWrap: "wrap", gap: "0.4rem", marginTop: "0.5rem" }, children: reviseDraft.corroboratingDocs.map((f, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { display: "inline-flex", alignItems: "center", gap: "0.3rem", background: "rgba(13,27,42,0.06)", border: "1px solid rgba(13,27,42,0.18)", borderRadius: "4px", padding: "0.2rem 0.5rem", fontSize: "0.78rem" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { href: f.dataUrl, download: f.fileName, target: "_blank", rel: "noopener noreferrer", style: { color: "#002B5C", textDecoration: "none" }, children: [
+                "\u{1F4CE} ",
+                f.fileName
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { style: { background: "none", border: "none", cursor: "pointer", color: "#C0392B", fontWeight: 700, fontSize: "0.85rem", lineHeight: 1, padding: 0 }, onClick: () => setReviseDraft((d) => ({ ...d, corroboratingDocs: d.corroboratingDocs.filter((_, j) => j !== i) })), children: "\u2715" })
+            ] }, i)) })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Notes (optional)" }),
@@ -29708,8 +29849,8 @@ ${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" :
                 className: "input",
                 style: { minHeight: "70px", resize: "vertical" },
                 maxLength: 1e3,
-                value: reviseNotes,
-                onChange: (e) => setReviseNotes(e.target.value)
+                value: reviseDraft.notes,
+                onChange: (e) => setReviseDraft((d) => ({ ...d, notes: e.target.value }))
               }
             )
           ] }),
@@ -29722,21 +29863,16 @@ ${reviseReply.trim() ? "Reply from submitter:\n" + reviseReply.trim() + "\n\n" :
                 style: { minHeight: "70px", resize: "vertical" },
                 maxLength: 1e3,
                 placeholder: "Briefly explain what you changed\u2026",
-                value: reviseReply,
-                onChange: (e) => setReviseReply(e.target.value)
+                value: reviseDraft.reply,
+                onChange: (e) => setReviseDraft((d) => ({ ...d, reply: e.target.value }))
               }
             )
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => {
-              setReviseId(null);
-              setReviseDoc(null);
-              setReviseNotes("");
-              setReviseReply("");
-            }, children: "Cancel" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: closeReviseModal, children: "Cancel" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "btn btn-orange", onClick: resubmitRevision, children: [
               "Resubmit to ",
-              reviewer?.approverName?.split(" ").slice(-1)[0] || "Reviewer"
+              reviewerLast
             ] })
           ] })
         ] });
