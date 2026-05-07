@@ -34,6 +34,19 @@ const canSignChits = (u) => u && CHIT_SIGNER_ROLES.includes(u.role);
 // Follows the routing-sheet convention: only ADJ, BNXO, and BNCO sign the CHIT.
 const CHIT_SIGNATURE_ROLES = ["adj", "xo", "bn_cdr"];
 const stageRequiresSignature = (stage) => !!stage && CHIT_SIGNATURE_ROLES.includes(stage.approverRole);
+
+// OCs and MECEPs (Marine enlisted on the commissioning track — Sgt/SSgt/GySgt)
+// don't submit traditional CHITs. Their leave is approved externally via NSIPS
+// (Navy) or MOL (Marine OnLine). The BN flow for them is informational: a
+// notice CHIT routes through the chain so everyone is tracking the absence,
+// but reviewers only forward — they can't approve, deny, or return.
+const NOTICE_CHIT_RANK_PREFIXES = ["OC", "Sgt", "SSgt", "GySgt"];
+const usesNoticeChit = (u) => {
+  if (!u || isUnitStaff(u)) return false;
+  const prefix = (u.rank || "").trim().split(/\s+/)[0] || "";
+  return NOTICE_CHIT_RANK_PREFIXES.some(r => r.toLowerCase() === prefix.toLowerCase());
+};
+const isNoticeChit = (chit) => chit?.chitType === "notice";
 const ROLE_DISPLAY = { bn_cdr:"BNCO", xo:"BNXO", ops:"OPS", sel:"SEL", co_cdr:"CC", plt_cdr:"PC", adj:"ADJ", unit_co:"UNIT CO", unit_xo:"UNIT XO", moi:"MOI", amoi:"AMOI", sea:"SEA", sub:"SUBO", swo:"SWO" };
 const displayRole = (role) => ROLE_DISPLAY[role] || role.replace("_"," ").toUpperCase();
 
@@ -399,7 +412,11 @@ function makeChitChainNode(label, stageName, person, approverRole, icon) {
 // chitType:
 //   "single"    (missing a single LL/PT event)    → full chain up to BNCO, + Unit Staff Advisor
 //   "recurring" (missing every LL/PT recurring)   → full chain up to BNCO, + Unit Staff Advisor + Unit XO
-// Both routes now flow all the way through BNCO; the only difference is whether Unit XO is appended.
+//   "notice"    (OC/MECEP leave already approved on NSIPS/MOL — informational
+//                tracking only) → same chain as recurring; reviewers only
+//                forward, they cannot approve/deny.
+// All routes flow all the way through BNCO; the differences are whether Unit
+// XO is appended and whether the actions are approval or forward-only.
 function buildChitApprovalChain(userList, user, routeContext, chitType = "recurring") {
   const { company, platoon } = routeContext;
   const adj = userList.find(u => u.role === "adj");
@@ -440,7 +457,7 @@ function buildChitApprovalChain(userList, user, routeContext, chitType = "recurr
     makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
     makeChitChainNode("Unit Staff Advisor", "Advisor Review", advisor, advisor?.role || "moi", "🎖"),
   );
-  if (chitType === "recurring") {
+  if (chitType === "recurring" || chitType === "notice") {
     chain.push(makeChitChainNode("Unit XO", "Unit XO Approval", unitXo, "unit_xo", "🏅"));
   }
 
@@ -544,7 +561,8 @@ function getUserIdByEmail(userList, email) {
 }
 
 function canActOnChit(user, chit) {
-  if (!user || !chit?.stages || chit.status === "Approved" || chit.status === "Denied" || chit.status === "Returned") return false;
+  if (!user || !chit?.stages) return false;
+  if (["Approved", "Denied", "Returned", "Tracked"].includes(chit.status)) return false;
   if (chit.currentStage >= chit.stages.length - 1) return false;
   // Enforce CoC order: every prior stage must be completed before acting on the current one
   if (!chit.stages.slice(0, chit.currentStage).every(s => s.completedBy)) return false;
@@ -2539,7 +2557,9 @@ function ChitsPage({ chits, setChits, userList }) {
   const needsRouteSelect = requiresChitRouteSelection(user);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState("");
-  const [form, setForm] = useState({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType:"single" });
+  const isNoticeUser = usesNoticeChit(user);
+  const initialChitType = isNoticeUser ? "notice" : "single";
+  const [form, setForm] = useState({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType: initialChitType, acknowledgeSystem:"NSIPS", acknowledged:false });
   const [chitSubmitAttempted, setChitSubmitAttempted] = useState(false);
   const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText] = useState("");
@@ -2571,15 +2591,10 @@ function ChitsPage({ chits, setChits, userList }) {
     reader.readAsDataURL(file);
   };
 
-  // Corroborating docs: any common attachment type, multiple files, 10 MB each.
-  const CORROBORATING_TYPES = ["application/pdf","image/png","image/jpeg","image/jpg","image/heic","image/heif","application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+  // Corroborating docs: any file type, multiple files, 10 MB each.
   const readCorroboratingFile = (file, onLoaded) => {
     if (!file) return;
     if (file.size > MAX_FILE_BYTES) { fire("⚠ File too large (max 10 MB)."); return; }
-    if (!CORROBORATING_TYPES.includes(file.type) && !/\.(pdf|png|jpe?g|heic|heif|docx?|txt)$/i.test(file.name)) {
-      fire("⚠ Unsupported file type. Allowed: PDF, image, Word doc.");
-      return;
-    }
     const reader = new FileReader();
     reader.onload = e => onLoaded({ fileName: file.name, dataUrl: e.target.result, mimeType: file.type || "" });
     reader.readAsDataURL(file);
@@ -2604,20 +2619,24 @@ function ChitsPage({ chits, setChits, userList }) {
 
   const submit = () => {
     setChitSubmitAttempted(true);
-    if (!form.startDate || !form.reason) {
-      fire("⚠ Start Date and Reason are required."); return;
-    }
+    const isNotice = form.chitType === "notice";
+    if (!form.startDate) { fire("⚠ Start Date is required."); return; }
     if (form.startDate < new Date().toISOString().split("T")[0]) {
       fire("⚠ Start date cannot be in the past."); return;
     }
     if (form.endDate && form.endDate <= form.startDate) {
       fire("⚠ Return date must be after the start date."); return;
     }
-    if (form.reason === "Other" && !form.notes.trim()) {
-      fire("⚠ Notes are required when reason is 'Other'."); return;
-    }
-    if (!form.chitDoc) {
-      fire("⚠ CHIT Document is required."); return;
+    if (isNotice) {
+      if (!form.endDate) { fire("⚠ End date is required for a leave notice."); return; }
+      if (!form.acknowledged) { fire(`⚠ Confirm your leave has been approved on ${form.acknowledgeSystem}.`); return; }
+      if (!form.notes.trim()) { fire("⚠ Add a short message describing your absence."); return; }
+    } else {
+      if (!form.reason) { fire("⚠ Reason is required."); return; }
+      if (form.reason === "Other" && !form.notes.trim()) {
+        fire("⚠ Notes are required when reason is 'Other'."); return;
+      }
+      if (!form.chitDoc) { fire("⚠ CHIT Document is required."); return; }
     }
     if (needsRouteSelect && (!form.routeCompany || !form.routePlatoon)) {
       fire("⚠ Please select your company and platoon."); return;
@@ -2637,33 +2656,44 @@ function ChitsPage({ chits, setChits, userList }) {
       company: routeContext.company,
       platoon: routeContext.platoon,
       date: form.endDate && form.endDate !== form.startDate ? `${form.startDate} – ${form.endDate}` : form.startDate,
-      reason: form.reason,
+      reason: isNotice ? `Leave (approved on ${form.acknowledgeSystem})` : form.reason,
       notes: form.notes,
       chitType: form.chitType,
+      acknowledgeSystem: isNotice ? form.acknowledgeSystem : null,
       status: "Pending",
       currentStage: 1,
       stages,
-      docs: { chitDoc: form.chitDoc, corroborating: form.corroboratingDocs || [] },
+      docs: { chitDoc: isNotice ? null : form.chitDoc, corroborating: form.corroboratingDocs || [] },
     };
     setChits(prev => [...prev, c]);
-    // Notify first approver
+    // Notify first approver / acknowledger
     const firstStage = stages[1];
     if (firstStage?.approverId) {
       const firstEmail = getUserEmail(userList, firstStage.approverId);
       if (firstEmail) {
-        sendNotification(firstEmail,
-          `New CHIT ${c.id} — Requires Your Approval`,
-          `Hello ${firstStage.approverName},\n\nA new CHIT (${c.id}) has been submitted by ${fullName} for "${form.reason}".\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
-          "submission", firstStage.approverId
-        );
+        if (isNotice) {
+          sendNotification(firstEmail,
+            `New Leave Notice ${c.id} — Acknowledge & Forward`,
+            `Hello ${firstStage.approverName},\n\n${fullName} has filed a leave notice (${c.id}) for ${c.date}. Their leave was already approved on ${form.acknowledgeSystem}; this is informational so the chain is tracking. Please log in to The Quarterdeck to acknowledge and forward.\n\n— The Quarterdeck`,
+            "submission", firstStage.approverId
+          );
+        } else {
+          sendNotification(firstEmail,
+            `New CHIT ${c.id} — Requires Your Approval`,
+            `Hello ${firstStage.approverName},\n\nA new CHIT (${c.id}) has been submitted by ${fullName} for "${form.reason}".\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
+            "submission", firstStage.approverId
+          );
+        }
         const approverPrefs = loadNotifPrefs(firstStage.approverId);
         trackApproval(c.id, "CHIT", firstEmail, firstStage.approverName, fullName, approverPrefs.reminder_days);
       }
     }
     setShowModal(false);
-    setForm({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType:"single" });
+    setForm({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType: initialChitType, acknowledgeSystem:"NSIPS", acknowledged:false });
     setChitSubmitAttempted(false);
-    fire("✅ CHIT submitted and routed to your chain of command.");
+    fire(form.chitType === "notice"
+      ? "✅ Leave notice submitted — chain of command notified."
+      : "✅ CHIT submitted and routed to your chain of command.");
   };
 
   const advanceStage = (id, action) => {
@@ -2671,8 +2701,17 @@ function ChitsPage({ chits, setChits, userList }) {
     const reviewerFullName = `${user.rank} ${user.name}`;
     const chit = chits.find(c => c.id === id);
     if (!chit) return;
+    const noticeChit = isNoticeChit(chit);
+    if (noticeChit && action !== "forwarded") {
+      fire("⚠ Notice CHITs can only be forwarded — they were already approved on NSIPS/MOL.");
+      return;
+    }
+    if (!noticeChit && action === "forwarded") {
+      fire("⚠ Forward is only available on leave-notice CHITs.");
+      return;
+    }
     const currentStage = chit.stages[chit.currentStage];
-    const needsSignature = action !== "returned" && stageRequiresSignature(currentStage);
+    const needsSignature = !noticeChit && action !== "returned" && stageRequiresSignature(currentStage);
     if (needsSignature && !signedDoc) {
       fire("⚠ Upload the signed CHIT document before approving or denying.");
       return;
@@ -2688,8 +2727,8 @@ function ChitsPage({ chits, setChits, userList }) {
         action, // "approved" | "denied" | "returned"
         signedDoc: needsSignature ? signedDoc : (updated[c.currentStage].signedDoc || null),
       };
-      // Returns bounce back to originator. Approvals AND denials advance through
-      // the chain so every member gets a chance to weigh in.
+      // Returns bounce back to originator. Approvals, denials, and notice
+      // forwards all advance through the chain.
       const next = action === "returned"
         ? c.currentStage
         : Math.min(c.currentStage + 1, c.stages.length - 1);
@@ -2697,8 +2736,14 @@ function ChitsPage({ chits, setChits, userList }) {
       if (action === "returned") {
         status = "Returned";
       } else if (next === c.stages.length - 1) {
-        // Final stage reached — outcome reflects whether anyone in the chain denied.
-        status = updated.some(s => s.action === "denied") ? "Denied" : "Approved";
+        if (noticeChit) {
+          // Notice CHITs are informational — once everyone has forwarded, the
+          // chit is fully tracked. They never end in Approved/Denied.
+          status = "Tracked";
+        } else {
+          // Final stage reached — outcome reflects whether anyone in the chain denied.
+          status = updated.some(s => s.action === "denied") ? "Denied" : "Approved";
+        }
       } else {
         status = "Pending";
       }
@@ -2733,23 +2778,31 @@ function ChitsPage({ chits, setChits, userList }) {
         if (isFinal) {
           // Chain complete — determine final outcome from the freshly-updated stages.
           clearApproval(id);
-          const finalStages = chit.stages.map((s, i) =>
-            i === chit.currentStage ? { ...s, action } : s
-          );
-          const anyDenied = finalStages.some(s => s.action === "denied");
           if (originatorEmail) {
-            if (anyDenied) {
+            if (noticeChit) {
               sendNotification(originatorEmail,
-                `CHIT ${id} — Denied`,
-                `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has completed routing through the chain of command and was denied. See The Quarterdeck for per-stage decisions.\n\n— The Quarterdeck`,
-                "return", chit.userId
-              );
-            } else {
-              sendNotification(originatorEmail,
-                `CHIT ${id} — Fully Approved`,
-                `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has been fully approved through the chain of command.\n\n— The Quarterdeck`,
+                `Leave Notice ${id} — Tracked by Chain of Command`,
+                `Hello ${chit.name},\n\nYour leave notice (${id}) for ${chit.date} has been forwarded through the entire chain of command. Your absence is now on file.\n\n— The Quarterdeck`,
                 "complete", chit.userId
               );
+            } else {
+              const finalStages = chit.stages.map((s, i) =>
+                i === chit.currentStage ? { ...s, action } : s
+              );
+              const anyDenied = finalStages.some(s => s.action === "denied");
+              if (anyDenied) {
+                sendNotification(originatorEmail,
+                  `CHIT ${id} — Denied`,
+                  `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has completed routing through the chain of command and was denied. See The Quarterdeck for per-stage decisions.\n\n— The Quarterdeck`,
+                  "return", chit.userId
+                );
+              } else {
+                sendNotification(originatorEmail,
+                  `CHIT ${id} — Fully Approved`,
+                  `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has been fully approved through the chain of command.\n\n— The Quarterdeck`,
+                  "complete", chit.userId
+                );
+              }
             }
           }
         } else {
@@ -2758,11 +2811,19 @@ function ChitsPage({ chits, setChits, userList }) {
           if (nextStage?.approverId) {
             const nextEmail = getUserEmail(userList, nextStage.approverId);
             if (nextEmail) {
-              sendNotification(nextEmail,
-                `CHIT ${id} — Requires Your Approval`,
-                `Hello ${nextStage.approverName},\n\nA CHIT (${id}) from ${chit.name} for "${chit.reason}" requires your approval.\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
-                "approval", nextStage.approverId
-              );
+              if (noticeChit) {
+                sendNotification(nextEmail,
+                  `Leave Notice ${id} — Acknowledge & Forward`,
+                  `Hello ${nextStage.approverName},\n\n${chit.name} has filed a leave notice (${id}) for ${chit.date}. Their leave was already approved on ${chit.acknowledgeSystem || "NSIPS/MOL"}; this is informational so the chain is tracking. Please log in to The Quarterdeck to acknowledge and forward.\n\n— The Quarterdeck`,
+                  "approval", nextStage.approverId
+                );
+              } else {
+                sendNotification(nextEmail,
+                  `CHIT ${id} — Requires Your Approval`,
+                  `Hello ${nextStage.approverName},\n\nA CHIT (${id}) from ${chit.name} for "${chit.reason}" requires your approval.\n\nPlease log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
+                  "approval", nextStage.approverId
+                );
+              }
               const nextPrefs = loadNotifPrefs(nextStage.approverId);
               trackApproval(id, "CHIT", nextEmail, nextStage.approverName, chit.name, nextPrefs.reminder_days);
             }
@@ -2777,6 +2838,8 @@ function ChitsPage({ chits, setChits, userList }) {
       ? "CHIT marked as denied — continues routing for remaining CoC review."
       : action === "returned"
       ? "CHIT returned to originator."
+      : action === "forwarded"
+      ? "Leave notice forwarded up the chain."
       : "CHIT updated.");
   };
 
@@ -2857,7 +2920,7 @@ function ChitsPage({ chits, setChits, userList }) {
   const [chitFolders, setChitFolders] = useState({ action: false, pipeline: false, complete: false });
   const needsAction = visible.filter(c => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
   const inPipeline = visible.filter(c => c.status === "Pending" && !canActOnChit(user, c));
-  const completed = visible.filter(c => c.status === "Approved" || c.status === "Denied" || c.status === "Returned");
+  const completed = visible.filter(c => ["Approved", "Denied", "Returned", "Tracked"].includes(c.status));
   const myCompleted = completed.filter(c => c.userId === user.id);
   const archiveBySemester = canSeeArchive(user) ? (() => {
     const groups = {};
@@ -2870,9 +2933,13 @@ function ChitsPage({ chits, setChits, userList }) {
 
   const renderChitCard = (c) => {
     const canAct = canActOnChit(user, c);
-    const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
+    const isDone = ["Approved", "Denied", "Returned", "Tracked"].includes(c.status);
     const currentStageName = c.stages?.[c.currentStage]?.name || "";
+    const noticeChit = isNoticeChit(c);
     const denialsSoFar = (c.stages || []).filter(s => s.action === "denied").length;
+    const chitTypeLabel = noticeChit
+      ? `Leave Notice · ${c.acknowledgeSystem || "NSIPS/MOL"}`
+      : c.chitType === "recurring" ? "Every LL/PT" : "Single Event";
 
     const timer = !isDone ? getRoutingTimerInfo(c.stages?.[0]?.completedAt) : null;
 
@@ -2891,7 +2958,7 @@ function ChitsPage({ chits, setChits, userList }) {
                 {timer.status === "overdue" ? "⚠ " : "⏱ "}{timer.label}
               </span>
             )}
-            <span className={`badge ${c.status==="Approved" ? "badge-green" : c.status==="Denied" || c.status==="Returned" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
+            <span className={`badge ${c.status === "Approved" || c.status === "Tracked" ? "badge-green" : c.status === "Denied" || c.status === "Returned" ? "badge-red" : "badge-orange"}`}>{c.status}</span>
             {!isDone && denialsSoFar > 0 && (
               <span className="badge badge-red" title="One or more reviewers denied this CHIT. Routing continues so the rest of the chain can weigh in.">
                 ✕ {denialsSoFar} denial{denialsSoFar !== 1 ? "s" : ""}
@@ -2900,7 +2967,12 @@ function ChitsPage({ chits, setChits, userList }) {
             {canAct && !isDone && <span className="badge" style={{ background:"rgba(42,125,79,0.15)", color:"#2A7D4F" }}>● Your Action</span>}
           </div>
         </div>
-        <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · {c.chitType === "recurring" ? "Every LL/PT" : "Single Event"} · Absent: {c.date}</div>
+        <div style={{ fontSize:"0.82rem", color:"#666" }}>{c.reason} · {chitTypeLabel} · {noticeChit ? "On Leave: " : "Absent: "}{c.date}</div>
+        {noticeChit && (
+          <div style={{ fontSize:"0.78rem", color:"#2A7D4F", marginTop:"0.25rem", fontWeight:600 }}>
+            ✓ Leave already approved on {c.acknowledgeSystem || "NSIPS/MOL"} — chain forwards for tracking only.
+          </div>
+        )}
         {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", marginTop:"0.2rem" }}>{c.notes}</div>}
 
         {(c.docs?.chitDoc || (c.docs?.corroborating?.length > 0)) && (
@@ -2970,10 +3042,13 @@ function ChitsPage({ chits, setChits, userList }) {
         })()}
 
         {canAct && !isDone && (() => {
-          const needsSig = stageRequiresSignature(c.stages?.[c.currentStage]);
+          const needsSig = !noticeChit && stageRequiresSignature(c.stages?.[c.currentStage]);
+          const reviewLabel = noticeChit
+            ? `📨 Acknowledge & Forward — ${currentStageName}`
+            : `⭐ Your Review — ${currentStageName}`;
           return (
             <div className="stage-action-box" style={{ marginTop:"0.75rem" }}>
-              <div className="stage-action-label">⭐ Your Review — {currentStageName}</div>
+              <div className="stage-action-label">{reviewLabel}</div>
               {activeComment === c.id ? (
                 <>
                   {needsSig && (
@@ -3001,20 +3076,27 @@ function ChitsPage({ chits, setChits, userList }) {
                     className="input"
                     style={{ minHeight:"70px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
                     maxLength={1000}
-                    placeholder="Add comments (optional)…"
+                    placeholder={noticeChit ? "Add comments (optional)…" : "Add comments (optional)…"}
                     value={commentText}
                     onChange={e => setCommentText(e.target.value)}
                   />
-                  <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-                    <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
-                    <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return</button>
-                    <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "denied")}>✕ Deny</button>
-                    <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); setSignedDoc(null); }}>Cancel</button>
-                  </div>
+                  {noticeChit ? (
+                    <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                      <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "forwarded")}>📨 Forward</button>
+                      <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>Cancel</button>
+                    </div>
+                  ) : (
+                    <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                      <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
+                      <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return</button>
+                      <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "denied")}>✕ Deny</button>
+                      <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); setSignedDoc(null); }}>Cancel</button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(c.id); setCommentText(""); setSignedDoc(null); }}>
-                  ✏ Review CHIT
+                  {noticeChit ? "📨 Acknowledge & Forward" : "✏ Review CHIT"}
                 </button>
               )}
             </div>
@@ -3066,6 +3148,7 @@ function ChitsPage({ chits, setChits, userList }) {
                 <div><span className="badge badge-green" style={{ marginRight:"0.5rem" }}>✓ Approve</span>Sign off on the CHIT and advance it to the next reviewer in the chain. ADJ, BNXO, and BNCO must upload a signed copy of the CHIT PDF — that signed copy then becomes the working CHIT document for everyone above them.</div>
                 <div><span className="badge badge-red" style={{ marginRight:"0.5rem" }}>✕ Deny</span>Record your disagreement, but routing <em>continues up the chain</em> so every reviewer still gets a chance to weigh in. The CHIT's final outcome is "Denied" if anyone in the chain denied; otherwise "Approved" once it reaches the top. ADJ/BNXO/BNCO denials also require a signed PDF.</div>
                 <div><span className="badge" style={{ marginRight:"0.5rem", background:"#9b1c1c", color:"white" }}>↩ Return</span>Send the CHIT back to the originator to fix or add documentation. They edit the submission directly (replace the CHIT PDF, add/remove corroborating files, update notes) and resubmit; it routes <em>back to you</em>, not to the top, and the routing timer resets. No signature required to return.</div>
+                <div><span className="badge badge-green" style={{ marginRight:"0.5rem" }}>📨 Forward</span>The only action available on a <strong>Leave Notice</strong> from an OC or MECEP. Their leave is already approved on NSIPS/MOL — the BN can't approve or deny, just acknowledge and forward up the chain so everyone is tracking. No signature, no document upload required.</div>
                 <div style={{ fontSize:"0.78rem", color:"#666", borderTop:"1px solid #eee", paddingTop:"0.4rem", marginTop:"0.2rem" }}>
                   Comments you leave are visible to other CoC reviewers but never to the originator — except for the comment from the most recent return, which the originator sees so they can fix what you flagged.
                 </div>
@@ -3077,7 +3160,7 @@ function ChitsPage({ chits, setChits, userList }) {
 
       {canSubmit && (
         <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
-          <button className="btn btn-orange" onClick={() => setShowModal(true)}>+ Submit New CHIT</button>
+          <button className="btn btn-orange" onClick={() => setShowModal(true)}>{isNoticeUser ? "+ Submit Leave Notice" : "+ Submit New CHIT"}</button>
         </div>
       )}
 
@@ -3132,9 +3215,14 @@ function ChitsPage({ chits, setChits, userList }) {
       )}
 
       {showModal && (
-        <Modal title="Submit CHIT" onClose={() => setShowModal(false)}>
+        <Modal title={isNoticeUser ? "Submit Leave Notice" : "Submit CHIT"} onClose={() => setShowModal(false)}>
           <div className="privacy-note">🔒 Private — only you and your CoC will see this.</div>
           {toast && <div className={`alert ${toast.startsWith("⚠") ? "alert-red" : "alert-green"}`}>{toast}</div>}
+          {isNoticeUser && (
+            <div className="alert alert-announce" style={{ marginBottom:"0.75rem", fontSize:"0.85rem" }}>
+              📨 <strong>Leave Notice (OC / MECEP):</strong> your leave is approved through NSIPS or MOL. This notice routes through the chain so the BN is tracking your absence — the BN can't approve or deny it, only acknowledge and forward.
+            </div>
+          )}
           {needsRouteSelect && (
             <>
               <div className="input-group">
@@ -3155,71 +3243,103 @@ function ChitsPage({ chits, setChits, userList }) {
               )}
             </>
           )}
-          <div className="input-group">
-            <label className="input-label">Type of Absence <span style={{ color:"#C0392B" }}>*</span></label>
-            <select className="input" value={form.chitType} onChange={e => setForm(s => ({ ...s, chitType:e.target.value }))}>
-              <option value="single">Missing Single Event</option>
-              <option value="recurring">Missing Every LL/PT</option>
-            </select>
-            <div style={{ fontSize:"0.72rem", color:"#888", marginTop:"0.25rem" }}>
-              {form.chitType === "single" ? "Routes to your PC/CC for approval." : "Routes up through BNXO/BNCO for approval."}
+          {!isNoticeUser && (
+            <div className="input-group">
+              <label className="input-label">Type of Absence <span style={{ color:"#C0392B" }}>*</span></label>
+              <select className="input" value={form.chitType} onChange={e => setForm(s => ({ ...s, chitType:e.target.value }))}>
+                <option value="single">Missing Single Event</option>
+                <option value="recurring">Missing Every LL/PT</option>
+              </select>
+              <div style={{ fontSize:"0.72rem", color:"#888", marginTop:"0.25rem" }}>
+                {form.chitType === "single" ? "Routes to your PC/CC for approval." : "Routes up through BNXO/BNCO for approval."}
+              </div>
             </div>
-          </div>
+          )}
           <div className="input-group">
             <label className="input-label">Start Date <span style={{ color:"#C0392B" }}>*</span></label>
             <input className="input" type="date" min={new Date().toISOString().split("T")[0]} value={form.startDate} onChange={e => setForm(s => ({ ...s, startDate:e.target.value }))} />
           </div>
           <div className="input-group">
-            <label className="input-label">End Date <span style={{ fontSize:"0.75rem", color:"#888" }}>(leave blank if single day)</span></label>
+            <label className="input-label">End Date {isNoticeUser ? <span style={{ color:"#C0392B" }}>*</span> : <span style={{ fontSize:"0.75rem", color:"#888" }}>(leave blank if single day)</span>}</label>
             <input className="input" type="date" value={form.endDate} min={form.startDate || new Date().toISOString().split("T")[0]} onChange={e => setForm(s => ({ ...s, endDate:e.target.value }))} />
           </div>
-          <div className="input-group">
-            <label className="input-label">Reason <span style={{ color:"#C0392B" }}>*</span></label>
-            <select className="input" value={form.reason} onChange={e => setForm(s => ({ ...s, reason:e.target.value }))}>
-              <option value="">Select reason…</option>
-              <option>Medical Appointment</option>
-              <option>Academic Conflict</option>
-              <option>Family Emergency</option>
-              <option>Personal Emergency</option>
-              <option>Other</option>
-            </select>
-          </div>
-          <div className="input-group">
-            <label className="input-label">Notes {form.reason === "Other" ? <span style={{ color:"#C0392B" }}>*</span> : "(optional)"}</label>
-            <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} maxLength={1000} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} placeholder={form.reason === "Other" ? "Please explain the reason for your absence" : ""} />
-          </div>
-
-          {/* ── Required Document ── */}
-          <div style={{ borderTop:"1px solid #eee", paddingTop:"0.85rem", marginTop:"0.25rem" }}>
-            <div className="input-group">
-              <label className="input-label">
-                CHIT Document <span style={{ color:"#C0392B" }}>*</span>
-              </label>
-              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
-                <label htmlFor="chit-doc" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
-                  {form.chitDoc ? "↑ Replace PDF" : "↑ Upload PDF"}
-                </label>
-                <input
-                  id="chit-doc" type="file" accept=".pdf,application/pdf"
-                  style={{ display:"none" }}
-                  onChange={e => { loadChitFile("chitDoc", e.target.files[0], ["application/pdf"], "⚠ Please select a PDF file."); e.target.value = ""; }}
-                />
-                {form.chitDoc
-                  ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {form.chitDoc.fileName}</span>
-                  : <span style={{ fontSize:"0.75rem", color:"#C0392B" }}>Required</span>
-                }
+          {isNoticeUser ? (
+            <>
+              <div className="input-group">
+                <label className="input-label">Approval System <span style={{ color:"#C0392B" }}>*</span></label>
+                <select className="input" value={form.acknowledgeSystem} onChange={e => setForm(s => ({ ...s, acknowledgeSystem: e.target.value }))}>
+                  <option value="NSIPS">NSIPS (Navy)</option>
+                  <option value="MOL">MOL (Marine OnLine)</option>
+                </select>
               </div>
-            </div>
+              <div className="input-group">
+                <label className="input-label">Message to Chain <span style={{ color:"#C0392B" }}>*</span></label>
+                <textarea
+                  className="input" style={{ minHeight:"90px", resize:"vertical" }} maxLength={1000}
+                  value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))}
+                  placeholder={`I will be on leave from ${form.startDate || "[start]"} to ${form.endDate || "[end]"}. I confirm my leave has been approved and submitted on ${form.acknowledgeSystem}.`}
+                />
+              </div>
+              <div className="input-group">
+                <label style={{ display:"flex", alignItems:"flex-start", gap:"0.5rem", cursor:"pointer", fontSize:"0.85rem" }}>
+                  <input type="checkbox" checked={form.acknowledged} onChange={e => setForm(s => ({ ...s, acknowledged: e.target.checked }))} style={{ marginTop:"0.2rem" }} />
+                  <span>I confirm my leave has been approved and submitted on <strong>{form.acknowledgeSystem}</strong>.</span>
+                </label>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="input-group">
+                <label className="input-label">Reason <span style={{ color:"#C0392B" }}>*</span></label>
+                <select className="input" value={form.reason} onChange={e => setForm(s => ({ ...s, reason:e.target.value }))}>
+                  <option value="">Select reason…</option>
+                  <option>Medical Appointment</option>
+                  <option>Academic Conflict</option>
+                  <option>Family Emergency</option>
+                  <option>Personal Emergency</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div className="input-group">
+                <label className="input-label">Notes {form.reason === "Other" ? <span style={{ color:"#C0392B" }}>*</span> : "(optional)"}</label>
+                <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} maxLength={1000} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} placeholder={form.reason === "Other" ? "Please explain the reason for your absence" : ""} />
+              </div>
+            </>
+          )}
+
+          {/* ── Documents (CHIT PDF + corroborating) ── */}
+          <div style={{ borderTop:"1px solid #eee", paddingTop:"0.85rem", marginTop:"0.25rem" }}>
+            {!isNoticeUser && (
+              <div className="input-group">
+                <label className="input-label">
+                  CHIT Document <span style={{ color:"#C0392B" }}>*</span>
+                </label>
+                <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+                  <label htmlFor="chit-doc" className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
+                    {form.chitDoc ? "↑ Replace PDF" : "↑ Upload PDF"}
+                  </label>
+                  <input
+                    id="chit-doc" type="file" accept=".pdf,application/pdf"
+                    style={{ display:"none" }}
+                    onChange={e => { loadChitFile("chitDoc", e.target.files[0], ["application/pdf"], "⚠ Please select a PDF file."); e.target.value = ""; }}
+                  />
+                  {form.chitDoc
+                    ? <span style={{ fontSize:"0.78rem", color:"#2A7D4F", fontWeight:600 }}>📄 {form.chitDoc.fileName}</span>
+                    : <span style={{ fontSize:"0.75rem", color:"#C0392B" }}>Required</span>
+                  }
+                </div>
+              </div>
+            )}
             {/* Corroborating documentation — optional, multi-file */}
             <div className="input-group">
               <label className="input-label">Corroborating Documentation <span style={{ fontSize:"0.72rem", color:"#888" }}>(optional)</span></label>
               <div style={{ fontSize:"0.72rem", color:"#666", marginBottom:"0.4rem" }}>
-                Attach any supporting documents (medical notes, screenshots, schedules, etc.). Max 10 MB per file.
+                Attach any supporting documents (medical notes, screenshots, schedules, etc.). Any file type. Max 10 MB per file.
               </div>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
                 <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
                   + Add File
-                  <input type="file" accept=".pdf,.png,.jpg,.jpeg,.heic,.heif,.doc,.docx,.txt"
+                  <input type="file" accept="*/*"
                     style={{ display:"none" }}
                     onChange={e => { readCorroboratingFile(e.target.files[0], f => setForm(s => ({ ...s, corroboratingDocs: [...s.corroboratingDocs, f] }))); e.target.value = ""; }} />
                 </label>
@@ -3238,11 +3358,11 @@ function ChitsPage({ chits, setChits, userList }) {
           </div>
 
           <div className="route-hint">
-            Your CHIT routes to: <strong>{routeHint()}</strong>
+            {isNoticeUser ? "Your notice routes to" : "Your CHIT routes to"}: <strong>{isNoticeUser ? "PC → CC → ADJ → BNXO → BNCO → Advisor → Unit XO" : routeHint()}</strong>
           </div>
           <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
             <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
-            <button className="btn btn-orange" onClick={submit}>Submit CHIT</button>
+            <button className="btn btn-orange" onClick={submit}>{isNoticeUser ? "Submit Leave Notice" : "Submit CHIT"}</button>
           </div>
         </Modal>
       )}
@@ -3294,12 +3414,12 @@ function ChitsPage({ chits, setChits, userList }) {
             <div className="input-group">
               <label className="input-label">Corroborating Documentation <span style={{ fontSize:"0.72rem", color:"#888" }}>(optional)</span></label>
               <div style={{ fontSize:"0.72rem", color:"#666", marginBottom:"0.4rem" }}>
-                Add or remove supporting documents (medical notes, screenshots, etc.). Max 10 MB per file.
+                Add or remove supporting documents (medical notes, screenshots, etc.). Any file type. Max 10 MB per file.
               </div>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
                 <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
                   + Add File
-                  <input type="file" accept=".pdf,.png,.jpg,.jpeg,.heic,.heif,.doc,.docx,.txt"
+                  <input type="file" accept="*/*"
                     style={{ display:"none" }}
                     onChange={e => { readCorroboratingFile(e.target.files[0], f => setReviseDraft(d => ({ ...d, corroboratingDocs: [...d.corroboratingDocs, f] }))); e.target.value = ""; }} />
                 </label>

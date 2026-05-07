@@ -26914,6 +26914,13 @@
   var canSignChits = (u) => u && CHIT_SIGNER_ROLES.includes(u.role);
   var CHIT_SIGNATURE_ROLES = ["adj", "xo", "bn_cdr"];
   var stageRequiresSignature = (stage) => !!stage && CHIT_SIGNATURE_ROLES.includes(stage.approverRole);
+  var NOTICE_CHIT_RANK_PREFIXES = ["OC", "Sgt", "SSgt", "GySgt"];
+  var usesNoticeChit = (u) => {
+    if (!u || isUnitStaff(u)) return false;
+    const prefix = (u.rank || "").trim().split(/\s+/)[0] || "";
+    return NOTICE_CHIT_RANK_PREFIXES.some((r) => r.toLowerCase() === prefix.toLowerCase());
+  };
+  var isNoticeChit = (chit) => chit?.chitType === "notice";
   var ROLE_DISPLAY = { bn_cdr: "BNCO", xo: "BNXO", ops: "OPS", sel: "SEL", co_cdr: "CC", plt_cdr: "PC", adj: "ADJ", unit_co: "UNIT CO", unit_xo: "UNIT XO", moi: "MOI", amoi: "AMOI", sea: "SEA", sub: "SUBO", swo: "SWO" };
   var displayRole = (role) => ROLE_DISPLAY[role] || role.replace("_", " ").toUpperCase();
   function canEdit(user, section) {
@@ -27160,7 +27167,7 @@
       makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}"),
       makeChitChainNode("Unit Staff Advisor", "Advisor Review", advisor, advisor?.role || "moi", "\u{1F396}")
     );
-    if (chitType === "recurring") {
+    if (chitType === "recurring" || chitType === "notice") {
       chain.push(makeChitChainNode("Unit XO", "Unit XO Approval", unitXo, "unit_xo", "\u{1F3C5}"));
     }
     return chain.length > 0 && chain.every((node) => node.approverId) ? chain : [];
@@ -27242,7 +27249,8 @@
     return u?.email || "";
   }
   function canActOnChit(user, chit) {
-    if (!user || !chit?.stages || chit.status === "Approved" || chit.status === "Denied" || chit.status === "Returned") return false;
+    if (!user || !chit?.stages) return false;
+    if (["Approved", "Denied", "Returned", "Tracked"].includes(chit.status)) return false;
     if (chit.currentStage >= chit.stages.length - 1) return false;
     if (!chit.stages.slice(0, chit.currentStage).every((s) => s.completedBy)) return false;
     const stage = chit.stages[chit.currentStage];
@@ -29001,7 +29009,9 @@
     const needsRouteSelect = requiresChitRouteSelection(user);
     const [showModal, setShowModal] = (0, import_react.useState)(false);
     const [toast, setToast] = (0, import_react.useState)("");
-    const [form, setForm] = (0, import_react.useState)({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: "single" });
+    const isNoticeUser = usesNoticeChit(user);
+    const initialChitType = isNoticeUser ? "notice" : "single";
+    const [form, setForm] = (0, import_react.useState)({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: initialChitType, acknowledgeSystem: "NSIPS", acknowledged: false });
     const [chitSubmitAttempted, setChitSubmitAttempted] = (0, import_react.useState)(false);
     const [activeComment, setActiveComment] = (0, import_react.useState)(null);
     const [commentText, setCommentText] = (0, import_react.useState)("");
@@ -29038,15 +29048,10 @@
       reader.onload = (e) => onLoaded({ fileName: file.name, dataUrl: e.target.result });
       reader.readAsDataURL(file);
     };
-    const CORROBORATING_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/jpg", "image/heic", "image/heif", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
     const readCorroboratingFile = (file, onLoaded) => {
       if (!file) return;
       if (file.size > MAX_FILE_BYTES) {
         fire("\u26A0 File too large (max 10 MB).");
-        return;
-      }
-      if (!CORROBORATING_TYPES.includes(file.type) && !/\.(pdf|png|jpe?g|heic|heif|docx?|txt)$/i.test(file.name)) {
-        fire("\u26A0 Unsupported file type. Allowed: PDF, image, Word doc.");
         return;
       }
       const reader = new FileReader();
@@ -29070,8 +29075,9 @@
     };
     const submit = () => {
       setChitSubmitAttempted(true);
-      if (!form.startDate || !form.reason) {
-        fire("\u26A0 Start Date and Reason are required.");
+      const isNotice = form.chitType === "notice";
+      if (!form.startDate) {
+        fire("\u26A0 Start Date is required.");
         return;
       }
       if (form.startDate < (/* @__PURE__ */ new Date()).toISOString().split("T")[0]) {
@@ -29082,13 +29088,32 @@
         fire("\u26A0 Return date must be after the start date.");
         return;
       }
-      if (form.reason === "Other" && !form.notes.trim()) {
-        fire("\u26A0 Notes are required when reason is 'Other'.");
-        return;
-      }
-      if (!form.chitDoc) {
-        fire("\u26A0 CHIT Document is required.");
-        return;
+      if (isNotice) {
+        if (!form.endDate) {
+          fire("\u26A0 End date is required for a leave notice.");
+          return;
+        }
+        if (!form.acknowledged) {
+          fire(`\u26A0 Confirm your leave has been approved on ${form.acknowledgeSystem}.`);
+          return;
+        }
+        if (!form.notes.trim()) {
+          fire("\u26A0 Add a short message describing your absence.");
+          return;
+        }
+      } else {
+        if (!form.reason) {
+          fire("\u26A0 Reason is required.");
+          return;
+        }
+        if (form.reason === "Other" && !form.notes.trim()) {
+          fire("\u26A0 Notes are required when reason is 'Other'.");
+          return;
+        }
+        if (!form.chitDoc) {
+          fire("\u26A0 CHIT Document is required.");
+          return;
+        }
       }
       if (needsRouteSelect && (!form.routeCompany || !form.routePlatoon)) {
         fire("\u26A0 Please select your company and platoon.");
@@ -29110,48 +29135,72 @@
         company: routeContext.company,
         platoon: routeContext.platoon,
         date: form.endDate && form.endDate !== form.startDate ? `${form.startDate} \u2013 ${form.endDate}` : form.startDate,
-        reason: form.reason,
+        reason: isNotice ? `Leave (approved on ${form.acknowledgeSystem})` : form.reason,
         notes: form.notes,
         chitType: form.chitType,
+        acknowledgeSystem: isNotice ? form.acknowledgeSystem : null,
         status: "Pending",
         currentStage: 1,
         stages,
-        docs: { chitDoc: form.chitDoc, corroborating: form.corroboratingDocs || [] }
+        docs: { chitDoc: isNotice ? null : form.chitDoc, corroborating: form.corroboratingDocs || [] }
       };
       setChits((prev) => [...prev, c]);
       const firstStage = stages[1];
       if (firstStage?.approverId) {
         const firstEmail = getUserEmail(userList, firstStage.approverId);
         if (firstEmail) {
-          sendNotification(
-            firstEmail,
-            `New CHIT ${c.id} \u2014 Requires Your Approval`,
-            `Hello ${firstStage.approverName},
+          if (isNotice) {
+            sendNotification(
+              firstEmail,
+              `New Leave Notice ${c.id} \u2014 Acknowledge & Forward`,
+              `Hello ${firstStage.approverName},
+
+${fullName} has filed a leave notice (${c.id}) for ${c.date}. Their leave was already approved on ${form.acknowledgeSystem}; this is informational so the chain is tracking. Please log in to The Quarterdeck to acknowledge and forward.
+
+\u2014 The Quarterdeck`,
+              "submission",
+              firstStage.approverId
+            );
+          } else {
+            sendNotification(
+              firstEmail,
+              `New CHIT ${c.id} \u2014 Requires Your Approval`,
+              `Hello ${firstStage.approverName},
 
 A new CHIT (${c.id}) has been submitted by ${fullName} for "${form.reason}".
 
 Please log in to The Quarterdeck to review and take action.
 
 \u2014 The Quarterdeck`,
-            "submission",
-            firstStage.approverId
-          );
+              "submission",
+              firstStage.approverId
+            );
+          }
           const approverPrefs = loadNotifPrefs(firstStage.approverId);
           trackApproval(c.id, "CHIT", firstEmail, firstStage.approverName, fullName, approverPrefs.reminder_days);
         }
       }
       setShowModal(false);
-      setForm({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: "single" });
+      setForm({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: initialChitType, acknowledgeSystem: "NSIPS", acknowledged: false });
       setChitSubmitAttempted(false);
-      fire("\u2705 CHIT submitted and routed to your chain of command.");
+      fire(form.chitType === "notice" ? "\u2705 Leave notice submitted \u2014 chain of command notified." : "\u2705 CHIT submitted and routed to your chain of command.");
     };
     const advanceStage = (id, action) => {
       const comment = commentText.trim();
       const reviewerFullName = `${user.rank} ${user.name}`;
       const chit = chits.find((c) => c.id === id);
       if (!chit) return;
+      const noticeChit = isNoticeChit(chit);
+      if (noticeChit && action !== "forwarded") {
+        fire("\u26A0 Notice CHITs can only be forwarded \u2014 they were already approved on NSIPS/MOL.");
+        return;
+      }
+      if (!noticeChit && action === "forwarded") {
+        fire("\u26A0 Forward is only available on leave-notice CHITs.");
+        return;
+      }
       const currentStage = chit.stages[chit.currentStage];
-      const needsSignature = action !== "returned" && stageRequiresSignature(currentStage);
+      const needsSignature = !noticeChit && action !== "returned" && stageRequiresSignature(currentStage);
       if (needsSignature && !signedDoc) {
         fire("\u26A0 Upload the signed CHIT document before approving or denying.");
         return;
@@ -29173,7 +29222,11 @@ Please log in to The Quarterdeck to review and take action.
         if (action === "returned") {
           status = "Returned";
         } else if (next === c.stages.length - 1) {
-          status = updated.some((s) => s.action === "denied") ? "Denied" : "Approved";
+          if (noticeChit) {
+            status = "Tracked";
+          } else {
+            status = updated.some((s) => s.action === "denied") ? "Denied" : "Approved";
+          }
         } else {
           status = "Pending";
         }
@@ -29217,35 +29270,49 @@ ${comment ? "Comments: " + comment + "\n\n" : ""}\u2014 The Quarterdeck`,
           }
           if (isFinal) {
             clearApproval(id);
-            const finalStages = chit.stages.map(
-              (s, i) => i === chit.currentStage ? { ...s, action } : s
-            );
-            const anyDenied = finalStages.some((s) => s.action === "denied");
             if (originatorEmail) {
-              if (anyDenied) {
+              if (noticeChit) {
                 sendNotification(
                   originatorEmail,
-                  `CHIT ${id} \u2014 Denied`,
+                  `Leave Notice ${id} \u2014 Tracked by Chain of Command`,
                   `Hello ${chit.name},
 
-Your CHIT (${id}) for "${chit.reason}" has completed routing through the chain of command and was denied. See The Quarterdeck for per-stage decisions.
-
-\u2014 The Quarterdeck`,
-                  "return",
-                  chit.userId
-                );
-              } else {
-                sendNotification(
-                  originatorEmail,
-                  `CHIT ${id} \u2014 Fully Approved`,
-                  `Hello ${chit.name},
-
-Your CHIT (${id}) for "${chit.reason}" has been fully approved through the chain of command.
+Your leave notice (${id}) for ${chit.date} has been forwarded through the entire chain of command. Your absence is now on file.
 
 \u2014 The Quarterdeck`,
                   "complete",
                   chit.userId
                 );
+              } else {
+                const finalStages = chit.stages.map(
+                  (s, i) => i === chit.currentStage ? { ...s, action } : s
+                );
+                const anyDenied = finalStages.some((s) => s.action === "denied");
+                if (anyDenied) {
+                  sendNotification(
+                    originatorEmail,
+                    `CHIT ${id} \u2014 Denied`,
+                    `Hello ${chit.name},
+
+Your CHIT (${id}) for "${chit.reason}" has completed routing through the chain of command and was denied. See The Quarterdeck for per-stage decisions.
+
+\u2014 The Quarterdeck`,
+                    "return",
+                    chit.userId
+                  );
+                } else {
+                  sendNotification(
+                    originatorEmail,
+                    `CHIT ${id} \u2014 Fully Approved`,
+                    `Hello ${chit.name},
+
+Your CHIT (${id}) for "${chit.reason}" has been fully approved through the chain of command.
+
+\u2014 The Quarterdeck`,
+                    "complete",
+                    chit.userId
+                  );
+                }
               }
             }
           } else {
@@ -29253,19 +29320,33 @@ Your CHIT (${id}) for "${chit.reason}" has been fully approved through the chain
             if (nextStage?.approverId) {
               const nextEmail = getUserEmail(userList, nextStage.approverId);
               if (nextEmail) {
-                sendNotification(
-                  nextEmail,
-                  `CHIT ${id} \u2014 Requires Your Approval`,
-                  `Hello ${nextStage.approverName},
+                if (noticeChit) {
+                  sendNotification(
+                    nextEmail,
+                    `Leave Notice ${id} \u2014 Acknowledge & Forward`,
+                    `Hello ${nextStage.approverName},
+
+${chit.name} has filed a leave notice (${id}) for ${chit.date}. Their leave was already approved on ${chit.acknowledgeSystem || "NSIPS/MOL"}; this is informational so the chain is tracking. Please log in to The Quarterdeck to acknowledge and forward.
+
+\u2014 The Quarterdeck`,
+                    "approval",
+                    nextStage.approverId
+                  );
+                } else {
+                  sendNotification(
+                    nextEmail,
+                    `CHIT ${id} \u2014 Requires Your Approval`,
+                    `Hello ${nextStage.approverName},
 
 A CHIT (${id}) from ${chit.name} for "${chit.reason}" requires your approval.
 
 Please log in to The Quarterdeck to review and take action.
 
 \u2014 The Quarterdeck`,
-                  "approval",
-                  nextStage.approverId
-                );
+                    "approval",
+                    nextStage.approverId
+                  );
+                }
                 const nextPrefs = loadNotifPrefs(nextStage.approverId);
                 trackApproval(id, "CHIT", nextEmail, nextStage.approverName, chit.name, nextPrefs.reminder_days);
               }
@@ -29276,7 +29357,7 @@ Please log in to The Quarterdeck to review and take action.
       setActiveComment(null);
       setCommentText("");
       setSignedDoc(null);
-      fire(action === "denied" ? "CHIT marked as denied \u2014 continues routing for remaining CoC review." : action === "returned" ? "CHIT returned to originator." : "CHIT updated.");
+      fire(action === "denied" ? "CHIT marked as denied \u2014 continues routing for remaining CoC review." : action === "returned" ? "CHIT returned to originator." : action === "forwarded" ? "Leave notice forwarded up the chain." : "CHIT updated.");
     };
     const openReviseModal = (chit) => {
       setReviseId(chit.id);
@@ -29359,7 +29440,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
     const [chitFolders, setChitFolders] = (0, import_react.useState)({ action: false, pipeline: false, complete: false });
     const needsAction = visible.filter((c) => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
     const inPipeline = visible.filter((c) => c.status === "Pending" && !canActOnChit(user, c));
-    const completed = visible.filter((c) => c.status === "Approved" || c.status === "Denied" || c.status === "Returned");
+    const completed = visible.filter((c) => ["Approved", "Denied", "Returned", "Tracked"].includes(c.status));
     const myCompleted = completed.filter((c) => c.userId === user.id);
     const archiveBySemester = canSeeArchive(user) ? (() => {
       const groups = {};
@@ -29371,9 +29452,11 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
     })() : [];
     const renderChitCard = (c) => {
       const canAct = canActOnChit(user, c);
-      const isDone = c.status === "Approved" || c.status === "Denied" || c.status === "Returned";
+      const isDone = ["Approved", "Denied", "Returned", "Tracked"].includes(c.status);
       const currentStageName = c.stages?.[c.currentStage]?.name || "";
+      const noticeChit = isNoticeChit(c);
       const denialsSoFar = (c.stages || []).filter((s) => s.action === "denied").length;
+      const chitTypeLabel = noticeChit ? `Leave Notice \xB7 ${c.acknowledgeSystem || "NSIPS/MOL"}` : c.chitType === "recurring" ? "Every LL/PT" : "Single Event";
       const timer = !isDone ? getRoutingTimerInfo(c.stages?.[0]?.completedAt) : null;
       return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chit-card", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.3rem" }, children: [
@@ -29392,7 +29475,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
               timer.status === "overdue" ? "\u26A0 " : "\u23F1 ",
               timer.label
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `badge ${c.status === "Approved" ? "badge-green" : c.status === "Denied" || c.status === "Returned" ? "badge-red" : "badge-orange"}`, children: c.status }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `badge ${c.status === "Approved" || c.status === "Tracked" ? "badge-green" : c.status === "Denied" || c.status === "Returned" ? "badge-red" : "badge-orange"}`, children: c.status }),
             !isDone && denialsSoFar > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "badge badge-red", title: "One or more reviewers denied this CHIT. Routing continues so the rest of the chain can weigh in.", children: [
               "\u2715 ",
               denialsSoFar,
@@ -29405,9 +29488,15 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.82rem", color: "#666" }, children: [
           c.reason,
           " \xB7 ",
-          c.chitType === "recurring" ? "Every LL/PT" : "Single Event",
-          " \xB7 Absent: ",
+          chitTypeLabel,
+          " \xB7 ",
+          noticeChit ? "On Leave: " : "Absent: ",
           c.date
+        ] }),
+        noticeChit && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.78rem", color: "#2A7D4F", marginTop: "0.25rem", fontWeight: 600 }, children: [
+          "\u2713 Leave already approved on ",
+          c.acknowledgeSystem || "NSIPS/MOL",
+          " \u2014 chain forwards for tracking only."
         ] }),
         c.notes && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }, children: c.notes }),
         (c.docs?.chitDoc || c.docs?.corroborating?.length > 0) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.55rem" }, children: [
@@ -29456,12 +29545,10 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
           ] }, idx)) });
         })(),
         canAct && !isDone && (() => {
-          const needsSig = stageRequiresSignature(c.stages?.[c.currentStage]);
+          const needsSig = !noticeChit && stageRequiresSignature(c.stages?.[c.currentStage]);
+          const reviewLabel = noticeChit ? `\u{1F4E8} Acknowledge & Forward \u2014 ${currentStageName}` : `\u2B50 Your Review \u2014 ${currentStageName}`;
           return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", style: { marginTop: "0.75rem" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-label", children: [
-              "\u2B50 Your Review \u2014 ",
-              currentStageName
-            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-action-label", children: reviewLabel }),
             activeComment === c.id ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
               needsSig && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: "0.65rem" }, children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.75rem", color: "#666", marginBottom: "0.3rem" }, children: [
@@ -29505,12 +29592,18 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
                   className: "input",
                   style: { minHeight: "70px", resize: "vertical", marginBottom: "0.65rem", fontSize: "0.85rem" },
                   maxLength: 1e3,
-                  placeholder: "Add comments (optional)\u2026",
+                  placeholder: noticeChit ? "Add comments (optional)\u2026" : "Add comments (optional)\u2026",
                   value: commentText,
                   onChange: (e) => setCommentText(e.target.value)
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
+              noticeChit ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "forwarded"), children: "\u{1F4E8} Forward" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
+                  setActiveComment(null);
+                  setCommentText("");
+                }, children: "Cancel" })
+              ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "approved"), children: "\u2713 Approve" }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "returned"), children: "\u21A9 Return" }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "denied"), children: "\u2715 Deny" }),
@@ -29524,7 +29617,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
               setActiveComment(c.id);
               setCommentText("");
               setSignedDoc(null);
-            }, children: "\u270F Review CHIT" })
+            }, children: noticeChit ? "\u{1F4E8} Acknowledge & Forward" : "\u270F Review CHIT" })
           ] });
         })(),
         c.status === "Returned" && user.id === c.userId && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", style: { marginTop: "0.75rem", borderLeft: "4px solid #BF5700" }, children: [
@@ -29570,10 +29663,16 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "back to you" }),
             ", not to the top, and the routing timer resets. No signature required to return."
           ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-green", style: { marginRight: "0.5rem" }, children: "\u{1F4E8} Forward" }),
+            "The only action available on a ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Leave Notice" }),
+            " from an OC or MECEP. Their leave is already approved on NSIPS/MOL \u2014 the BN can't approve or deny, just acknowledge and forward up the chain so everyone is tracking. No signature, no document upload required."
+          ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#666", borderTop: "1px solid #eee", paddingTop: "0.4rem", marginTop: "0.2rem" }, children: "Comments you leave are visible to other CoC reviewers but never to the originator \u2014 except for the comment from the most recent return, which the originator sees so they can fix what you flagged." })
         ] }) })
       ] }),
-      canSubmit && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: "+ Submit New CHIT" }) }),
+      canSubmit && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: isNoticeUser ? "+ Submit Leave Notice" : "+ Submit New CHIT" }) }),
       visible.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2rem" }, children: "\u{1F4CB}" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: "No CHITs on file." })
@@ -29624,9 +29723,14 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
           chitFolders[`sem_${sem}`] && items.map(renderChitCard)
         ] }, sem))
       ] }),
-      showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Submit CHIT", onClose: () => setShowModal(false), children: [
+      showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: isNoticeUser ? "Submit Leave Notice" : "Submit CHIT", onClose: () => setShowModal(false), children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "privacy-note", children: "\u{1F512} Private \u2014 only you and your CoC will see this." }),
         toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `alert ${toast.startsWith("\u26A0") ? "alert-red" : "alert-green"}`, children: toast }),
+        isNoticeUser && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "alert alert-announce", style: { marginBottom: "0.75rem", fontSize: "0.85rem" }, children: [
+          "\u{1F4E8} ",
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Leave Notice (OC / MECEP):" }),
+          " your leave is approved through NSIPS or MOL. This notice routes through the chain so the BN is tracking your absence \u2014 the BN can't approve or deny it, only acknowledge and forward."
+        ] }),
         needsRouteSelect && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Your Company" }),
@@ -29643,7 +29747,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+        !isNoticeUser && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
             "Type of Absence ",
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
@@ -29664,33 +29768,71 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
             "End Date ",
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#888" }, children: "(leave blank if single day)" })
+            isNoticeUser ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.75rem", color: "#888" }, children: "(leave blank if single day)" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { className: "input", type: "date", value: form.endDate, min: form.startDate || (/* @__PURE__ */ new Date()).toISOString().split("T")[0], onChange: (e) => setForm((s) => ({ ...s, endDate: e.target.value })) })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-            "Reason ",
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+        isNoticeUser ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+              "Approval System ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.acknowledgeSystem, onChange: (e) => setForm((s) => ({ ...s, acknowledgeSystem: e.target.value })), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "NSIPS", children: "NSIPS (Navy)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "MOL", children: "MOL (Marine OnLine)" })
+            ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.reason, onChange: (e) => setForm((s) => ({ ...s, reason: e.target.value })), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select reason\u2026" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Medical Appointment" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Academic Conflict" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Family Emergency" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Personal Emergency" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Other" })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+              "Message to Chain ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+              "textarea",
+              {
+                className: "input",
+                style: { minHeight: "90px", resize: "vertical" },
+                maxLength: 1e3,
+                value: form.notes,
+                onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })),
+                placeholder: `I will be on leave from ${form.startDate || "[start]"} to ${form.endDate || "[end]"}. I confirm my leave has been approved and submitted on ${form.acknowledgeSystem}.`
+              }
+            )
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "input-group", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { style: { display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer", fontSize: "0.85rem" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "checkbox", checked: form.acknowledged, onChange: (e) => setForm((s) => ({ ...s, acknowledged: e.target.checked })), style: { marginTop: "0.2rem" } }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+              "I confirm my leave has been approved and submitted on ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: form.acknowledgeSystem }),
+              "."
+            ] })
+          ] }) })
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+              "Reason ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.reason, onChange: (e) => setForm((s) => ({ ...s, reason: e.target.value })), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select reason\u2026" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Medical Appointment" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Academic Conflict" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Family Emergency" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Personal Emergency" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Other" })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+              "Notes ",
+              form.reason === "Other" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" }) : "(optional)"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, maxLength: 1e3, value: form.notes, onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })), placeholder: form.reason === "Other" ? "Please explain the reason for your absence" : "" })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-            "Notes ",
-            form.reason === "Other" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" }) : "(optional)"
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, maxLength: 1e3, value: form.notes, onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })), placeholder: form.reason === "Other" ? "Please explain the reason for your absence" : "" })
-        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+          !isNoticeUser && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
               "CHIT Document ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
@@ -29721,14 +29863,14 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
               "Corroborating Documentation ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.72rem", color: "#888" }, children: "(optional)" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#666", marginBottom: "0.4rem" }, children: "Attach any supporting documents (medical notes, screenshots, schedules, etc.). Max 10 MB per file." }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#666", marginBottom: "0.4rem" }, children: "Attach any supporting documents (medical notes, screenshots, schedules, etc.). Any file type. Max 10 MB per file." }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
               "+ Add File",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                 "input",
                 {
                   type: "file",
-                  accept: ".pdf,.png,.jpg,.jpeg,.heic,.heif,.doc,.docx,.txt",
+                  accept: "*/*",
                   style: { display: "none" },
                   onChange: (e) => {
                     readCorroboratingFile(e.target.files[0], (f) => setForm((s) => ({ ...s, corroboratingDocs: [...s.corroboratingDocs, f] })));
@@ -29745,12 +29887,13 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "route-hint", children: [
-          "Your CHIT routes to: ",
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: routeHint() })
+          isNoticeUser ? "Your notice routes to" : "Your CHIT routes to",
+          ": ",
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: isNoticeUser ? "PC \u2192 CC \u2192 ADJ \u2192 BNXO \u2192 BNCO \u2192 Advisor \u2192 Unit XO" : routeHint() })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => setShowModal(false), children: "Cancel" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: submit, children: "Submit CHIT" })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: submit, children: isNoticeUser ? "Submit Leave Notice" : "Submit CHIT" })
         ] })
       ] }),
       reviseId && (() => {
@@ -29817,14 +29960,14 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
               "Corroborating Documentation ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.72rem", color: "#888" }, children: "(optional)" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#666", marginBottom: "0.4rem" }, children: "Add or remove supporting documents (medical notes, screenshots, etc.). Max 10 MB per file." }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#666", marginBottom: "0.4rem" }, children: "Add or remove supporting documents (medical notes, screenshots, etc.). Any file type. Max 10 MB per file." }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
               "+ Add File",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                 "input",
                 {
                   type: "file",
-                  accept: ".pdf,.png,.jpg,.jpeg,.heic,.heif,.doc,.docx,.txt",
+                  accept: "*/*",
                   style: { display: "none" },
                   onChange: (e) => {
                     readCorroboratingFile(e.target.files[0], (f) => setReviseDraft((d) => ({ ...d, corroboratingDocs: [...d.corroboratingDocs, f] })));
