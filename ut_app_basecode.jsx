@@ -20,11 +20,20 @@ const isCoC     = (u) => u && [...SENIOR_ROLES, "co_cdr", "plt_cdr", "adj"].incl
 const isBigFour = (u) => normalizeCompany(u?.company) === "BN" && ["bn_cdr", "xo", "ops", "sel"].includes(u?.role);
 const UNIT_STAFF_ROLES = ["unit_co", "unit_xo", "moi", "amoi", "sea", "sub", "swo"];
 const isUnitStaff = (u) => u && UNIT_STAFF_ROLES.includes(u.role);
-// Unit staff who can see archive (AMOI and SEA excluded)
-const canSeeArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role));
-// FITREP archive: only Unit Staff (Unit CO, Unit XO, LTs, MOI) can review completed
-// FITREPs from past semesters. No other role (BN leadership, CCs, PCs, etc.) sees them.
-const canSeeFitrepArchive = (u) => u && ["unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role);
+// CHIT and FITREP archives have intentionally different scopes:
+//   • CHIT_ARCHIVE_ROLES — anyone in CoC plus active-duty Unit Staff (no AMOI/SEA).
+//     CHITs are routine and the broader CoC has a legitimate need to review them.
+//   • FITREP_ARCHIVE_ROLES — Unit Staff only (Unit CO, Unit XO, LTs, MOI). Past-
+//     semester FITREPs are sensitive and stay locked to the active-duty staff.
+const CHIT_ARCHIVE_ROLES   = ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"];
+const FITREP_ARCHIVE_ROLES = ["unit_co", "unit_xo", "moi", "sub", "swo"];
+const canSeeArchive       = (u) => u && (isSenior(u) || CHIT_ARCHIVE_ROLES.includes(u.role));
+const canSeeFitrepArchive = (u) => u && FITREP_ARCHIVE_ROLES.includes(u.role);
+
+// Terminal-status sets — once a CHIT or FITREP reaches one of these states it's
+// no longer actionable. CHITs add "Tracked" to handle notice-CHIT completion.
+const CHIT_TERMINAL_STATUSES   = ["Approved", "Denied", "Returned", "Tracked"];
+const FITREP_TERMINAL_STATUSES = ["Approved", "Denied", "Returned"];
 // Who can post BN-wide announcements: Big Four + CCs + PCs + MOI + Unit CO + Unit XO
 const canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
 // Roles that can ever appear as a CHIT approver in the chain of command
@@ -562,7 +571,7 @@ function getUserIdByEmail(userList, email) {
 
 function canActOnChit(user, chit) {
   if (!user || !chit?.stages) return false;
-  if (["Approved", "Denied", "Returned", "Tracked"].includes(chit.status)) return false;
+  if (CHIT_TERMINAL_STATUSES.includes(chit.status)) return false;
   if (chit.currentStage >= chit.stages.length - 1) return false;
   // Enforce CoC order: every prior stage must be completed before acting on the current one
   if (!chit.stages.slice(0, chit.currentStage).every(s => s.completedBy)) return false;
@@ -595,6 +604,17 @@ function canViewChit(user, chit) {
     }
     return !!stage.approverRole && user.role === stage.approverRole;
   });
+}
+
+// Validates that this user is permitted to take this specific action on this
+// CHIT. Combines the role/stage authorization (canActOnChit) with the rule
+// that notice CHITs only accept "forwarded", and traditional CHITs only
+// accept "approved"/"denied"/"returned". Used by both the UI and the state
+// mutation so a single helper enforces both layers.
+function canTakeChitAction(user, chit, action) {
+  if (!canActOnChit(user, chit)) return false;
+  if (isNoticeChit(chit)) return action === "forwarded";
+  return ["approved", "denied", "returned"].includes(action);
 }
 
 // ─── USERS ──────────────────────────────────────────────────
@@ -938,7 +958,9 @@ const FITREP_STAGES = [
 // Returns true if `user` is the designated approver for the fitrep's current stage.
 // Uses per-fitrep stages array (same pattern as canActOnChit).
 function canActOnFitrep(user, fitrep) {
-  if (!user || !fitrep?.stages || fitrep.status === "Approved" || fitrep.status === "Denied" || fitrep.status === "Returned" || fitrep.currentStage >= fitrep.stages.length - 1) return false;
+  if (!user || !fitrep?.stages) return false;
+  if (FITREP_TERMINAL_STATUSES.includes(fitrep.status)) return false;
+  if (fitrep.currentStage >= fitrep.stages.length - 1) return false;
   // Enforce CoC order: every prior stage must be completed before acting on the current one
   if (!fitrep.stages.slice(0, fitrep.currentStage).every(s => s.completedBy)) return false;
   const stage = fitrep.stages[fitrep.currentStage];
@@ -967,15 +989,20 @@ function canViewFitrep(user, fitrep) {
     return canActOnFitrep(user, fitrep);
   }
 
-  const isCompleted = fitrep.status === "Approved" || fitrep.status === "Denied" || fitrep.status === "Returned";
+  const isCompleted = FITREP_TERMINAL_STATUSES.includes(fitrep.status);
 
   // Completed FITREPs from past semesters are restricted to Unit Staff only.
   // Chain members who aren't Unit Staff can still see current-semester completed
   // FITREPs they routed (falls through to the stages check below).
   if (isCompleted) {
     if (canSeeFitrepArchive(user)) return true;
-    const fitrepSemester = getSemesterLabel(fitrep.stages?.[0]?.completedAt || fitrep.date);
-    if (fitrepSemester !== SEMESTER_LABEL) return false;
+    // Determine the semester. Prefer the explicit `period` field (always a
+    // semester label like "Spring 2026"); fall back to the submission stamp.
+    // We do NOT fall back to the unrelated `fitrep.date` field — it doesn't
+    // exist on FITREPs and previously caused current-semester items to fail
+    // the past-semester gate.
+    const fitrepSemester = fitrep.period || getSemesterLabel(fitrep.stages?.[0]?.completedAt);
+    if (fitrepSemester && fitrepSemester !== SEMESTER_LABEL) return false;
   }
 
   // Check if user is listed in any routing stage
@@ -1797,8 +1824,10 @@ function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, form
   const [resetConfirmText, setResetConfirmText] = useState("");
 
   // My Queue: count CHITs/FITREPs awaiting this user's action
-  const myChits = chits.filter(c => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
-  const myFitreps = fitrebs.filter(f => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Denied" && f.status !== "Returned");
+  // canActOn{Chit,Fitrep} already excludes terminal statuses, so the filter
+  // is just the role/stage check.
+  const myChits = chits.filter(c => canActOnChit(user, c));
+  const myFitreps = fitrebs.filter(f => canActOnFitrep(user, f));
   const queueTotal = myChits.length + myFitreps.length;
 
   // Personal CHIT stats: only the chits this user originated and that are still routing.
@@ -2701,15 +2730,17 @@ function ChitsPage({ chits, setChits, userList }) {
     const reviewerFullName = `${user.rank} ${user.name}`;
     const chit = chits.find(c => c.id === id);
     if (!chit) return;
+    // Single authoritative gate: role/stage authorization + chitType ↔ action
+    // compatibility. canTakeChitAction returns false if the user can't act on
+    // this chit at all OR the action doesn't match the chit's type (notice vs
+    // traditional). The same helper backs the UI button visibility.
+    if (!canTakeChitAction(user, chit, action)) {
+      fire(isNoticeChit(chit)
+        ? "⚠ Notice CHITs can only be forwarded — they were already approved on NSIPS/MOL."
+        : "⚠ This action isn't available on this CHIT.");
+      return;
+    }
     const noticeChit = isNoticeChit(chit);
-    if (noticeChit && action !== "forwarded") {
-      fire("⚠ Notice CHITs can only be forwarded — they were already approved on NSIPS/MOL.");
-      return;
-    }
-    if (!noticeChit && action === "forwarded") {
-      fire("⚠ Forward is only available on leave-notice CHITs.");
-      return;
-    }
     const currentStage = chit.stages[chit.currentStage];
     const needsSignature = !noticeChit && action !== "returned" && stageRequiresSignature(currentStage);
     if (needsSignature && !signedDoc) {
@@ -2918,9 +2949,9 @@ function ChitsPage({ chits, setChits, userList }) {
   };
 
   const [chitFolders, setChitFolders] = useState({ action: false, pipeline: false, complete: false });
-  const needsAction = visible.filter(c => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
+  const needsAction = visible.filter(c => canActOnChit(user, c));
   const inPipeline = visible.filter(c => c.status === "Pending" && !canActOnChit(user, c));
-  const completed = visible.filter(c => ["Approved", "Denied", "Returned", "Tracked"].includes(c.status));
+  const completed = visible.filter(c => CHIT_TERMINAL_STATUSES.includes(c.status));
   const myCompleted = completed.filter(c => c.userId === user.id);
   const archiveBySemester = canSeeArchive(user) ? (() => {
     const groups = {};
@@ -2933,9 +2964,14 @@ function ChitsPage({ chits, setChits, userList }) {
 
   const renderChitCard = (c) => {
     const canAct = canActOnChit(user, c);
-    const isDone = ["Approved", "Denied", "Returned", "Tracked"].includes(c.status);
+    const isDone = CHIT_TERMINAL_STATUSES.includes(c.status);
     const currentStageName = c.stages?.[c.currentStage]?.name || "";
     const noticeChit = isNoticeChit(c);
+    // Use matchesUserIdentity (id ∪ eid ∪ email ∪ name) so the originator stays
+    // recognised even if a sheet refresh nudges their `id`. A bare `id ===
+    // c.userId` would otherwise misclassify them as a CoC viewer and leak the
+    // private comments.
+    const isOriginator = matchesUserIdentity(user, { id: c.userId, name: c.name });
     const denialsSoFar = (c.stages || []).filter(s => s.action === "denied").length;
     const chitTypeLabel = noticeChit
       ? `Leave Notice · ${c.acknowledgeSystem || "NSIPS/MOL"}`
@@ -3016,7 +3052,6 @@ function ChitsPage({ chits, setChits, userList }) {
             (PC/CC reviews, approvals, denials, older returns) stay hidden.
         */}
         {(() => {
-          const isOriginator = user.id === c.userId;
           let visibleComments = [];
           if (isOriginator) {
             if (c.status === "Returned") {
@@ -3104,7 +3139,7 @@ function ChitsPage({ chits, setChits, userList }) {
         })()}
 
         {/* Revise & resubmit — shown to originator when the CHIT was returned */}
-        {c.status === "Returned" && user.id === c.userId && (
+        {c.status === "Returned" && isOriginator && (
           <div className="stage-action-box" style={{ marginTop:"0.75rem", borderLeft:"4px solid #BF5700" }}>
             <div className="stage-action-label">↩ Returned — Revise &amp; Resubmit</div>
             <div style={{ fontSize:"0.8rem", color:"#666", marginBottom:"0.5rem" }}>
@@ -3795,6 +3830,14 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
 
   // Generate combined PDF of all approved FITREPs for a given member
   const generateFitrepReport = async (memberId, memberName) => {
+    // Defense in depth: even though the Pull Report button is gated by
+    // canSeeFitrepArchive on render, the function itself enforces the same
+    // check so a non-Unit-Staff caller cannot reach this code path through
+    // any other route.
+    if (!canSeeFitrepArchive(user)) {
+      fire("⚠ Not authorized to pull FITREP reports.");
+      return;
+    }
     const approved = fitrebs.filter(f =>
       f.subjectId === memberId && f.status === "Approved" && f.docs?.fitrepDoc?.dataUrl
     );
@@ -3979,9 +4022,9 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
 
   const companies = [...new Set(visible.map(f => normalizeCompany(f.company)))];
 
-  const needsActionF = filtered.filter(f => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Denied" && f.status !== "Returned");
+  const needsActionF = filtered.filter(f => canActOnFitrep(user, f));
   const inPipelineF = filtered.filter(f => f.status === "Pending" && !canActOnFitrep(user, f));
-  const completedF = filtered.filter(f => f.status === "Approved" || f.status === "Denied" || f.status === "Returned");
+  const completedF = filtered.filter(f => FITREP_TERMINAL_STATUSES.includes(f.status));
   const myCompletedF = completedF.filter(f => f.subjectId === user.id);
   const archiveBySemesterF = canSeeFitrepArchive(user) ? (() => {
     const groups = {};
@@ -3994,8 +4037,10 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
 
   const renderFitrepCard = (f) => {
     const canAct = canActOnFitrep(user, f);
-    const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
-    const currentStageName = isDone ? (f.status === "Returned" ? "Returned" : "Complete") : (f.stages?.[f.currentStage]?.name || "");
+    const isDone = f.currentStage >= f.stages.length - 1 || FITREP_TERMINAL_STATUSES.includes(f.status);
+    const currentStageName = isDone
+      ? (f.status === "Returned" ? "Returned" : f.status === "Denied" ? "Denied" : "Complete")
+      : (f.stages?.[f.currentStage]?.name || "");
 
     return (
       <div className="fitrep-card" key={f.id}>
@@ -4241,8 +4286,9 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
         </Modal>
       )}
 
-      {/* Pull FITREP Report modal */}
-      {showReport && (
+      {/* Pull FITREP Report modal — render-gated by canSeeFitrepArchive so a
+          non-Unit-Staff user can never see it even if showReport flips true. */}
+      {showReport && canSeeFitrepArchive(user) && (
         <Modal title="Pull FITREP Report" onClose={() => { setShowReport(false); setReportSearch(""); }}>
           <p style={{ fontSize:"0.85rem", color:"#555", marginBottom:"0.75rem" }}>
             Select a BN member to generate a combined PDF of all their approved FITREPs.

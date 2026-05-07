@@ -26907,8 +26907,12 @@
   var isBigFour = (u) => normalizeCompany(u?.company) === "BN" && ["bn_cdr", "xo", "ops", "sel"].includes(u?.role);
   var UNIT_STAFF_ROLES = ["unit_co", "unit_xo", "moi", "amoi", "sea", "sub", "swo"];
   var isUnitStaff = (u) => u && UNIT_STAFF_ROLES.includes(u.role);
-  var canSeeArchive = (u) => u && (isSenior(u) || ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role));
-  var canSeeFitrepArchive = (u) => u && ["unit_co", "unit_xo", "moi", "sub", "swo"].includes(u.role);
+  var CHIT_ARCHIVE_ROLES = ["co_cdr", "plt_cdr", "adj", "unit_co", "unit_xo", "moi", "sub", "swo"];
+  var FITREP_ARCHIVE_ROLES = ["unit_co", "unit_xo", "moi", "sub", "swo"];
+  var canSeeArchive = (u) => u && (isSenior(u) || CHIT_ARCHIVE_ROLES.includes(u.role));
+  var canSeeFitrepArchive = (u) => u && FITREP_ARCHIVE_ROLES.includes(u.role);
+  var CHIT_TERMINAL_STATUSES = ["Approved", "Denied", "Returned", "Tracked"];
+  var FITREP_TERMINAL_STATUSES = ["Approved", "Denied", "Returned"];
   var canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
   var CHIT_SIGNER_ROLES = ["adj", "plt_cdr", "co_cdr", "bn_cdr", "xo", "unit_xo", "moi", "swo", "sub"];
   var canSignChits = (u) => u && CHIT_SIGNER_ROLES.includes(u.role);
@@ -27250,7 +27254,7 @@
   }
   function canActOnChit(user, chit) {
     if (!user || !chit?.stages) return false;
-    if (["Approved", "Denied", "Returned", "Tracked"].includes(chit.status)) return false;
+    if (CHIT_TERMINAL_STATUSES.includes(chit.status)) return false;
     if (chit.currentStage >= chit.stages.length - 1) return false;
     if (!chit.stages.slice(0, chit.currentStage).every((s) => s.completedBy)) return false;
     const stage = chit.stages[chit.currentStage];
@@ -27277,6 +27281,11 @@
       }
       return !!stage.approverRole && user.role === stage.approverRole;
     });
+  }
+  function canTakeChitAction(user, chit, action) {
+    if (!canActOnChit(user, chit)) return false;
+    if (isNoticeChit(chit)) return action === "forwarded";
+    return ["approved", "denied", "returned"].includes(action);
   }
   var GCAL_API_KEY = window.__QD_GCAL_API_KEY || "";
   var GCAL_CALENDAR_ID = "8favdaqbd14bfquur8fvil5ecc@group.calendar.google.com";
@@ -27511,7 +27520,9 @@
     };
   }
   function canActOnFitrep(user, fitrep) {
-    if (!user || !fitrep?.stages || fitrep.status === "Approved" || fitrep.status === "Denied" || fitrep.status === "Returned" || fitrep.currentStage >= fitrep.stages.length - 1) return false;
+    if (!user || !fitrep?.stages) return false;
+    if (FITREP_TERMINAL_STATUSES.includes(fitrep.status)) return false;
+    if (fitrep.currentStage >= fitrep.stages.length - 1) return false;
     if (!fitrep.stages.slice(0, fitrep.currentStage).every((s) => s.completedBy)) return false;
     const stage = fitrep.stages[fitrep.currentStage];
     if (!stage?.approverRole) return false;
@@ -27528,11 +27539,11 @@
     if (user.role === "amoi" || user.role === "sea") {
       return canActOnFitrep(user, fitrep);
     }
-    const isCompleted = fitrep.status === "Approved" || fitrep.status === "Denied" || fitrep.status === "Returned";
+    const isCompleted = FITREP_TERMINAL_STATUSES.includes(fitrep.status);
     if (isCompleted) {
       if (canSeeFitrepArchive(user)) return true;
-      const fitrepSemester = getSemesterLabel(fitrep.stages?.[0]?.completedAt || fitrep.date);
-      if (fitrepSemester !== SEMESTER_LABEL) return false;
+      const fitrepSemester = fitrep.period || getSemesterLabel(fitrep.stages?.[0]?.completedAt);
+      if (fitrepSemester && fitrepSemester !== SEMESTER_LABEL) return false;
     }
     return !!fitrep.stages?.some((stage) => {
       if (!stage.approverRole) return false;
@@ -28314,8 +28325,8 @@
     const [showAnnouncementForm, setShowAnnouncementForm] = (0, import_react.useState)(false);
     const [showResetConfirm, setShowResetConfirm] = (0, import_react.useState)(false);
     const [resetConfirmText, setResetConfirmText] = (0, import_react.useState)("");
-    const myChits = chits.filter((c) => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
-    const myFitreps = fitrebs.filter((f) => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Denied" && f.status !== "Returned");
+    const myChits = chits.filter((c) => canActOnChit(user, c));
+    const myFitreps = fitrebs.filter((f) => canActOnFitrep(user, f));
     const queueTotal = myChits.length + myFitreps.length;
     const canOriginateChits = canSubmitChit(user);
     const userCanSignChits = canSignChits(user);
@@ -29190,15 +29201,11 @@ Please log in to The Quarterdeck to review and take action.
       const reviewerFullName = `${user.rank} ${user.name}`;
       const chit = chits.find((c) => c.id === id);
       if (!chit) return;
+      if (!canTakeChitAction(user, chit, action)) {
+        fire(isNoticeChit(chit) ? "\u26A0 Notice CHITs can only be forwarded \u2014 they were already approved on NSIPS/MOL." : "\u26A0 This action isn't available on this CHIT.");
+        return;
+      }
       const noticeChit = isNoticeChit(chit);
-      if (noticeChit && action !== "forwarded") {
-        fire("\u26A0 Notice CHITs can only be forwarded \u2014 they were already approved on NSIPS/MOL.");
-        return;
-      }
-      if (!noticeChit && action === "forwarded") {
-        fire("\u26A0 Forward is only available on leave-notice CHITs.");
-        return;
-      }
       const currentStage = chit.stages[chit.currentStage];
       const needsSignature = !noticeChit && action !== "returned" && stageRequiresSignature(currentStage);
       if (needsSignature && !signedDoc) {
@@ -29438,9 +29445,9 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
       fire("\u2705 Revised CHIT resubmitted. Routing timer reset.");
     };
     const [chitFolders, setChitFolders] = (0, import_react.useState)({ action: false, pipeline: false, complete: false });
-    const needsAction = visible.filter((c) => canActOnChit(user, c) && c.status !== "Approved" && c.status !== "Denied" && c.status !== "Returned");
+    const needsAction = visible.filter((c) => canActOnChit(user, c));
     const inPipeline = visible.filter((c) => c.status === "Pending" && !canActOnChit(user, c));
-    const completed = visible.filter((c) => ["Approved", "Denied", "Returned", "Tracked"].includes(c.status));
+    const completed = visible.filter((c) => CHIT_TERMINAL_STATUSES.includes(c.status));
     const myCompleted = completed.filter((c) => c.userId === user.id);
     const archiveBySemester = canSeeArchive(user) ? (() => {
       const groups = {};
@@ -29452,9 +29459,10 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
     })() : [];
     const renderChitCard = (c) => {
       const canAct = canActOnChit(user, c);
-      const isDone = ["Approved", "Denied", "Returned", "Tracked"].includes(c.status);
+      const isDone = CHIT_TERMINAL_STATUSES.includes(c.status);
       const currentStageName = c.stages?.[c.currentStage]?.name || "";
       const noticeChit = isNoticeChit(c);
+      const isOriginator = matchesUserIdentity(user, { id: c.userId, name: c.name });
       const denialsSoFar = (c.stages || []).filter((s) => s.action === "denied").length;
       const chitTypeLabel = noticeChit ? `Leave Notice \xB7 ${c.acknowledgeSystem || "NSIPS/MOL"}` : c.chitType === "recurring" ? "Every LL/PT" : "Single Event";
       const timer = !isDone ? getRoutingTimerInfo(c.stages?.[0]?.completedAt) : null;
@@ -29522,7 +29530,6 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
           ] }, j);
         }) }),
         (() => {
-          const isOriginator = user.id === c.userId;
           let visibleComments = [];
           if (isOriginator) {
             if (c.status === "Returned") {
@@ -29620,7 +29627,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
             }, children: noticeChit ? "\u{1F4E8} Acknowledge & Forward" : "\u270F Review CHIT" })
           ] });
         })(),
-        c.status === "Returned" && user.id === c.userId && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", style: { marginTop: "0.75rem", borderLeft: "4px solid #BF5700" }, children: [
+        c.status === "Returned" && isOriginator && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", style: { marginTop: "0.75rem", borderLeft: "4px solid #BF5700" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-action-label", children: "\u21A9 Returned \u2014 Revise & Resubmit" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#666", marginBottom: "0.5rem" }, children: "Edit your submission directly \u2014 replace the CHIT PDF, add or remove corroborating documents, update notes \u2014 and it will route back to the same reviewer. Your routing timer resets." }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange btn-sm", onClick: () => openReviseModal(c), children: "\u270F Revise & Resubmit" })
@@ -30396,6 +30403,10 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
       setTimeout(() => setToast(""), 3500);
     };
     const generateFitrepReport = async (memberId, memberName) => {
+      if (!canSeeFitrepArchive(user)) {
+        fire("\u26A0 Not authorized to pull FITREP reports.");
+        return;
+      }
       const approved = fitrebs.filter(
         (f) => f.subjectId === memberId && f.status === "Approved" && f.docs?.fitrepDoc?.dataUrl
       );
@@ -30606,9 +30617,9 @@ Please log in to The Quarterdeck to review and take action.
       fire(action === "returned" ? "FITREP returned to originator." : "\u2705 FITREP advanced. Stage comments saved.");
     };
     const companies = [...new Set(visible.map((f) => normalizeCompany(f.company)))];
-    const needsActionF = filtered.filter((f) => canActOnFitrep(user, f) && f.status !== "Approved" && f.status !== "Denied" && f.status !== "Returned");
+    const needsActionF = filtered.filter((f) => canActOnFitrep(user, f));
     const inPipelineF = filtered.filter((f) => f.status === "Pending" && !canActOnFitrep(user, f));
-    const completedF = filtered.filter((f) => f.status === "Approved" || f.status === "Denied" || f.status === "Returned");
+    const completedF = filtered.filter((f) => FITREP_TERMINAL_STATUSES.includes(f.status));
     const myCompletedF = completedF.filter((f) => f.subjectId === user.id);
     const archiveBySemesterF = canSeeFitrepArchive(user) ? (() => {
       const groups = {};
@@ -30620,8 +30631,8 @@ Please log in to The Quarterdeck to review and take action.
     })() : [];
     const renderFitrepCard = (f) => {
       const canAct = canActOnFitrep(user, f);
-      const isDone = f.currentStage >= f.stages.length - 1 || f.status === "Returned";
-      const currentStageName = isDone ? f.status === "Returned" ? "Returned" : "Complete" : f.stages?.[f.currentStage]?.name || "";
+      const isDone = f.currentStage >= f.stages.length - 1 || FITREP_TERMINAL_STATUSES.includes(f.status);
+      const currentStageName = isDone ? f.status === "Returned" ? "Returned" : f.status === "Denied" ? "Denied" : "Complete" : f.stages?.[f.currentStage]?.name || "";
       return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-card", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fitrep-header", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
@@ -30853,7 +30864,7 @@ Please log in to The Quarterdeck to review and take action.
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: handleSubmit, children: "Submit FITREP" })
         ] })
       ] }),
-      showReport && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Pull FITREP Report", onClose: () => {
+      showReport && canSeeFitrepArchive(user) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: "Pull FITREP Report", onClose: () => {
         setShowReport(false);
         setReportSearch("");
       }, children: [
