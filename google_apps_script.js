@@ -227,6 +227,35 @@ function businessDaysSince_(dateStr) {
   return count;
 }
 
+function calendarDaysSince_(dateStr) {
+  var start = new Date(dateStr);
+  var now = new Date();
+  return Math.floor((now.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+}
+
+// Auto-expire window: any pending approval older than this many CALENDAR days
+// is dropped on the next reminder pass. Calendar days (vs. business days) so a
+// CHIT submitted before a long weekend or break still expires on schedule.
+// The front-end is in-memory only, so without this any pending entry whose
+// resolution email never fired (app reloaded, demo data, etc.) would otherwise
+// nag forever. 10 calendar days is well past the 3–5 business-day CHIT window.
+var STALE_CAL_DAYS = 10;
+
+// One-shot purge — run manually from the Apps Script editor when the daily
+// trigger hasn't yet caught up to a stale entry. Safe to invoke any time;
+// removes only entries that are >= STALE_CAL_DAYS old. Returns how many were
+// dropped (visible in Apps Script execution log).
+function purgeStaleApprovals() {
+  var pending = getPendingApprovals_();
+  var kept = pending.filter(function(p) {
+    return calendarDaysSince_(p.createdAt) < STALE_CAL_DAYS;
+  });
+  var dropped = pending.length - kept.length;
+  savePendingApprovals_(kept);
+  Logger.log("purgeStaleApprovals: dropped " + dropped + ", kept " + kept.length);
+  return { dropped: dropped, kept: kept.length };
+}
+
 // Time-based trigger function — set up via Apps Script Triggers UI:
 //   checkPendingReminders, Time-driven, Day timer, 8am-9am
 function checkPendingReminders() {
@@ -238,17 +267,13 @@ function checkPendingReminders() {
 
   var toRemind = [];
   var remaining = [];
-  // Auto-expire: drop entries older than this many business days.
-  // The front-end is in-memory only, so if a chit/fitrep resolution email
-  // never fired (app reloaded, demo data, etc.) the pending entry would
-  // otherwise nag forever. 10 biz days is far past the 3-5 day CHIT window.
-  var STALE_BIZ_DAYS = 10;
 
   for (var i = 0; i < pending.length; i++) {
     var p = pending[i];
+    var calDays = calendarDaysSince_(p.createdAt);
+    // Drop entries older than the stale window — no further reminders.
+    if (calDays >= STALE_CAL_DAYS) { continue; }
     var bizDays = businessDaysSince_(p.createdAt);
-    // Drop clearly stale entries — no further reminders.
-    if (bizDays >= STALE_BIZ_DAYS) { continue; }
     var threshold = (typeof p.reminderDays === "number") ? p.reminderDays : 1;
     // reminderDays=0 means reminders are disabled for this approver
     if (threshold <= 0) { remaining.push(p); continue; }
