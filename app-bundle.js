@@ -26913,7 +26913,7 @@
   var canSeeFitrepArchive = (u) => u && FITREP_ARCHIVE_ROLES.includes(u.role);
   var CHIT_TERMINAL_STATUSES = ["Approved", "Denied", "Returned", "Tracked"];
   var FITREP_TERMINAL_STATUSES = ["Approved", "Denied", "Returned"];
-  var canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
+  var canPostAnnouncement = (u) => isBigFour(u);
   var CHIT_SIGNER_ROLES = ["adj", "plt_cdr", "co_cdr", "bn_cdr", "xo", "unit_xo", "moi", "swo", "sub"];
   var canSignChits = (u) => u && CHIT_SIGNER_ROLES.includes(u.role);
   var LEGACY_SIGNATURE_ROLES = ["adj", "xo", "bn_cdr"];
