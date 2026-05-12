@@ -879,7 +879,7 @@ const INIT_QS = [];
 //   6. Set the same token below
 //   7. Save — the app will pull live data on each page load.
 //      In sheet-only mode, the app stays locked until this feed loads successfully.
-const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbxRrkSF-XOQwcJVcECas9_0qg455RuO69jTHqEjnv_UoFNeE0FW6EFf-oI2DIQBJeGB/exec";
+const SHEETS_API_URL   = "https://script.google.com/macros/s/AKfycbweAROtdmmqJG9J4ctSNBeiiy3Mva_KAiosM4CRAsK8FDSB2811BvsyPoWXL6XwD38R/exec";
 const SHEETS_API_TOKEN = "UT_NROTC";
 const ROSTER_CACHE_KEY = "quarterdeck_roster_cache_v1";
 
