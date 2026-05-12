@@ -2672,6 +2672,13 @@ function ChitsPage({ chits, setChits, userList }) {
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState("");
   const isNoticeUser = usesNoticeChit(user);
+  // OCs use NSIPS (Navy); MECEP Marines (Sgt/SSgt/GySgt) use MOL — the form
+  // shouldn't make them pick.
+  const userRankPrefix = (user.rank || "").trim().split(/\s+/)[0] || "";
+  const isOC = userRankPrefix.toUpperCase() === "OC";
+  const noticeSystem  = isOC ? "NSIPS" : "MOL";
+  const noticeSystemLabel = isOC ? "NSIPS" : "MOL (Marine OnLine)";
+  const noticeKind = isOC ? "OC" : "MECEP";
   // Default CHIT category from role per the Routing Sequence PDF. The user
   // can override in the submit modal (they "pick" the category).
   const defaultChitCategory = isNoticeUser
@@ -2680,7 +2687,7 @@ function ChitsPage({ chits, setChits, userList }) {
     : user.role === "mid"     ? "mir"
     : "staff";
   const initialChitType = defaultChitCategory;
-  const [form, setForm] = useState({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType: initialChitType, acknowledgeSystem:"NSIPS", acknowledged:false });
+  const [form, setForm] = useState({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType: initialChitType, acknowledgeSystem: noticeSystem, acknowledged:false });
   const [chitSubmitAttempted, setChitSubmitAttempted] = useState(false);
   const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText] = useState("");
@@ -2804,7 +2811,7 @@ function ChitsPage({ chits, setChits, userList }) {
       }
     }
     setShowModal(false);
-    setForm({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType: initialChitType, acknowledgeSystem:"NSIPS", acknowledged:false });
+    setForm({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType: initialChitType, acknowledgeSystem: noticeSystem, acknowledged:false });
     setChitSubmitAttempted(false);
     fire(form.chitType === "notice"
       ? "✅ Leave notice submitted — chain of command notified."
@@ -3430,8 +3437,13 @@ function ChitsPage({ chits, setChits, userList }) {
           <div className="privacy-note">🔒 Private — only you and your CoC will see this.</div>
           {toast && <div className={`alert ${toast.startsWith("⚠") ? "alert-red" : "alert-green"}`}>{toast}</div>}
           {isNoticeUser && (
-            <div className="alert alert-announce" style={{ marginBottom:"0.75rem", fontSize:"0.85rem" }}>
-              📨 <strong>Leave Notice (OC / MECEP):</strong> your leave is approved through NSIPS or MOL. This notice routes through the chain so the BN is tracking your absence — the BN can't approve or deny it, only acknowledge and forward.
+            <div className="alert alert-announce" style={{ marginBottom:"0.75rem", padding:"0.75rem 0.85rem" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:"0.4rem", fontWeight:700, fontSize:"0.9rem", marginBottom:"0.35rem" }}>
+                📨 <span>Leave Notice — {noticeKind}</span>
+              </div>
+              <div style={{ fontSize:"0.82rem", lineHeight:1.45 }}>
+                Your leave is approved through <strong>{noticeSystemLabel}</strong>. This notice routes through the chain so the BN is tracking your absence — the BN can't approve or deny it, only acknowledge and forward.
+              </div>
             </div>
           )}
           {needsRouteSelect && (
@@ -3480,24 +3492,17 @@ function ChitsPage({ chits, setChits, userList }) {
           {isNoticeUser ? (
             <>
               <div className="input-group">
-                <label className="input-label">Approval System <span style={{ color:"#C0392B" }}>*</span></label>
-                <select className="input" value={form.acknowledgeSystem} onChange={e => setForm(s => ({ ...s, acknowledgeSystem: e.target.value }))}>
-                  <option value="NSIPS">NSIPS (Navy)</option>
-                  <option value="MOL">MOL (Marine OnLine)</option>
-                </select>
-              </div>
-              <div className="input-group">
                 <label className="input-label">Message to Chain <span style={{ color:"#C0392B" }}>*</span></label>
                 <textarea
                   className="input" style={{ minHeight:"90px", resize:"vertical" }} maxLength={1000}
                   value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))}
-                  placeholder={`I will be on leave from ${form.startDate || "[start]"} to ${form.endDate || "[end]"}. I confirm my leave has been approved and submitted on ${form.acknowledgeSystem}.`}
+                  placeholder={`I will be on leave from ${form.startDate || "[start]"} to ${form.endDate || "[end]"}. I confirm my leave has been approved and submitted on ${noticeSystem}.`}
                 />
               </div>
               <div className="input-group">
                 <label style={{ display:"flex", alignItems:"flex-start", gap:"0.5rem", cursor:"pointer", fontSize:"0.85rem" }}>
                   <input type="checkbox" checked={form.acknowledged} onChange={e => setForm(s => ({ ...s, acknowledged: e.target.checked }))} style={{ marginTop:"0.2rem" }} />
-                  <span>I confirm my leave has been approved and submitted on <strong>{form.acknowledgeSystem}</strong>.</span>
+                  <span>I confirm my leave has been approved and submitted on <strong>{noticeSystem}</strong>.</span>
                 </label>
               </div>
             </>

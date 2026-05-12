@@ -29062,9 +29062,14 @@
     const [showModal, setShowModal] = (0, import_react.useState)(false);
     const [toast, setToast] = (0, import_react.useState)("");
     const isNoticeUser = usesNoticeChit(user);
+    const userRankPrefix = (user.rank || "").trim().split(/\s+/)[0] || "";
+    const isOC = userRankPrefix.toUpperCase() === "OC";
+    const noticeSystem = isOC ? "NSIPS" : "MOL";
+    const noticeSystemLabel = isOC ? "NSIPS" : "MOL (Marine OnLine)";
+    const noticeKind = isOC ? "OC" : "MECEP";
     const defaultChitCategory = isNoticeUser ? "notice" : user.role === "plt_cdr" ? "pc" : user.role === "mid" ? "mir" : "staff";
     const initialChitType = defaultChitCategory;
-    const [form, setForm] = (0, import_react.useState)({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: initialChitType, acknowledgeSystem: "NSIPS", acknowledged: false });
+    const [form, setForm] = (0, import_react.useState)({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: initialChitType, acknowledgeSystem: noticeSystem, acknowledged: false });
     const [chitSubmitAttempted, setChitSubmitAttempted] = (0, import_react.useState)(false);
     const [activeComment, setActiveComment] = (0, import_react.useState)(null);
     const [commentText, setCommentText] = (0, import_react.useState)("");
@@ -29228,7 +29233,7 @@ Please log in to The Quarterdeck to review and take action.
         }
       }
       setShowModal(false);
-      setForm({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: initialChitType, acknowledgeSystem: "NSIPS", acknowledged: false });
+      setForm({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: initialChitType, acknowledgeSystem: noticeSystem, acknowledged: false });
       setChitSubmitAttempted(false);
       fire(form.chitType === "notice" ? "\u2705 Leave notice submitted \u2014 chain of command notified." : "\u2705 CHIT submitted and routed to your chain of command.");
     };
@@ -29858,10 +29863,19 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
       showModal && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Modal, { title: isNoticeUser ? "Submit Leave Notice" : "Submit CHIT", onClose: () => setShowModal(false), children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "privacy-note", children: "\u{1F512} Private \u2014 only you and your CoC will see this." }),
         toast && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `alert ${toast.startsWith("\u26A0") ? "alert-red" : "alert-green"}`, children: toast }),
-        isNoticeUser && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "alert alert-announce", style: { marginBottom: "0.75rem", fontSize: "0.85rem" }, children: [
-          "\u{1F4E8} ",
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Leave Notice (OC / MECEP):" }),
-          " your leave is approved through NSIPS or MOL. This notice routes through the chain so the BN is tracking your absence \u2014 the BN can't approve or deny it, only acknowledge and forward."
+        isNoticeUser && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "alert alert-announce", style: { marginBottom: "0.75rem", padding: "0.75rem 0.85rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: 700, fontSize: "0.9rem", marginBottom: "0.35rem" }, children: [
+            "\u{1F4E8} ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+              "Leave Notice \u2014 ",
+              noticeKind
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.82rem", lineHeight: 1.45 }, children: [
+            "Your leave is approved through ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: noticeSystemLabel }),
+            ". This notice routes through the chain so the BN is tracking your absence \u2014 the BN can't approve or deny it, only acknowledge and forward."
+          ] })
         ] }),
         needsRouteSelect && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
@@ -29912,16 +29926,6 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
         isNoticeUser ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-              "Approval System ",
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.acknowledgeSystem, onChange: (e) => setForm((s) => ({ ...s, acknowledgeSystem: e.target.value })), children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "NSIPS", children: "NSIPS (Navy)" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "MOL", children: "MOL (Marine OnLine)" })
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
               "Message to Chain ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
             ] }),
@@ -29933,7 +29937,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
                 maxLength: 1e3,
                 value: form.notes,
                 onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })),
-                placeholder: `I will be on leave from ${form.startDate || "[start]"} to ${form.endDate || "[end]"}. I confirm my leave has been approved and submitted on ${form.acknowledgeSystem}.`
+                placeholder: `I will be on leave from ${form.startDate || "[start]"} to ${form.endDate || "[end]"}. I confirm my leave has been approved and submitted on ${noticeSystem}.`
               }
             )
           ] }),
@@ -29941,7 +29945,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "checkbox", checked: form.acknowledged, onChange: (e) => setForm((s) => ({ ...s, acknowledged: e.target.checked })), style: { marginTop: "0.2rem" } }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
               "I confirm my leave has been approved and submitted on ",
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: form.acknowledgeSystem }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: noticeSystem }),
               "."
             ] })
           ] }) })
