@@ -27102,6 +27102,9 @@
   function canSubmitChit(user) {
     return !!user && !isBigFour(user) && !isUnitStaff(user);
   }
+  function canSubmitFitrep(user) {
+    return canSubmitChit(user) && !usesNoticeChit(user);
+  }
   function requiresChitRouteSelection(user) {
     if (!user || isBigFour(user) || ["adj", "co_cdr", "plt_cdr"].includes(user.role)) return false;
     return !MIDSHIPMAN_COMPANIES.includes(normalizeCompany(user.company)) || !/^\d+(?:st|nd|rd|th)\s*PC$/i.test(normalizePlatoon(user.platoon));
@@ -28525,10 +28528,13 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#BF5700" }, children: myChits.length }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "CHITs to Sign" })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#2A7D4F" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#2A7D4F" }, children: forms.length }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "Active Forms" })
-        ] })
+        (() => {
+          const myActiveForms = forms.filter((f) => !f.clicks?.[user.id]).length;
+          return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat", style: { borderLeftColor: "#2A7D4F" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-n", style: { color: "#2A7D4F" }, children: myActiveForms }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stat-l", children: "Active Forms" })
+          ] });
+        })()
       ] }),
       isCoC(user) && queueTotal > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", style: { marginBottom: "1rem", borderLeft: "4px solid #BF5700" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card-header", style: { marginBottom: "0.5rem" }, children: [
@@ -28611,12 +28617,15 @@
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "card-title", children: "\u{1F4DD} Open Forms" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => onNav("forms"), children: "View" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.88rem" }, children: [
-              forms.length,
-              " form",
-              forms.length !== 1 ? "s" : "",
-              " posted for your response."
-            ] })
+            (() => {
+              const myActiveForms = forms.filter((f) => !f.clicks?.[user.id]).length;
+              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.88rem" }, children: [
+                myActiveForms,
+                " form",
+                myActiveForms !== 1 ? "s" : "",
+                " still need your response."
+              ] });
+            })()
           ] })
         ] })
       ] }),
@@ -30517,7 +30526,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
   }
   function FitrepsPage({ fitrebs, setFitrebs, userList }) {
     const { user } = useAuth();
-    const canSubmit = canSubmitChit(user);
+    const canSubmit = canSubmitFitrep(user);
     const needsRouteSelect = requiresChitRouteSelection(user);
     const [showModal, setShowModal] = (0, import_react.useState)(false);
     const currentPeriod = getSemesterLabel((/* @__PURE__ */ new Date()).toISOString());

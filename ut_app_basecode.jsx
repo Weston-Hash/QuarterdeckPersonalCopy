@@ -387,6 +387,13 @@ function canSubmitChit(user) {
   return !!user && !isBigFour(user) && !isUnitStaff(user);
 }
 
+// OCs and MECEPs are on the commissioning track but don't get FITREPs from
+// the BN — their reporting is handled by their parent service. The same Big
+// Four / Unit Staff restrictions also apply.
+function canSubmitFitrep(user) {
+  return canSubmitChit(user) && !usesNoticeChit(user);
+}
+
 function requiresChitRouteSelection(user) {
   if (!user || isBigFour(user) || ["adj", "co_cdr", "plt_cdr"].includes(user.role)) return false;
   return !MIDSHIPMAN_COMPANIES.includes(normalizeCompany(user.company)) || !/^\d+(?:st|nd|rd|th)\s*PC$/i.test(normalizePlatoon(user.platoon));
@@ -2088,7 +2095,18 @@ function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, form
             <div className="stat-l">CHITs to Sign</div>
           </div>
         )}
-        <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}><div className="stat-n" style={{ color:"#2A7D4F" }}>{forms.length}</div><div className="stat-l">Active Forms</div></div>
+        {(() => {
+          // Personal Active Forms count: forms posted to the BN that this user
+          // hasn't filled out yet. Once they click "Fill Out" on a form, it
+          // drops out of their count.
+          const myActiveForms = forms.filter(f => !f.clicks?.[user.id]).length;
+          return (
+            <div className="stat" style={{ borderLeftColor:"#2A7D4F" }}>
+              <div className="stat-n" style={{ color:"#2A7D4F" }}>{myActiveForms}</div>
+              <div className="stat-l">Active Forms</div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* My Queue — only shown to CoC members who have pending items */}
@@ -2149,7 +2167,14 @@ function Dashboard({ onNav, userList, chits, setChits, fitrebs, setFitrebs, form
           </div>
           <div className="card">
             <div className="card-header"><span className="card-title">📝 Open Forms</span><button className="btn btn-outline btn-sm" onClick={() => onNav("forms")}>View</button></div>
-            <div style={{ fontSize:"0.88rem" }}>{forms.length} form{forms.length !== 1 ? "s" : ""} posted for your response.</div>
+            {(() => {
+              const myActiveForms = forms.filter(f => !f.clicks?.[user.id]).length;
+              return (
+                <div style={{ fontSize:"0.88rem" }}>
+                  {myActiveForms} form{myActiveForms !== 1 ? "s" : ""} still need your response.
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -3997,7 +4022,7 @@ function AcademicPage() {
 // ─── FITREP PAGE ─────────────────────────────────────────────
 function FitrepsPage({ fitrebs, setFitrebs, userList }) {
   const { user } = useAuth();
-  const canSubmit = canSubmitChit(user); // same Big Four restriction
+  const canSubmit = canSubmitFitrep(user); // Big Four / Unit Staff / OC / MECEP excluded
   const needsRouteSelect = requiresChitRouteSelection(user);
   const [showModal, setShowModal]         = useState(false);
   const currentPeriod = getSemesterLabel(new Date().toISOString());
