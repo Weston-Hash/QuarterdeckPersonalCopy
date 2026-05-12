@@ -3324,11 +3324,12 @@ function ChitsPage({ chits, setChits, userList }) {
         </div>
       )}
 
-      {canSubmit && (
-        <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"1rem" }}>
+      <div style={{ display:"flex", justifyContent:"flex-end", gap:"0.5rem", flexWrap:"wrap", marginBottom:"1rem" }}>
+        <a href="/Chit_Form.pdf" download="Chit_Form.pdf" className="btn btn-outline" title="Download a blank CHIT form to fill out">📄 Blank CHIT Form</a>
+        {canSubmit && (
           <button className="btn btn-orange" onClick={() => setShowModal(true)}>{isNoticeUser ? "+ Submit Leave Notice" : "+ Submit New CHIT"}</button>
-        </div>
-      )}
+        )}
+      </div>
 
       {visible.length === 0 && (
         <div className="empty">

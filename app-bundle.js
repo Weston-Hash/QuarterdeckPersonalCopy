@@ -29797,7 +29797,10 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
           ] })
         ] })
       ] }),
-      canSubmit && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: isNoticeUser ? "+ Submit Leave Notice" : "+ Submit New CHIT" }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "flex-end", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: "/Chit_Form.pdf", download: "Chit_Form.pdf", className: "btn btn-outline", title: "Download a blank CHIT form to fill out", children: "\u{1F4C4} Blank CHIT Form" }),
+        canSubmit && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: isNoticeUser ? "+ Submit Leave Notice" : "+ Submit New CHIT" })
+      ] }),
       visible.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2rem" }, children: "\u{1F4CB}" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: "No CHITs on file." })
