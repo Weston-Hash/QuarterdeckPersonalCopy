@@ -27199,7 +27199,10 @@
     const chain = [];
     for (const step of template) {
       const person = resolveChitApprover(userList, step.role, routeContext, user);
-      if (!person) return [];
+      if (!person) {
+        console.warn(`[buildChitApprovalChain] No roster member for role "${step.role}" \u2014 stage skipped.`);
+        continue;
+      }
       if (person.id === user.id) continue;
       chain.push(makeChitChainNode(
         step.labelFor(routeContext),
@@ -29078,7 +29081,7 @@
     const noticeKind = isOC ? "OC" : "MECEP";
     const defaultChitCategory = isNoticeUser ? "notice" : user.role === "plt_cdr" ? "pc" : user.role === "mid" ? "mir" : "staff";
     const initialChitType = defaultChitCategory;
-    const [form, setForm] = (0, import_react.useState)({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: initialChitType, acknowledgeSystem: noticeSystem, acknowledged: false });
+    const [form, setForm] = (0, import_react.useState)({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: initialChitType, acknowledgeSystem: noticeSystem, acknowledged: false, medicalNoteStatus: "" });
     const [chitSubmitAttempted, setChitSubmitAttempted] = (0, import_react.useState)(false);
     const [activeComment, setActiveComment] = (0, import_react.useState)(null);
     const [commentText, setCommentText] = (0, import_react.useState)("");
@@ -29171,6 +29174,10 @@
           fire("\u26A0 Notes are required when reason is 'Other'.");
           return;
         }
+        if (form.reason === "Medical" && !form.medicalNoteStatus) {
+          fire("\u26A0 Certify whether your medical note has been sent to your Unit Advisor.");
+          return;
+        }
         if (!form.chitDoc) {
           fire("\u26A0 CHIT Document is required.");
           return;
@@ -29200,6 +29207,7 @@
         notes: form.notes,
         chitType: form.chitType,
         acknowledgeSystem: isNotice ? form.acknowledgeSystem : null,
+        medicalNoteStatus: !isNotice && form.reason === "Medical" ? form.medicalNoteStatus : null,
         status: "Pending",
         currentStage: 1,
         stages,
@@ -29242,7 +29250,7 @@ Please log in to The Quarterdeck to review and take action.
         }
       }
       setShowModal(false);
-      setForm({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: initialChitType, acknowledgeSystem: noticeSystem, acknowledged: false });
+      setForm({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: initialChitType, acknowledgeSystem: noticeSystem, acknowledged: false, medicalNoteStatus: "" });
       setChitSubmitAttempted(false);
       fire(form.chitType === "notice" ? "\u2705 Leave notice submitted \u2014 chain of command notified." : "\u2705 CHIT submitted and routed to your chain of command.");
     };
@@ -29614,6 +29622,8 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
           c.acknowledgeSystem || "NSIPS/MOL",
           " \u2014 chain forwards for tracking only."
         ] }),
+        c.medicalNoteStatus === "sent" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#2A7D4F", marginTop: "0.25rem", fontWeight: 600 }, children: "\u2713 Submitter certified medical note already emailed to Unit Advisor." }),
+        c.medicalNoteStatus === "will_send" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#B8860B", marginTop: "0.25rem", fontWeight: 600 }, children: "\u23F3 Submitter certified medical note will be emailed to Unit Advisor once received." }),
         c.notes && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }, children: c.notes }),
         (c.docs?.chitDoc || c.docs?.corroborating?.length > 0) && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.55rem" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontFamily: "'Barlow', 'Segoe UI', sans-serif", fontSize: "0.65rem", letterSpacing: "1.5px", textTransform: "uppercase", color: "#888" }, children: "Docs:" }),
@@ -29961,13 +29971,48 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
               "Reason ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.reason, onChange: (e) => setForm((s) => ({ ...s, reason: e.target.value })), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.reason, onChange: (e) => setForm((s) => ({ ...s, reason: e.target.value, medicalNoteStatus: e.target.value === "Medical" ? s.medicalNoteStatus : "" })), children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select reason\u2026" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Medical Appointment" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Medical" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Academic Conflict" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Family Emergency" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Personal Emergency" }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { children: "Other" })
+            ] })
+          ] }),
+          form.reason === "Medical" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
+              "Medical Note ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.75rem", color: "#666", marginBottom: "0.4rem" }, children: "Certify that your Unit Advisor has \u2014 or will \u2014 receive your medical note. Don't upload it here." }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { style: { display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer", fontSize: "0.85rem", marginBottom: "0.3rem" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  type: "radio",
+                  name: "medicalNoteStatus",
+                  value: "sent",
+                  checked: form.medicalNoteStatus === "sent",
+                  onChange: () => setForm((s) => ({ ...s, medicalNoteStatus: "sent" })),
+                  style: { marginTop: "0.2rem" }
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "I have already emailed my medical note to my Unit Advisor." })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { style: { display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer", fontSize: "0.85rem" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                "input",
+                {
+                  type: "radio",
+                  name: "medicalNoteStatus",
+                  value: "will_send",
+                  checked: form.medicalNoteStatus === "will_send",
+                  onChange: () => setForm((s) => ({ ...s, medicalNoteStatus: "will_send" })),
+                  style: { marginTop: "0.2rem" }
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "I don't have it yet \u2014 I will email it to my Unit Advisor as soon as I receive it." })
             ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
@@ -29978,8 +30023,8 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { className: "input", style: { minHeight: "80px", resize: "vertical" }, maxLength: 1e3, value: form.notes, onChange: (e) => setForm((s) => ({ ...s, notes: e.target.value })), placeholder: form.reason === "Other" ? "Please explain the reason for your absence" : "" })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { borderTop: "1px solid #eee", paddingTop: "0.85rem", marginTop: "0.25rem" }, children: [
-          !isNoticeUser && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { borderTop: "1px solid #eee", paddingTop: "1rem", marginTop: "0.5rem" }, children: [
+          !isNoticeUser && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", style: { paddingBottom: "0.85rem", marginBottom: "0.85rem", borderBottom: "1px dashed #e2e2e2" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
               "CHIT Document ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
