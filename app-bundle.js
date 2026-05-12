@@ -26974,7 +26974,7 @@
     Alpha: "#8B0000",
     Bravo: "#003087",
     Charlie: "#B8860B",
-    Delta: "#5DAB48"
+    Delta: "#7EA85E"
   };
   var MIDSHIPMAN_COMPANIES = ["Alpha", "Bravo", "Charlie", "Delta"];
   var STRUCTURE_BILLET_ORDER = ["PTO", "APTO", "ADJ", "SUPPO", "PAO", "TRAINO", "ATRAINO", "AO", "BGDO", "CGC", "AOPS"];

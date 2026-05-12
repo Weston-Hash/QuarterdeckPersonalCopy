@@ -102,7 +102,7 @@ const COMPANY_COLORS = {
   Alpha:   "#8B0000",
   Bravo:   "#003087",
   Charlie: "#B8860B",
-  Delta:   "#5DAB48",
+  Delta:   "#7EA85E",
 };
 
 // Single source of truth for the midshipman companies (everything except BN
