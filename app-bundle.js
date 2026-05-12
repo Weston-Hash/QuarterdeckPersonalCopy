@@ -29902,22 +29902,19 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
             ] })
           ] })
         ] }),
-        !isNoticeUser && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-            "CHIT Category ",
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.chitType, onChange: (e) => setForm((s) => ({ ...s, chitType: e.target.value })), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "mir", children: "MIR Chit \u2014 Midshipman individual request" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "pc", children: "PC Chit \u2014 Platoon Commander request" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "staff", children: "Staff Chit \u2014 Any other billet holder" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.72rem", color: "#888", marginTop: "0.25rem" }, children: [
-            form.chitType === "mir" && "Routes: CC (FYI) \u2192 ADJ \u2192 BNXO \u2192 BNCO \u2192 Unit Advisor.",
-            form.chitType === "pc" && "Routes: CC (FYI) \u2192 ADJ \u2192 BNXO \u2192 BNCO \u2192 Unit Advisor.",
-            form.chitType === "staff" && "Routes: ADJ (FYI) \u2192 BNXO \u2192 BNCO \u2192 Unit Advisor."
-          ] })
-        ] }),
+        !isNoticeUser && (() => {
+          const categoryLabel = form.chitType === "pc" ? "PC Chit \u2014 Platoon Commander request" : form.chitType === "staff" ? "Staff Chit \u2014 Billet holder" : "MIR Chit \u2014 Midshipman individual request";
+          const routeText = form.chitType === "staff" ? "Routes: ADJ (FYI) \u2192 BNXO \u2192 BNCO \u2192 Unit Advisor" : "Routes: CC (FYI) \u2192 ADJ \u2192 BNXO \u2192 BNCO \u2192 Unit Advisor";
+          return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "CHIT Category" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "0.55rem 0.7rem", border: "1px solid #ddd", borderRadius: "4px", background: "#f7f7f7", fontSize: "0.88rem", fontWeight: 600 }, children: categoryLabel }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.72rem", color: "#888", marginTop: "0.25rem" }, children: [
+              "Automatically set from your role. ",
+              routeText,
+              "."
+            ] })
+          ] });
+        })(),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
             "Start Date ",
