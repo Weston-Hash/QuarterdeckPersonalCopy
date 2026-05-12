@@ -35,7 +35,8 @@ const canSeeFitrepArchive = (u) => u && FITREP_ARCHIVE_ROLES.includes(u.role);
 const CHIT_TERMINAL_STATUSES   = ["Approved", "Denied", "Returned", "Tracked"];
 const FITREP_TERMINAL_STATUSES = ["Approved", "Denied", "Returned"];
 // Who can post BN-wide announcements: Big Four + CCs + PCs + MOI + Unit CO + Unit XO
-const canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
+// BN-wide announcements are restricted to the Big Four (BNCO, BNXO, OPS, SEL).
+const canPostAnnouncement = (u) => isBigFour(u);
 // Roles that can ever appear as a CHIT approver in the chain of command
 const CHIT_SIGNER_ROLES = ["adj", "plt_cdr", "co_cdr", "bn_cdr", "xo", "unit_xo", "moi", "swo", "sub"];
 const canSignChits = (u) => u && CHIT_SIGNER_ROLES.includes(u.role);
