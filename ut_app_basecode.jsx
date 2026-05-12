@@ -3401,7 +3401,7 @@ function ChitsPage({ chits, setChits, userList }) {
       )}
 
       <div style={{ display:"flex", justifyContent:"flex-end", gap:"0.5rem", flexWrap:"wrap", marginBottom:"1rem" }}>
-        <a href="/Chit_Form.pdf" download="Chit_Form.pdf" className="btn btn-outline" title="Download a blank CHIT form to fill out">📄 Blank CHIT Form</a>
+        <a href="/Chit_Form.pdf" download="Chit_Form.pdf" className="btn btn-outline" title="Download a blank CHIT form to fill out">📄 Download CHIT Form</a>
         {canSubmit && (
           <button className="btn btn-orange" onClick={() => setShowModal(true)}>{isNoticeUser ? "+ Submit Leave Notice" : "+ Submit New CHIT"}</button>
         )}
