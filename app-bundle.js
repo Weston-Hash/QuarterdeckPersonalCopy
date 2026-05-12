@@ -27458,7 +27458,7 @@
   ];
   var INIT_CHITS = [];
   var INIT_QS = [];
-  var SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbxRrkSF-XOQwcJVcECas9_0qg455RuO69jTHqEjnv_UoFNeE0FW6EFf-oI2DIQBJeGB/exec";
+  var SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbweAROtdmmqJG9J4ctSNBeiiy3Mva_KAiosM4CRAsK8FDSB2811BvsyPoWXL6XwD38R/exec";
   var SHEETS_API_TOKEN = "UT_NROTC";
   var ROSTER_CACHE_KEY = "quarterdeck_roster_cache_v1";
   function loadCachedRoster() {
