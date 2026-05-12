@@ -1009,8 +1009,19 @@ function sheetRowToUser(row, index) {
         ? "SEL"
         : billetRaw;
 
-  // Name: strip rank prefix (MIDN, GySgt, SSgt, OC, Sgt, etc.)
-  const name = nameRaw.replace(/^(MIDN|CAPT|CMDR|CDR|LCDR|LT|LTJG|ENS|SCPO|CPO|PO1|PO2|PO3|GySgt|GySGT|MSgt|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
+  // Strip the rank/title prefix from the name. The sheet itself tells us
+  // what the prefix is: for midshipmen it's "MIDN <last>" (class is "1/C",
+  // "2/C" …); for everyone else the name's first token equals the class
+  // value (Capt., SSgt, OC, etc.). So we build the strip pattern from the
+  // row's own class — no hardcoded rank list, and trailing periods (Capt.)
+  // are handled naturally.
+  const classPattern = classVal
+    ? classVal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    : "";
+  const namePrefixPattern = classPattern
+    ? new RegExp(`^(?:MIDN|${classPattern})\\s+`, "i")
+    : /^MIDN\s+/i;
+  const name = nameRaw.replace(namePrefixPattern, "").trim();
 
   // Role from billet — strip company letter prefix for matching (e.g. "A 1st PC" → "1st PC")
   // Strip any leading single-letter company prefix (A/B/C/D/…) so "A 1st PC"
@@ -1018,13 +1029,11 @@ function sheetRowToUser(row, index) {
   const billetNorm = billetRaw.replace(/^[A-Z]\s+/, "");
   const role = resolveRoleForBillet(billetRaw, billetNorm);
 
-  // Rank: "1/C"→"MIDN 1/C", "GySgt"→"GySgt", etc.
-  // Display normalization:
-  //  - Navy O-5 is "CDR" (sheet may carry the legacy "CMDR" spelling)
-  //  - MOI is a Marine officer, so "CAPT" (Navy O-6 form) is corrected to "Capt"
-  let rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
-  if (rank.toUpperCase() === "CMDR") rank = "CDR";
-  if (role === "moi" && rank.toUpperCase() === "CAPT") rank = "Capt";
+  // Rank is whatever the sheet says. Midshipmen with a class year ("1/C",
+  // "2/C", "3/C", "4/C") get the standard "MIDN <class>" formatting. No
+  // post-load normalization (CMDR → CDR, CAPT → Capt) — fix it in the
+  // sheet if you want a different display.
+  const rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
 
   return {
     id:       (row.eid || `sheet-${index}`).trim(),
