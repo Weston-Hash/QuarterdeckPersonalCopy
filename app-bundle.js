@@ -26966,14 +26966,17 @@
     Unit: { short: "Unit", full: "Unit Staff" },
     Alpha: { short: "Alpha", full: "Alpha Company" },
     Bravo: { short: "Bravo", full: "Bravo Company" },
-    Charlie: { short: "Charlie", full: "Charlie Company" }
+    Charlie: { short: "Charlie", full: "Charlie Company" },
+    Delta: { short: "Delta", full: "Delta Company" }
   };
   var COMPANY_COLORS = {
     Unit: "linear-gradient(135deg, #002B5C, #8B0000)",
     Alpha: "#8B0000",
     Bravo: "#003087",
-    Charlie: "#B8860B"
+    Charlie: "#B8860B",
+    Delta: "#5DAB48"
   };
+  var MIDSHIPMAN_COMPANIES = ["Alpha", "Bravo", "Charlie", "Delta"];
   var STRUCTURE_BILLET_ORDER = ["PTO", "APTO", "ADJ", "SUPPO", "PAO", "TRAINO", "ATRAINO", "AO", "BGDO", "CGC", "AOPS"];
   function normalizeCompany(company) {
     return LEGACY_COMPANY_MAP[company] || company;
@@ -27022,10 +27025,10 @@
   function normalizePlatoon(platoon) {
     const value = (platoon || "").trim().replace(/\s+/g, " ");
     if (!value) return "";
-    const companyPrefixedPlatoon = value.match(/^[ABC]\s+(\d+(?:st|nd|rd|th))(?:\s*(?:PC|PLT))?$/i);
+    const companyPrefixedPlatoon = value.match(/^[A-Z]\s+(\d+(?:st|nd|rd|th))(?:\s*(?:PC|PLT))?$/i);
     if (companyPrefixedPlatoon) return `${companyPrefixedPlatoon[1]} PC`;
-    if (/^(?:[ABC]\s+)?CC$/i.test(value) || /^CO$/i.test(value)) return "CO";
-    if (/^(?:[ABC]\s+)?SEL$/i.test(value)) return "SEL";
+    if (/^(?:[A-Z]\s+)?CC$/i.test(value) || /^CO$/i.test(value)) return "CO";
+    if (/^(?:[A-Z]\s+)?SEL$/i.test(value)) return "SEL";
     if (/^\d+(?:st|nd|rd|th)\s*PLT$/i.test(value)) return value.replace(/\s*PLT$/i, " PC");
     if (/^\d+(?:st|nd|rd|th)$/i.test(value)) return `${value} PC`;
     return value;
@@ -27039,7 +27042,7 @@
     const match = normalizePlatoon(platoon).match(/^(\d+)/);
     return match ? Number(match[1]) : 99;
   }
-  var ROSTER_COMPANY_ORDER = ["Unit", "BN", "Alpha", "Bravo", "Charlie"];
+  var ROSTER_COMPANY_ORDER = ["Unit", "BN", ...MIDSHIPMAN_COMPANIES];
   var UNIT_ROSTER_ASSIGNMENT_ORDER = ["Unit CO", "Unit XO", "SUB", "SWO", "MOI", "SEA", "AMOI"];
   var BN_ROSTER_ASSIGNMENT_ORDER = ["BNCO", "BNXO", "OPS", "SEL", "PTO", "APTO", "ADJ", "SUPPO", "PAO", "TRAINO", "ATRAINO", "AO", "BGDO", "CGC", "AOPS", "MIR"];
   var UNIT_BILLET_DISPLAY = { "SUB": "SUBO", "SWO": "SWO", "MOI": "MOI", "SEA": "SEA", "AMOI": "AMOI", "Unit CO": "Unit CO", "Unit XO": "Unit XO" };
@@ -27101,7 +27104,7 @@
   }
   function requiresChitRouteSelection(user) {
     if (!user || isBigFour(user) || ["adj", "co_cdr", "plt_cdr"].includes(user.role)) return false;
-    return !["Alpha", "Bravo", "Charlie"].includes(normalizeCompany(user.company)) || !/^\d+(?:st|nd|rd|th)\s*PC$/i.test(normalizePlatoon(user.platoon));
+    return !MIDSHIPMAN_COMPANIES.includes(normalizeCompany(user.company)) || !/^\d+(?:st|nd|rd|th)\s*PC$/i.test(normalizePlatoon(user.platoon));
   }
   function getCompanyCommander(userList, company) {
     return userList.find((u) => normalizeCompany(u.company) === normalizeCompany(company) && u.role === "co_cdr");
@@ -27441,10 +27444,16 @@
     ]
   };
   var LEADLAB_INIT = [];
+  var NON_ALPHA_MIDS_COMPANIES = MIDSHIPMAN_COMPANIES.filter((c) => c !== "Alpha");
   var PT_SESSIONS = [
     { key: "monday", day: "Monday", type: "BN PT", desc: "Battalion-wide formation PT", color: "#BF5700" },
-    { key: "wed_bravo", day: "Wednesday", type: "Bravo Co PT", desc: "Bravo Company physical training", color: "#003087" },
-    { key: "wed_charlie", day: "Wednesday", type: "Charlie Co PT", desc: "Charlie Company physical training", color: "#B8860B" },
+    ...NON_ALPHA_MIDS_COMPANIES.map((co) => ({
+      key: `wed_${co.toLowerCase()}`,
+      day: "Wednesday",
+      type: `${co} Co PT`,
+      desc: `${co} Company physical training`,
+      color: COMPANY_COLORS[co]
+    })),
     { key: "thursday", day: "Thursday", type: "FEP", desc: "Fitness Enhancement Program", color: "#2A7D4F" }
   ];
   var INIT_CHITS = [];
@@ -27480,29 +27489,16 @@
   var COMPANY_MAP = {
     "BN Staff": "BN",
     "Unit Staff": "Unit",
-    "A": "Alpha",
-    "B": "Bravo",
-    "C": "Charlie"
+    ...Object.fromEntries(MIDSHIPMAN_COMPANIES.map((c) => [c.charAt(0), c]))
   };
   var BILLET_TO_ROLE = {
     "BNCO": "bn_cdr",
     "BNXO": "xo",
     "OPS": "ops",
-    "SEL": "sel",
     "ADJ": "adj",
     "PTO": "pto",
     "TRAINO": "traino",
     "AO": "academics",
-    "A CC": "co_cdr",
-    "B CC": "co_cdr",
-    "C CC": "co_cdr",
-    "A SEL": "sel",
-    "B SEL": "sel",
-    "C SEL": "sel",
-    "1st PC": "plt_cdr",
-    "2nd PC": "plt_cdr",
-    "3rd PC": "plt_cdr",
-    "CC": "co_cdr",
     "AOPS": "mid",
     "PAO": "mid",
     "SUPPO": "mid",
@@ -27521,6 +27517,14 @@
     "Unit CO": "unit_co",
     "Unit XO": "unit_xo"
   };
+  function resolveRoleForBillet(billetRaw, billetNorm) {
+    const exact = BILLET_TO_ROLE[billetRaw] || BILLET_TO_ROLE[billetNorm];
+    if (exact) return exact;
+    if (/^\d+(?:st|nd|rd|th)\s*PC$/i.test(billetNorm)) return "plt_cdr";
+    if (/^(?:[A-Z]\s+)?CC$/i.test(billetRaw)) return "co_cdr";
+    if (/^(?:[A-Z]\s+)?SEL$/i.test(billetRaw)) return "sel";
+    return "mid";
+  }
   function sheetRowToUser(row, index) {
     const companyRaw = (row.company || "").trim();
     const billetRaw = (row.billet || "").trim();
@@ -27529,15 +27533,15 @@
     let companyKey;
     if (companyRaw === "BN Staff") companyKey = "BN Staff";
     else if (companyRaw === "Unit Staff") companyKey = "Unit Staff";
-    else if (/^[ABC]\b/.test(companyRaw)) companyKey = companyRaw.charAt(0);
-    else if (/^[ABC]\s/.test(billetRaw)) companyKey = billetRaw.charAt(0);
+    else if (/^[A-Z]\b/.test(companyRaw) && COMPANY_MAP[companyRaw.charAt(0)]) companyKey = companyRaw.charAt(0);
+    else if (/^[A-Z]\s/.test(billetRaw) && COMPANY_MAP[billetRaw.charAt(0)]) companyKey = billetRaw.charAt(0);
     else companyKey = companyRaw;
     const company = normalizeCompany(COMPANY_MAP[companyKey] || companyRaw);
     const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i) || billetRaw.match(/(\d+(?:st|nd|rd|th))/i);
     const platoon = platoonMatch ? `${platoonMatch[1]} PLT` : /CC$/i.test(billetRaw) ? "CO" : /SEL$/i.test(billetRaw) ? "SEL" : billetRaw;
     const name = nameRaw.replace(/^(MIDN|CAPT|CMDR|CDR|LCDR|LT|LTJG|ENS|SCPO|CPO|PO1|PO2|PO3|GySgt|GySGT|MSgt|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
-    const billetNorm = billetRaw.replace(/^[ABC]\s+/, "");
-    const role = BILLET_TO_ROLE[billetRaw] || BILLET_TO_ROLE[billetNorm] || "mid";
+    const billetNorm = billetRaw.replace(/^[A-Z]\s+/, "");
+    const role = resolveRoleForBillet(billetRaw, billetNorm);
     let rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
     if (rank.toUpperCase() === "CMDR") rank = "CDR";
     if (role === "moi" && rank.toUpperCase() === "CAPT") rank = "Capt";
@@ -28005,13 +28009,13 @@
     const viewCount = Object.keys(viewedBy || {}).length;
     const notViewed = userList.filter((u) => !viewedBy?.[u.id]);
     const viewed = userList.filter((u) => viewedBy?.[u.id]);
-    const VIEW_GROUPS = ["Unit Staff", "Big Four", "BN Staff", "Alpha", "Bravo", "Charlie"];
+    const VIEW_GROUPS = ["Unit Staff", "Big Four", "BN Staff", ...MIDSHIPMAN_COMPANIES];
     const categoryFor = (u) => {
       if (isUnitStaff(u) || normalizeCompany(u.company) === "Unit") return "Unit Staff";
       if (isBigFour(u)) return "Big Four";
       const co = normalizeCompany(u.company);
       if (co === "BN") return "BN Staff";
-      if (co === "Alpha" || co === "Bravo" || co === "Charlie") return co;
+      if (MIDSHIPMAN_COMPANIES.includes(co)) return co;
       return "BN Staff";
     };
     const groupUsers = (users) => {
@@ -28714,11 +28718,11 @@
     const billetHolders = STRUCTURE_BILLET_ORDER.flatMap(
       (billet) => userList.filter((u) => getBilletLabel(u) === billet)
     );
-    const COMPANY_DEFS = [
-      { key: "Alpha", name: getCompanyFullName("Alpha"), color: COMPANY_COLORS.Alpha },
-      { key: "Bravo", name: getCompanyFullName("Bravo"), color: COMPANY_COLORS.Bravo },
-      { key: "Charlie", name: getCompanyFullName("Charlie"), color: COMPANY_COLORS.Charlie }
-    ];
+    const COMPANY_DEFS = MIDSHIPMAN_COMPANIES.map((key) => ({
+      key,
+      name: getCompanyFullName(key),
+      color: COMPANY_COLORS[key]
+    }));
     const companies = COMPANY_DEFS.map((def) => {
       const members = userList.filter((u) => normalizeCompany(u.company) === def.key);
       const co = members.find((u) => u.role === "co_cdr");
@@ -29864,7 +29868,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Your Company" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.routeCompany, onChange: (e) => setForm((s) => ({ ...s, routeCompany: e.target.value, routePlatoon: "" })), children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select company\u2026" }),
-              ["Alpha", "Bravo", "Charlie"].map((co) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: co, children: co }, co))
+              MIDSHIPMAN_COMPANIES.map((co) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: co, children: co }, co))
             ] })
           ] }),
           form.routeCompany && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
@@ -30176,9 +30180,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "All Companies" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "Unit", children: "Unit Staff" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "BN", children: "Big Four" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "Alpha", children: "Alpha" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "Bravo", children: "Bravo" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "Charlie", children: "Charlie" })
+          MIDSHIPMAN_COMPANIES.map((co2) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: co2, children: co2 }, co2))
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", children: [
@@ -30933,7 +30935,7 @@ Please log in to The Quarterdeck to review and take action.
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "input-label", children: "Your Company" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: submitForm.routeCompany, onChange: (e) => setSubmitForm((s) => ({ ...s, routeCompany: e.target.value, routePlatoon: "" })), children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "", children: "Select company\u2026" }),
-              ["Alpha", "Bravo", "Charlie"].map((co) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: co, children: co }, co))
+              MIDSHIPMAN_COMPANIES.map((co) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: co, children: co }, co))
             ] })
           ] }),
           submitForm.routeCompany && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
@@ -31709,7 +31711,9 @@ Your ${responseAction === "approve" ? "approval" : "denial"} of the POTW submitt
     const [forms, setForms] = (0, import_react.useState)([]);
     const [weeklyWords, setWeeklyWords] = (0, import_react.useState)([]);
     const [potwApprovals, setPotwApprovals] = (0, import_react.useState)([]);
-    const [ptPlans, setPtPlans] = (0, import_react.useState)({ monday: null, wed_bravo: null, wed_charlie: null, thursday: null });
+    const [ptPlans, setPtPlans] = (0, import_react.useState)(
+      () => Object.fromEntries(PT_SESSIONS.map((s) => [s.key, null]))
+    );
     const [llSessions, setLlSessions] = (0, import_react.useState)(LEADLAB_INIT);
     const [userList, setUserList] = (0, import_react.useState)(cachedRoster);
     const [sheetSynced, setSheetSynced] = (0, import_react.useState)(!SHEETS_API_URL || cachedRoster.length > 0);
