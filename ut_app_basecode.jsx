@@ -520,7 +520,15 @@ function buildChitApprovalChain(userList, user, routeContext, chitType = "mir") 
   const chain = [];
   for (const step of template) {
     const person = resolveChitApprover(userList, step.role, routeContext, user);
-    if (!person) return []; // missing roster member → chain can't be built
+    // Roster gaps shouldn't kill the whole chain. Skip stages whose role
+    // can't be filled (e.g., Unit Advisor not yet assigned, missing platoon
+    // commander) and log a warning so we know. The chit still routes to the
+    // people the roster *does* have.
+    if (!person) {
+      // eslint-disable-next-line no-console
+      console.warn(`[buildChitApprovalChain] No roster member for role "${step.role}" — stage skipped.`);
+      continue;
+    }
     // Originator-skip: the originator is "O" on the routing sheet; they don't
     // appear elsewhere in their own chain.
     if (person.id === user.id) continue;
@@ -2712,7 +2720,7 @@ function ChitsPage({ chits, setChits, userList }) {
     : user.role === "mid"     ? "mir"
     : "staff";
   const initialChitType = defaultChitCategory;
-  const [form, setForm] = useState({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType: initialChitType, acknowledgeSystem: noticeSystem, acknowledged:false });
+  const [form, setForm] = useState({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType: initialChitType, acknowledgeSystem: noticeSystem, acknowledged:false, medicalNoteStatus:"" });
   const [chitSubmitAttempted, setChitSubmitAttempted] = useState(false);
   const [activeComment, setActiveComment] = useState(null);
   const [commentText, setCommentText] = useState("");
@@ -2783,6 +2791,9 @@ function ChitsPage({ chits, setChits, userList }) {
       if (form.reason === "Other" && !form.notes.trim()) {
         fire("⚠ Notes are required when reason is 'Other'."); return;
       }
+      if (form.reason === "Medical" && !form.medicalNoteStatus) {
+        fire("⚠ Certify whether your medical note has been sent to your Unit Advisor."); return;
+      }
       if (!form.chitDoc) { fire("⚠ CHIT Document is required."); return; }
     }
     if (needsRouteSelect && (!form.routeCompany || !form.routePlatoon)) {
@@ -2807,6 +2818,7 @@ function ChitsPage({ chits, setChits, userList }) {
       notes: form.notes,
       chitType: form.chitType,
       acknowledgeSystem: isNotice ? form.acknowledgeSystem : null,
+      medicalNoteStatus: !isNotice && form.reason === "Medical" ? form.medicalNoteStatus : null,
       status: "Pending",
       currentStage: 1,
       stages,
@@ -2836,7 +2848,7 @@ function ChitsPage({ chits, setChits, userList }) {
       }
     }
     setShowModal(false);
-    setForm({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType: initialChitType, acknowledgeSystem: noticeSystem, acknowledged:false });
+    setForm({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType: initialChitType, acknowledgeSystem: noticeSystem, acknowledged:false, medicalNoteStatus:"" });
     setChitSubmitAttempted(false);
     fire(form.chitType === "notice"
       ? "✅ Leave notice submitted — chain of command notified."
@@ -3192,6 +3204,16 @@ function ChitsPage({ chits, setChits, userList }) {
             ✓ Leave already approved on {c.acknowledgeSystem || "NSIPS/MOL"} — chain forwards for tracking only.
           </div>
         )}
+        {c.medicalNoteStatus === "sent" && (
+          <div style={{ fontSize:"0.78rem", color:"#2A7D4F", marginTop:"0.25rem", fontWeight:600 }}>
+            ✓ Submitter certified medical note already emailed to Unit Advisor.
+          </div>
+        )}
+        {c.medicalNoteStatus === "will_send" && (
+          <div style={{ fontSize:"0.78rem", color:"#B8860B", marginTop:"0.25rem", fontWeight:600 }}>
+            ⏳ Submitter certified medical note will be emailed to Unit Advisor once received.
+          </div>
+        )}
         {c.notes && <div style={{ fontSize:"0.8rem", color:"#888", marginTop:"0.2rem" }}>{c.notes}</div>}
 
         {(c.docs?.chitDoc || (c.docs?.corroborating?.length > 0)) && (
@@ -3544,15 +3566,37 @@ function ChitsPage({ chits, setChits, userList }) {
             <>
               <div className="input-group">
                 <label className="input-label">Reason <span style={{ color:"#C0392B" }}>*</span></label>
-                <select className="input" value={form.reason} onChange={e => setForm(s => ({ ...s, reason:e.target.value }))}>
+                <select className="input" value={form.reason} onChange={e => setForm(s => ({ ...s, reason:e.target.value, medicalNoteStatus: e.target.value === "Medical" ? s.medicalNoteStatus : "" }))}>
                   <option value="">Select reason…</option>
-                  <option>Medical Appointment</option>
+                  <option>Medical</option>
                   <option>Academic Conflict</option>
                   <option>Family Emergency</option>
                   <option>Personal Emergency</option>
                   <option>Other</option>
                 </select>
               </div>
+              {form.reason === "Medical" && (
+                <div className="input-group">
+                  <label className="input-label">Medical Note <span style={{ color:"#C0392B" }}>*</span></label>
+                  <div style={{ fontSize:"0.75rem", color:"#666", marginBottom:"0.4rem" }}>
+                    Certify that your Unit Advisor has — or will — receive your medical note. Don't upload it here.
+                  </div>
+                  <label style={{ display:"flex", alignItems:"flex-start", gap:"0.5rem", cursor:"pointer", fontSize:"0.85rem", marginBottom:"0.3rem" }}>
+                    <input type="radio" name="medicalNoteStatus" value="sent"
+                      checked={form.medicalNoteStatus === "sent"}
+                      onChange={() => setForm(s => ({ ...s, medicalNoteStatus: "sent" }))}
+                      style={{ marginTop:"0.2rem" }} />
+                    <span>I have already emailed my medical note to my Unit Advisor.</span>
+                  </label>
+                  <label style={{ display:"flex", alignItems:"flex-start", gap:"0.5rem", cursor:"pointer", fontSize:"0.85rem" }}>
+                    <input type="radio" name="medicalNoteStatus" value="will_send"
+                      checked={form.medicalNoteStatus === "will_send"}
+                      onChange={() => setForm(s => ({ ...s, medicalNoteStatus: "will_send" }))}
+                      style={{ marginTop:"0.2rem" }} />
+                    <span>I don't have it yet — I will email it to my Unit Advisor as soon as I receive it.</span>
+                  </label>
+                </div>
+              )}
               <div className="input-group">
                 <label className="input-label">Notes {form.reason === "Other" ? <span style={{ color:"#C0392B" }}>*</span> : "(optional)"}</label>
                 <textarea className="input" style={{ minHeight:"80px", resize:"vertical" }} maxLength={1000} value={form.notes} onChange={e => setForm(s => ({ ...s, notes:e.target.value }))} placeholder={form.reason === "Other" ? "Please explain the reason for your absence" : ""} />
@@ -3561,9 +3605,9 @@ function ChitsPage({ chits, setChits, userList }) {
           )}
 
           {/* ── Documents (CHIT PDF + corroborating) ── */}
-          <div style={{ borderTop:"1px solid #eee", paddingTop:"0.85rem", marginTop:"0.25rem" }}>
+          <div style={{ borderTop:"1px solid #eee", paddingTop:"1rem", marginTop:"0.5rem" }}>
             {!isNoticeUser && (
-              <div className="input-group">
+              <div className="input-group" style={{ paddingBottom:"0.85rem", marginBottom:"0.85rem", borderBottom:"1px dashed #e2e2e2" }}>
                 <label className="input-label">
                   CHIT Document <span style={{ color:"#C0392B" }}>*</span>
                 </label>
