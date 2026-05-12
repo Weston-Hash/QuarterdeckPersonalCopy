@@ -3491,21 +3491,30 @@ function ChitsPage({ chits, setChits, userList }) {
               )}
             </>
           )}
-          {!isNoticeUser && (
-            <div className="input-group">
-              <label className="input-label">CHIT Category <span style={{ color:"#C0392B" }}>*</span></label>
-              <select className="input" value={form.chitType} onChange={e => setForm(s => ({ ...s, chitType:e.target.value }))}>
-                <option value="mir">MIR Chit — Midshipman individual request</option>
-                <option value="pc">PC Chit — Platoon Commander request</option>
-                <option value="staff">Staff Chit — Any other billet holder</option>
-              </select>
-              <div style={{ fontSize:"0.72rem", color:"#888", marginTop:"0.25rem" }}>
-                {form.chitType === "mir"   && "Routes: CC (FYI) → ADJ → BNXO → BNCO → Unit Advisor."}
-                {form.chitType === "pc"    && "Routes: CC (FYI) → ADJ → BNXO → BNCO → Unit Advisor."}
-                {form.chitType === "staff" && "Routes: ADJ (FYI) → BNXO → BNCO → Unit Advisor."}
+          {!isNoticeUser && (() => {
+            // CHIT category is determined by the user's role:
+            //   plt_cdr (PC) → PC Chit
+            //   mid          → MIR Chit
+            //   any other billet holder → Staff Chit
+            // Shown as read-only info — not a picker — so we route per the spec.
+            const categoryLabel = form.chitType === "pc"    ? "PC Chit — Platoon Commander request"
+                                : form.chitType === "staff" ? "Staff Chit — Billet holder"
+                                : "MIR Chit — Midshipman individual request";
+            const routeText = form.chitType === "staff"
+              ? "Routes: ADJ (FYI) → BNXO → BNCO → Unit Advisor"
+              : "Routes: CC (FYI) → ADJ → BNXO → BNCO → Unit Advisor";
+            return (
+              <div className="input-group">
+                <label className="input-label">CHIT Category</label>
+                <div style={{ padding:"0.55rem 0.7rem", border:"1px solid #ddd", borderRadius:"4px", background:"#f7f7f7", fontSize:"0.88rem", fontWeight:600 }}>
+                  {categoryLabel}
+                </div>
+                <div style={{ fontSize:"0.72rem", color:"#888", marginTop:"0.25rem" }}>
+                  Automatically set from your role. {routeText}.
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
           <div className="input-group">
             <label className="input-label">Start Date <span style={{ color:"#C0392B" }}>*</span></label>
             <input className="input" type="date" min={new Date().toISOString().split("T")[0]} value={form.startDate} onChange={e => setForm(s => ({ ...s, startDate:e.target.value }))} />
