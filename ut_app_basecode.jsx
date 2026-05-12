@@ -39,10 +39,18 @@ const canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "
 // Roles that can ever appear as a CHIT approver in the chain of command
 const CHIT_SIGNER_ROLES = ["adj", "plt_cdr", "co_cdr", "bn_cdr", "xo", "unit_xo", "moi", "swo", "sub"];
 const canSignChits = (u) => u && CHIT_SIGNER_ROLES.includes(u.role);
-// Roles whose approval/denial requires uploading a signed copy of the CHIT PDF.
-// Follows the routing-sheet convention: only ADJ, BNXO, and BNCO sign the CHIT.
-const CHIT_SIGNATURE_ROLES = ["adj", "xo", "bn_cdr"];
-const stageRequiresSignature = (stage) => !!stage && CHIT_SIGNATURE_ROLES.includes(stage.approverRole);
+// A stage requires a signed CHIT PDF iff the routing sheet marks it (S).
+// The legacy fallback (approverRole ∈ {adj, xo, bn_cdr}) covers chits created
+// before stages had a routingCode field — same set of signers, kept for
+// in-flight CHITs at the time of upgrade.
+const LEGACY_SIGNATURE_ROLES = ["adj", "xo", "bn_cdr"];
+const stageRequiresSignature = (stage) => {
+  if (!stage) return false;
+  if (stage.routingCode) return stage.routingCode === "S";
+  return LEGACY_SIGNATURE_ROLES.includes(stage.approverRole);
+};
+const stageIsInformOnly  = (stage) => stage?.routingCode === "I";
+const stageIsAdvisorAck  = (stage) => stage?.routingCode === "A";
 
 // OCs and MECEPs (Marine enlisted on the commissioning track — Sgt/SSgt/GySgt)
 // don't submit traditional CHITs. Their leave is approved externally via NSIPS
@@ -407,7 +415,7 @@ function getUnitStaffAdvisor(userList, submitter) {
   return userList.find(u => u.role === role) || null;
 }
 
-function makeChitChainNode(label, stageName, person, approverRole, icon) {
+function makeChitChainNode(label, stageName, person, approverRole, icon, routingCode) {
   return {
     label: formatRouteNode(label, person),
     stageName,
@@ -415,62 +423,84 @@ function makeChitChainNode(label, stageName, person, approverRole, icon) {
     approverName: person ? `${person.rank} ${person.name}` : label,
     approverRole: approverRole || person?.role || null,
     icon,
+    routingCode: routingCode || "S",
   };
 }
 
-// chitType:
-//   "single"    (missing a single LL/PT event)    → full chain up to BNCO, + Unit Staff Advisor
-//   "recurring" (missing every LL/PT recurring)   → full chain up to BNCO, + Unit Staff Advisor + Unit XO
-//   "notice"    (OC/MECEP leave already approved on NSIPS/MOL — informational
-//                tracking only) → same chain as recurring; reviewers only
-//                forward, they cannot approve/deny.
-// All routes flow all the way through BNCO; the differences are whether Unit
-// XO is appended and whether the actions are approval or forward-only.
-function buildChitApprovalChain(userList, user, routeContext, chitType = "recurring") {
-  const { company, platoon } = routeContext;
-  const adj = userList.find(u => u.role === "adj");
-  const bnxo = userList.find(u => u.role === "xo");
-  const bnco = userList.find(u => u.role === "bn_cdr");
-  const cc = getCompanyCommander(userList, company);
-  const pc = getPlatoonCommander(userList, company, platoon);
-  // Unit Staff Advisor routing (by company + class year, all roles come from the sheet):
-  //   Alpha (Marine option)                           → MOI
-  //   Navy OC + upperclass (1/C, 2/C) not in Alpha    → SWO  (e.g., LT Linton)
-  //   Navy underclass (3/C, 4/C) not in Alpha         → SUB  (e.g., LT Locha)
-  const advisor = getUnitStaffAdvisor(userList, user);
-  const unitXo  = userList.find(u => u.role === "unit_xo");
+// Per-spec routing codes:
+//   S = signature required (must Approve/Deny; must upload signed CHIT PDF)
+//   I = informed only       (Forward to acknowledge; can Return)
+//   A = advisor acknowledge (Forward to complete OR Escalate to Unit XO; can Return)
+// Chit categories (matches the Routing Sequence PDF):
+//   "mir"    Midshipman individual request — CC(I) → ADJ(S) → BNXO(S) → BNCO(S) → Advisor(A)
+//   "pc"     Platoon Commander request    — CC(I) → ADJ(S) → BNXO(S) → BNCO(S) → Advisor(A)
+//   "staff"  Other billet holder request  — ADJ(I) → BNXO(S) → BNCO(S) → Advisor(A)
+//   "notice" OC/MECEP NSIPS/MOL leave     — all stages (I); BN-wide tracking only
+const CHIT_CHAIN_TEMPLATES = {
+  mir: [
+    { role: "co_cdr", code: "I", stageName: "CC Review",        icon: "⭐",  labelFor: (ctx) => `${getCompanyShortName(ctx.company)} CC` },
+    { role: "adj",    code: "S", stageName: "ADJ Review",       icon: "✏️", labelFor: () => "ADJ" },
+    { role: "xo",     code: "S", stageName: "BNXO Review",      icon: "🥈", labelFor: () => "BNXO" },
+    { role: "bn_cdr", code: "S", stageName: "BNCO Approval",    icon: "🥇", labelFor: () => "BNCO" },
+    { role: "advisor",code: "A", stageName: "Advisor Ack",      icon: "🎖", labelFor: () => "Unit Advisor" },
+  ],
+  pc: [
+    { role: "co_cdr", code: "I", stageName: "CC Review",        icon: "⭐",  labelFor: (ctx) => `${getCompanyShortName(ctx.company)} CC` },
+    { role: "adj",    code: "S", stageName: "ADJ Review",       icon: "✏️", labelFor: () => "ADJ" },
+    { role: "xo",     code: "S", stageName: "BNXO Review",      icon: "🥈", labelFor: () => "BNXO" },
+    { role: "bn_cdr", code: "S", stageName: "BNCO Approval",    icon: "🥇", labelFor: () => "BNCO" },
+    { role: "advisor",code: "A", stageName: "Advisor Ack",      icon: "🎖", labelFor: () => "Unit Advisor" },
+  ],
+  staff: [
+    { role: "adj",    code: "I", stageName: "ADJ Review",       icon: "✏️", labelFor: () => "ADJ" },
+    { role: "xo",     code: "S", stageName: "BNXO Review",      icon: "🥈", labelFor: () => "BNXO" },
+    { role: "bn_cdr", code: "S", stageName: "BNCO Approval",    icon: "🥇", labelFor: () => "BNCO" },
+    { role: "advisor",code: "A", stageName: "Advisor Ack",      icon: "🎖", labelFor: () => "Unit Advisor" },
+  ],
+  // Notice CHITs (OC/MECEP) — leave already approved externally; everyone in
+  // the chain just acknowledges and forwards. No signature, no approve/deny.
+  notice: [
+    { role: "plt_cdr",code: "I", stageName: "PC Notify",        icon: "👤", labelFor: (ctx) => formatPlatoonLabel(ctx.platoon) },
+    { role: "co_cdr", code: "I", stageName: "CC Notify",        icon: "⭐",  labelFor: (ctx) => `${getCompanyShortName(ctx.company)} CC` },
+    { role: "adj",    code: "I", stageName: "ADJ Notify",       icon: "✏️", labelFor: () => "ADJ" },
+    { role: "xo",     code: "I", stageName: "BNXO Notify",      icon: "🥈", labelFor: () => "BNXO" },
+    { role: "bn_cdr", code: "I", stageName: "BNCO Notify",      icon: "🥇", labelFor: () => "BNCO" },
+    { role: "advisor",code: "I", stageName: "Advisor Notify",   icon: "🎖", labelFor: () => "Unit Advisor" },
+    { role: "unit_xo",code: "I", stageName: "Unit XO Notify",   icon: "🏅", labelFor: () => "Unit XO" },
+  ],
+};
 
+// Resolves the person who fills a given role for this chit (handles
+// company/platoon-scoped roles and the "advisor" pseudo-role).
+function resolveChitApprover(userList, role, routeContext, submitter) {
+  if (role === "advisor")  return getUnitStaffAdvisor(userList, submitter);
+  if (role === "plt_cdr")  return getPlatoonCommander(userList, routeContext.company, routeContext.platoon);
+  if (role === "co_cdr")   return getCompanyCommander(userList, routeContext.company);
+  return userList.find(u => u.role === role) || null;
+}
+
+function buildChitApprovalChain(userList, user, routeContext, chitType = "mir") {
+  const template = CHIT_CHAIN_TEMPLATES[chitType];
+  if (!template) return [];
   const chain = [];
-
-  // Build pre-BN portion, skipping steps the submitter already occupies.
-  if (user.role === "adj") {
-    // ADJ submits → skip PC/CC/ADJ
-  } else if (user.role === "co_cdr") {
-    chain.push(makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"));
-  } else if (user.role === "plt_cdr") {
-    chain.push(
-      makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
-      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-    );
-  } else {
-    chain.push(
-      makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "👤"),
-      makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "⭐"),
-      makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "✏️"),
-    );
+  for (const step of template) {
+    const person = resolveChitApprover(userList, step.role, routeContext, user);
+    if (!person) return []; // missing roster member → chain can't be built
+    // Originator-skip: the originator is "O" on the routing sheet; they don't
+    // appear elsewhere in their own chain.
+    if (person.id === user.id) continue;
+    chain.push(makeChitChainNode(
+      step.labelFor(routeContext),
+      step.stageName,
+      person,
+      // Advisor's stored approverRole is the actual person's role (moi/swo/sub)
+      // so canActOnChit's user.role match keeps working.
+      step.role === "advisor" ? person.role : step.role,
+      step.icon,
+      step.code,
+    ));
   }
-
-  // BN + Unit Staff tail — identical for both types, then +Unit XO for recurring.
-  chain.push(
-    makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "🥈"),
-    makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "🥇"),
-    makeChitChainNode("Unit Staff Advisor", "Advisor Review", advisor, advisor?.role || "moi", "🎖"),
-  );
-  if (chitType === "recurring" || chitType === "notice") {
-    chain.push(makeChitChainNode("Unit XO", "Unit XO Approval", unitXo, "unit_xo", "🏅"));
-  }
-
-  return chain.length > 0 && chain.every(node => node.approverId) ? chain : [];
+  return chain;
 }
 
 function buildChitRoute(userList, user, routeContext) {
@@ -479,7 +509,7 @@ function buildChitRoute(userList, user, routeContext) {
 
 function buildChitStages(submitterName, submittedAt, approvalChain) {
   return [
-    { name:"Submitted", routeLabel: submitterName, approverId:null, approverRole:null, approverName:submitterName, icon:"📝", completedBy:submitterName, completedAt:submittedAt, comment:"" },
+    { name:"Submitted", routeLabel: submitterName, approverId:null, approverRole:null, approverName:submitterName, icon:"📝", completedBy:submitterName, completedAt:submittedAt, comment:"", routingCode:"O" },
     ...approvalChain.map(node => ({
       name: node.stageName,
       routeLabel: node.label,
@@ -490,8 +520,9 @@ function buildChitStages(submitterName, submittedAt, approvalChain) {
       completedBy:null,
       completedAt:null,
       comment:"",
+      routingCode: node.routingCode,
     })),
-    { name:"Complete", routeLabel:"", approverId:null, approverRole:null, approverName:"", icon:"✅", completedBy:null, completedAt:null, comment:"" },
+    { name:"Complete", routeLabel:"", approverId:null, approverRole:null, approverName:"", icon:"✅", completedBy:null, completedAt:null, comment:"", routingCode:"end" },
   ];
 }
 
@@ -607,13 +638,23 @@ function canViewChit(user, chit) {
 }
 
 // Validates that this user is permitted to take this specific action on this
-// CHIT. Combines the role/stage authorization (canActOnChit) with the rule
-// that notice CHITs only accept "forwarded", and traditional CHITs only
-// accept "approved"/"denied"/"returned". Used by both the UI and the state
-// mutation so a single helper enforces both layers.
+// CHIT at this stage. Combines the role/stage authorization (canActOnChit)
+// with the routing-code rules from the routing sheet:
+//   (S) signers   → approved / denied / returned
+//   (I) informed  → forwarded / returned
+//   (A) advisor   → forwarded / escalated / returned
+//   notice CHITs  → forwarded only (every stage is (I); no return either,
+//                   because the originator's leave is already approved)
+// Used by both the UI buttons and the state mutation so a single helper backs
+// both layers.
 function canTakeChitAction(user, chit, action) {
   if (!canActOnChit(user, chit)) return false;
+  const stage = chit.stages?.[chit.currentStage];
   if (isNoticeChit(chit)) return action === "forwarded";
+  if (stageRequiresSignature(stage)) return ["approved", "denied", "returned"].includes(action);
+  if (stageIsAdvisorAck(stage))      return ["forwarded", "escalated", "returned"].includes(action);
+  if (stageIsInformOnly(stage))      return ["forwarded", "returned"].includes(action);
+  // Legacy / unknown — be permissive on traditional actions.
   return ["approved", "denied", "returned"].includes(action);
 }
 
@@ -2587,7 +2628,14 @@ function ChitsPage({ chits, setChits, userList }) {
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState("");
   const isNoticeUser = usesNoticeChit(user);
-  const initialChitType = isNoticeUser ? "notice" : "single";
+  // Default CHIT category from role per the Routing Sequence PDF. The user
+  // can override in the submit modal (they "pick" the category).
+  const defaultChitCategory = isNoticeUser
+    ? "notice"
+    : user.role === "plt_cdr" ? "pc"
+    : user.role === "mid"     ? "mir"
+    : "staff";
+  const initialChitType = defaultChitCategory;
   const [form, setForm] = useState({ startDate:"", endDate:"", reason:"", notes:"", routeCompany:"", routePlatoon:"", chitDoc:null, corroboratingDocs:[], chitType: initialChitType, acknowledgeSystem:"NSIPS", acknowledged:false });
   const [chitSubmitAttempted, setChitSubmitAttempted] = useState(false);
   const [activeComment, setActiveComment] = useState(null);
@@ -2635,15 +2683,9 @@ function ChitsPage({ chits, setChits, userList }) {
   };
 
   const routeHint = () => {
-    if (form.chitType === "single") {
-      if (user.role === "co_cdr") return "ADJ";
-      if (user.role === "plt_cdr") return "CC";
-      return "PC → CC";
-    }
-    if (user.role === "adj")    return "BNXO → BNCO";
-    if (user.role === "co_cdr") return "ADJ → BNXO → BNCO";
-    if (user.role === "plt_cdr") return "CC → ADJ → BNXO → BNCO";
-    return "PC → CC → ADJ → BNXO → BNCO";
+    if (form.chitType === "notice") return "PC → CC → ADJ → BNXO → BNCO → Advisor → Unit XO (all notify-only)";
+    if (form.chitType === "staff")  return "ADJ (FYI) → BNXO → BNCO → Unit Advisor";
+    return "CC (FYI) → ADJ → BNXO → BNCO → Unit Advisor"; // mir and pc share the same chain
   };
 
   const submit = () => {
@@ -2742,38 +2784,67 @@ function ChitsPage({ chits, setChits, userList }) {
     }
     const noticeChit = isNoticeChit(chit);
     const currentStage = chit.stages[chit.currentStage];
-    const needsSignature = !noticeChit && action !== "returned" && stageRequiresSignature(currentStage);
+    const needsSignature = !noticeChit && (action === "approved" || action === "denied") && stageRequiresSignature(currentStage);
     if (needsSignature && !signedDoc) {
       fire("⚠ Upload the signed CHIT document before approving or denying.");
       return;
     }
+    // Unit XO target for escalation (looked up once outside the setChits closure
+    // so we can both insert the stage and send the email below).
+    const unitXoUser = action === "escalated" ? userList.find(u => u.role === "unit_xo") : null;
+    if (action === "escalated" && !unitXoUser) {
+      fire("⚠ No Unit XO assigned in the roster — cannot escalate.");
+      return;
+    }
     setChits(prev => prev.map(c => {
       if (c.id !== id) return c;
-      const updated = [...c.stages];
+      let updated = [...c.stages];
       updated[c.currentStage] = {
         ...updated[c.currentStage],
         completedBy: reviewerFullName,
         completedAt: new Date().toISOString().split("T")[0],
         comment,
-        action, // "approved" | "denied" | "returned"
+        action, // "approved" | "denied" | "returned" | "forwarded" | "escalated"
         signedDoc: needsSignature ? signedDoc : (updated[c.currentStage].signedDoc || null),
       };
-      // Returns bounce back to originator. Approvals, denials, and notice
-      // forwards all advance through the chain.
+      // Escalation: insert a Unit XO (S) stage between the current Advisor
+      // stage and the Complete stage so trackers see the extra step.
+      if (action === "escalated") {
+        const xoStage = {
+          name: "Unit XO Final",
+          routeLabel: formatRouteNode("Unit XO", unitXoUser),
+          approverId: unitXoUser.id,
+          approverRole: "unit_xo",
+          approverName: `${unitXoUser.rank} ${unitXoUser.name}`,
+          icon: "🏅",
+          completedBy: null,
+          completedAt: null,
+          comment: "",
+          routingCode: "S", // Unit XO has final-say approve/deny authority when invoked
+        };
+        // Insert just before the Complete stage (last element).
+        updated = [...updated.slice(0, -1), xoStage, updated[updated.length - 1]];
+      }
+      // Returns bounce back to originator. Everything else advances.
       const next = action === "returned"
         ? c.currentStage
-        : Math.min(c.currentStage + 1, c.stages.length - 1);
+        : Math.min(c.currentStage + 1, updated.length - 1);
       let status;
       if (action === "returned") {
         status = "Returned";
-      } else if (next === c.stages.length - 1) {
+      } else if (next === updated.length - 1) {
         if (noticeChit) {
           // Notice CHITs are informational — once everyone has forwarded, the
           // chit is fully tracked. They never end in Approved/Denied.
           status = "Tracked";
         } else {
-          // Final stage reached — outcome reflects whether anyone in the chain denied.
-          status = updated.some(s => s.action === "denied") ? "Denied" : "Approved";
+          // Final-say rule: the highest-ranked completed (S) signer's decision
+          // determines the outcome. Earlier denials are recorded in the stage
+          // track but the top signer can override them. If no (S) stage ever
+          // ran (chain ended with only Forwards/Acks), default to Approved.
+          const completedSigners = updated.filter(s => stageRequiresSignature(s) && s.action);
+          const topDecision = completedSigners[completedSigners.length - 1]?.action;
+          status = topDecision === "denied" ? "Denied" : "Approved";
         }
       } else {
         status = "Pending";
@@ -2796,13 +2867,29 @@ function ChitsPage({ chits, setChits, userList }) {
           );
         }
       } else {
-        const nextStageIdx = Math.min(chit.currentStage + 1, chit.stages.length - 1);
-        const isFinal = nextStageIdx >= chit.stages.length - 1;
-        // If denied mid-chain, give the originator a heads-up but routing continues.
+        // Recompute the post-mutation stage list so escalation's appended Unit XO
+        // stage is visible to the email logic too.
+        const postStages = action === "escalated"
+          ? [
+              ...chit.stages.slice(0, -1),
+              {
+                approverId: unitXoUser.id,
+                approverName: `${unitXoUser.rank} ${unitXoUser.name}`,
+                approverRole: "unit_xo",
+                routingCode: "S",
+              },
+              chit.stages[chit.stages.length - 1],
+            ]
+          : chit.stages;
+        const nextStageIdx = Math.min(chit.currentStage + 1, postStages.length - 1);
+        const isFinal = nextStageIdx >= postStages.length - 1;
+        // If denied mid-chain, give the originator a heads-up — but per the
+        // top-signer-wins rule, a later signer (Unit XO, etc.) can still
+        // override this denial.
         if (action === "denied" && !isFinal && originatorEmail) {
           sendNotification(originatorEmail,
             `CHIT ${id} — ${reviewerFullName} disagreed`,
-            `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" was denied by ${reviewerFullName}, but it will continue routing through the rest of your chain of command for the remaining members to weigh in.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}— The Quarterdeck`,
+            `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" was denied by ${reviewerFullName}, but routing continues so the rest of your chain of command can weigh in. The final outcome is set by the senior signer at the top of the chain.\n\n${comment ? "Comments: " + comment + "\n\n" : ""}— The Quarterdeck`,
             "return", chit.userId
           );
         }
@@ -2817,14 +2904,15 @@ function ChitsPage({ chits, setChits, userList }) {
                 "complete", chit.userId
               );
             } else {
-              const finalStages = chit.stages.map((s, i) =>
+              const finalStages = postStages.map((s, i) =>
                 i === chit.currentStage ? { ...s, action } : s
               );
-              const anyDenied = finalStages.some(s => s.action === "denied");
-              if (anyDenied) {
+              const completedSigners = finalStages.filter(s => stageRequiresSignature(s) && s.action);
+              const topDecision = completedSigners[completedSigners.length - 1]?.action;
+              if (topDecision === "denied") {
                 sendNotification(originatorEmail,
                   `CHIT ${id} — Denied`,
-                  `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has completed routing through the chain of command and was denied. See The Quarterdeck for per-stage decisions.\n\n— The Quarterdeck`,
+                  `Hello ${chit.name},\n\nYour CHIT (${id}) for "${chit.reason}" has completed routing and was denied. The top of the chain had final say. See The Quarterdeck for per-stage decisions.\n\n— The Quarterdeck`,
                   "return", chit.userId
                 );
               } else {
@@ -2838,7 +2926,7 @@ function ChitsPage({ chits, setChits, userList }) {
           }
         } else {
           // Advanced to next approver — notify them.
-          const nextStage = chit.stages[nextStageIdx];
+          const nextStage = postStages[nextStageIdx];
           if (nextStage?.approverId) {
             const nextEmail = getUserEmail(userList, nextStage.approverId);
             if (nextEmail) {
@@ -2846,6 +2934,18 @@ function ChitsPage({ chits, setChits, userList }) {
                 sendNotification(nextEmail,
                   `Leave Notice ${id} — Acknowledge & Forward`,
                   `Hello ${nextStage.approverName},\n\n${chit.name} has filed a leave notice (${id}) for ${chit.date}. Their leave was already approved on ${chit.acknowledgeSystem || "NSIPS/MOL"}; this is informational so the chain is tracking. Please log in to The Quarterdeck to acknowledge and forward.\n\n— The Quarterdeck`,
+                  "approval", nextStage.approverId
+                );
+              } else if (action === "escalated") {
+                sendNotification(nextEmail,
+                  `CHIT ${id} — Escalated to You by Unit Advisor`,
+                  `Hello ${nextStage.approverName},\n\nThe Unit Advisor has escalated CHIT ${id} from ${chit.name} ("${chit.reason}") to you for a final decision. Your decision is binding — you are the top of the chain. Please log in to The Quarterdeck to review, sign, and approve or deny.\n\n— The Quarterdeck`,
+                  "approval", nextStage.approverId
+                );
+              } else if (action === "forwarded") {
+                sendNotification(nextEmail,
+                  `CHIT ${id} — Forwarded for Your Review`,
+                  `Hello ${nextStage.approverName},\n\nCHIT ${id} from ${chit.name} ("${chit.reason}") has been forwarded to you. Please log in to The Quarterdeck to review and take action.\n\n— The Quarterdeck`,
                   "approval", nextStage.approverId
                 );
               } else {
@@ -2866,11 +2966,13 @@ function ChitsPage({ chits, setChits, userList }) {
     setCommentText("");
     setSignedDoc(null);
     fire(action === "denied"
-      ? "CHIT marked as denied — continues routing for remaining CoC review."
+      ? "CHIT marked as denied — continues routing; the top signer has final say."
       : action === "returned"
       ? "CHIT returned to originator."
+      : action === "escalated"
+      ? "CHIT escalated to Unit XO for final decision."
       : action === "forwarded"
-      ? "Leave notice forwarded up the chain."
+      ? (noticeChit ? "Leave notice forwarded up the chain." : "CHIT forwarded to the next reviewer.")
       : "CHIT updated.");
   };
 
@@ -2975,7 +3077,12 @@ function ChitsPage({ chits, setChits, userList }) {
     const denialsSoFar = (c.stages || []).filter(s => s.action === "denied").length;
     const chitTypeLabel = noticeChit
       ? `Leave Notice · ${c.acknowledgeSystem || "NSIPS/MOL"}`
-      : c.chitType === "recurring" ? "Every LL/PT" : "Single Event";
+      : c.chitType === "pc"    ? "PC Chit"
+      : c.chitType === "staff" ? "Staff Chit"
+      : c.chitType === "mir"   ? "MIR Chit"
+      : c.chitType === "recurring" ? "Every LL/PT" // legacy
+      : c.chitType === "single"    ? "Single Event" // legacy
+      : "CHIT";
 
     const timer = !isDone ? getRoutingTimerInfo(c.stages?.[0]?.completedAt) : null;
 
@@ -3077,9 +3184,14 @@ function ChitsPage({ chits, setChits, userList }) {
         })()}
 
         {canAct && !isDone && (() => {
-          const needsSig = !noticeChit && stageRequiresSignature(c.stages?.[c.currentStage]);
+          const stage = c.stages?.[c.currentStage];
+          const needsSig = !noticeChit && stageRequiresSignature(stage);
+          const isInform = !noticeChit && stageIsInformOnly(stage);
+          const isAdvAck = !noticeChit && stageIsAdvisorAck(stage);
           const reviewLabel = noticeChit
             ? `📨 Acknowledge & Forward — ${currentStageName}`
+            : isAdvAck ? `🎖 Advisor Acknowledgment — ${currentStageName}`
+            : isInform ? `👁 Informational — ${currentStageName}`
             : `⭐ Your Review — ${currentStageName}`;
           return (
             <div className="stage-action-box" style={{ marginTop:"0.75rem" }}>
@@ -3090,7 +3202,7 @@ function ChitsPage({ chits, setChits, userList }) {
                     <div style={{ marginBottom:"0.65rem" }}>
                       <div style={{ fontSize:"0.75rem", color:"#666", marginBottom:"0.3rem" }}>
                         Upload the signed CHIT document (PDF) <span style={{ color:"#C0392B" }}>*</span>
-                        <span style={{ display:"block", color:"#888", marginTop:"0.15rem" }}>Required for {displayRole(c.stages[c.currentStage].approverRole)} approval or denial. Replaces the current CHIT doc for the next reviewer.</span>
+                        <span style={{ display:"block", color:"#888", marginTop:"0.15rem" }}>Required for {displayRole(stage.approverRole)} approval or denial. Replaces the current CHIT doc for the next reviewer.</span>
                       </div>
                       <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
                         <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
@@ -3111,27 +3223,41 @@ function ChitsPage({ chits, setChits, userList }) {
                     className="input"
                     style={{ minHeight:"70px", resize:"vertical", marginBottom:"0.65rem", fontSize:"0.85rem" }}
                     maxLength={1000}
-                    placeholder={noticeChit ? "Add comments (optional)…" : "Add comments (optional)…"}
+                    placeholder="Add comments (optional)…"
                     value={commentText}
                     onChange={e => setCommentText(e.target.value)}
                   />
-                  {noticeChit ? (
-                    <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                  <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                    {noticeChit && (
                       <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "forwarded")}>📨 Forward</button>
-                      <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); }}>Cancel</button>
-                    </div>
-                  ) : (
-                    <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-                      <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
+                    )}
+                    {!noticeChit && needsSig && (
+                      <>
+                        <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "approved")}>✓ Approve</button>
+                        <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "denied")}>✕ Deny</button>
+                      </>
+                    )}
+                    {!noticeChit && isInform && (
+                      <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "forwarded")}>📨 Forward (FYI)</button>
+                    )}
+                    {!noticeChit && isAdvAck && (
+                      <>
+                        <button className="btn btn-green btn-sm" onClick={() => advanceStage(c.id, "forwarded")}>🎖 Acknowledge &amp; Complete</button>
+                        <button className="btn btn-navy btn-sm" onClick={() => advanceStage(c.id, "escalated")}>↗ Escalate to Unit XO</button>
+                      </>
+                    )}
+                    {!noticeChit && (
                       <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "returned")}>↩ Return</button>
-                      <button className="btn btn-red btn-sm" onClick={() => advanceStage(c.id, "denied")}>✕ Deny</button>
-                      <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); setSignedDoc(null); }}>Cancel</button>
-                    </div>
-                  )}
+                    )}
+                    <button className="btn btn-outline btn-sm" onClick={() => { setActiveComment(null); setCommentText(""); setSignedDoc(null); }}>Cancel</button>
+                  </div>
                 </>
               ) : (
                 <button className="btn btn-orange btn-sm" onClick={() => { setActiveComment(c.id); setCommentText(""); setSignedDoc(null); }}>
-                  {noticeChit ? "📨 Acknowledge & Forward" : "✏ Review CHIT"}
+                  {noticeChit ? "📨 Acknowledge & Forward"
+                    : isAdvAck ? "🎖 Advisor Action"
+                    : isInform ? "👁 Acknowledge & Forward"
+                    : "✏ Review CHIT"}
                 </button>
               )}
             </div>
@@ -3179,13 +3305,18 @@ function ChitsPage({ chits, setChits, userList }) {
           </button>
           {showLegend && (
             <div className="card" style={{ marginTop:"0.5rem", padding:"0.85rem 1rem", fontSize:"0.85rem" }}>
+              <div style={{ fontSize:"0.78rem", color:"#666", marginBottom:"0.4rem" }}>
+                Each routing stage carries a code from the Routing Sequence: <strong>(S)</strong> signature required, <strong>(I)</strong> informational, <strong>(A)</strong> advisor acknowledge. The action buttons shown to you depend on the code at your stage.
+              </div>
               <div style={{ display:"grid", gap:"0.5rem" }}>
-                <div><span className="badge badge-green" style={{ marginRight:"0.5rem" }}>✓ Approve</span>Sign off on the CHIT and advance it to the next reviewer in the chain. ADJ, BNXO, and BNCO must upload a signed copy of the CHIT PDF — that signed copy then becomes the working CHIT document for everyone above them.</div>
-                <div><span className="badge badge-red" style={{ marginRight:"0.5rem" }}>✕ Deny</span>Record your disagreement, but routing <em>continues up the chain</em> so every reviewer still gets a chance to weigh in. The CHIT's final outcome is "Denied" if anyone in the chain denied; otherwise "Approved" once it reaches the top. ADJ/BNXO/BNCO denials also require a signed PDF.</div>
-                <div><span className="badge" style={{ marginRight:"0.5rem", background:"#9b1c1c", color:"white" }}>↩ Return</span>Send the CHIT back to the originator to fix or add documentation. They edit the submission directly (replace the CHIT PDF, add/remove corroborating files, update notes) and resubmit; it routes <em>back to you</em>, not to the top, and the routing timer resets. No signature required to return.</div>
-                <div><span className="badge badge-green" style={{ marginRight:"0.5rem" }}>📨 Forward</span>The only action available on a <strong>Leave Notice</strong> from an OC or MECEP. Their leave is already approved on NSIPS/MOL — the BN can't approve or deny, just acknowledge and forward up the chain so everyone is tracking. No signature, no document upload required.</div>
+                <div><span className="badge badge-green" style={{ marginRight:"0.5rem" }}>✓ Approve (S)</span>Sign off and advance to the next reviewer. ADJ, BNXO, and BNCO are (S) signers — they must upload a signed copy of the CHIT PDF. The signed copy becomes the working CHIT document for everyone above.</div>
+                <div><span className="badge badge-red" style={{ marginRight:"0.5rem" }}>✕ Deny (S)</span>Record your disagreement. Routing <em>continues up the chain</em> so every reviewer still weighs in, but <strong>the top of the chain has final say</strong>: a senior approval can override your denial. Also requires a signed PDF.</div>
+                <div><span className="badge badge-green" style={{ marginRight:"0.5rem" }}>📨 Forward (I)</span>For (I) reviewers (CC on MIR/PC chits, ADJ on Staff chits, and every stage on a Leave Notice). You acknowledge and pass to the next person — no signature, your name doesn't appear on the chit.</div>
+                <div><span className="badge" style={{ marginRight:"0.5rem", background:"#BF5700", color:"white" }}>🎖 Advisor Ack (A)</span>For the Unit Advisor at the end of the chain. Either <strong>Acknowledge &amp; Complete</strong> the chit (final outcome stands) or <strong>Escalate to Unit XO</strong> if you want a senior officer to make the final call.</div>
+                <div><span className="badge" style={{ marginRight:"0.5rem", background:"#002B5C", color:"white" }}>↗ Escalate to Unit XO</span>Only on the Advisor's stage. Appends a Unit XO (S) stage at the top of the chain. Unit XO's decision becomes the final say and is visible to everyone tracking the chit.</div>
+                <div><span className="badge" style={{ marginRight:"0.5rem", background:"#9b1c1c", color:"white" }}>↩ Return</span>Available on every stage. Send the CHIT back to the originator to fix or add documentation. They edit the submission directly and resubmit; it routes <em>back to you</em>, not to the top, and the routing timer resets.</div>
                 <div style={{ fontSize:"0.78rem", color:"#666", borderTop:"1px solid #eee", paddingTop:"0.4rem", marginTop:"0.2rem" }}>
-                  Comments you leave are visible to other CoC reviewers but never to the originator — except for the comment from the most recent return, which the originator sees so they can fix what you flagged.
+                  Comments you leave are visible to other CoC reviewers but never to the originator — except for the most recent return's comment, which the originator sees so they can fix what you flagged.
                 </div>
               </div>
             </div>
@@ -3280,13 +3411,16 @@ function ChitsPage({ chits, setChits, userList }) {
           )}
           {!isNoticeUser && (
             <div className="input-group">
-              <label className="input-label">Type of Absence <span style={{ color:"#C0392B" }}>*</span></label>
+              <label className="input-label">CHIT Category <span style={{ color:"#C0392B" }}>*</span></label>
               <select className="input" value={form.chitType} onChange={e => setForm(s => ({ ...s, chitType:e.target.value }))}>
-                <option value="single">Missing Single Event</option>
-                <option value="recurring">Missing Every LL/PT</option>
+                <option value="mir">MIR Chit — Midshipman individual request</option>
+                <option value="pc">PC Chit — Platoon Commander request</option>
+                <option value="staff">Staff Chit — Any other billet holder</option>
               </select>
               <div style={{ fontSize:"0.72rem", color:"#888", marginTop:"0.25rem" }}>
-                {form.chitType === "single" ? "Routes to your PC/CC for approval." : "Routes up through BNXO/BNCO for approval."}
+                {form.chitType === "mir"   && "Routes: CC (FYI) → ADJ → BNXO → BNCO → Unit Advisor."}
+                {form.chitType === "pc"    && "Routes: CC (FYI) → ADJ → BNXO → BNCO → Unit Advisor."}
+                {form.chitType === "staff" && "Routes: ADJ (FYI) → BNXO → BNCO → Unit Advisor."}
               </div>
             </div>
           )}
@@ -3393,7 +3527,7 @@ function ChitsPage({ chits, setChits, userList }) {
           </div>
 
           <div className="route-hint">
-            {isNoticeUser ? "Your notice routes to" : "Your CHIT routes to"}: <strong>{isNoticeUser ? "PC → CC → ADJ → BNXO → BNCO → Advisor → Unit XO" : routeHint()}</strong>
+            {form.chitType === "notice" ? "Your notice routes to" : "Your CHIT routes to"}: <strong>{routeHint()}</strong>
           </div>
           <div style={{ display:"flex", gap:"0.75rem", justifyContent:"flex-end" }}>
             <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
