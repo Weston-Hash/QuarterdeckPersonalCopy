@@ -27545,12 +27545,12 @@
     const company = normalizeCompany(COMPANY_MAP[companyKey] || companyRaw);
     const platoonMatch = companyRaw.match(/(\d+(?:st|nd|rd|th))/i) || billetRaw.match(/(\d+(?:st|nd|rd|th))/i);
     const platoon = platoonMatch ? `${platoonMatch[1]} PLT` : /CC$/i.test(billetRaw) ? "CO" : /SEL$/i.test(billetRaw) ? "SEL" : billetRaw;
-    const name = nameRaw.replace(/^(MIDN|CAPT|CMDR|CDR|LCDR|LT|LTJG|ENS|SCPO|CPO|PO1|PO2|PO3|GySgt|GySGT|MSgt|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
+    const classPattern = classVal ? classVal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : "";
+    const namePrefixPattern = classPattern ? new RegExp(`^(?:MIDN|${classPattern})\\s+`, "i") : /^MIDN\s+/i;
+    const name = nameRaw.replace(namePrefixPattern, "").trim();
     const billetNorm = billetRaw.replace(/^[A-Z]\s+/, "");
     const role = resolveRoleForBillet(billetRaw, billetNorm);
-    let rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
-    if (rank.toUpperCase() === "CMDR") rank = "CDR";
-    if (role === "moi" && rank.toUpperCase() === "CAPT") rank = "Capt";
+    const rank = /^\d\/C$/i.test(classVal) ? `MIDN ${classVal}` : classVal;
     return {
       id: (row.eid || `sheet-${index}`).trim(),
       name,
