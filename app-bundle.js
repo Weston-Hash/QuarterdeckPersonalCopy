@@ -30004,7 +30004,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
               "Corroborating Documentation ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.72rem", color: "#888" }, children: "(optional)" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#666", marginBottom: "0.4rem" }, children: "Attach any supporting documents (medical notes, screenshots, schedules, etc.). Any file type. Max 10 MB per file." }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#666", marginBottom: "0.4rem" }, children: "Attach any supporting documents (screenshots, schedules, etc.). Any file type. Max 10 MB per file." }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
               "+ Add File",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
@@ -30101,7 +30101,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
               "Corroborating Documentation ",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "0.72rem", color: "#888" }, children: "(optional)" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#666", marginBottom: "0.4rem" }, children: "Add or remove supporting documents (medical notes, screenshots, etc.). Any file type. Max 10 MB per file." }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#666", marginBottom: "0.4rem" }, children: "Add or remove supporting documents (screenshots, schedules, etc.). Any file type. Max 10 MB per file." }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "btn btn-outline btn-sm", style: { cursor: "pointer" }, children: [
               "+ Add File",
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(

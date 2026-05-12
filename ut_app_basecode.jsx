@@ -3553,7 +3553,7 @@ function ChitsPage({ chits, setChits, userList }) {
             <div className="input-group">
               <label className="input-label">Corroborating Documentation <span style={{ fontSize:"0.72rem", color:"#888" }}>(optional)</span></label>
               <div style={{ fontSize:"0.72rem", color:"#666", marginBottom:"0.4rem" }}>
-                Attach any supporting documents (medical notes, screenshots, schedules, etc.). Any file type. Max 10 MB per file.
+                Attach any supporting documents (screenshots, schedules, etc.). Any file type. Max 10 MB per file.
               </div>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
                 <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
@@ -3633,7 +3633,7 @@ function ChitsPage({ chits, setChits, userList }) {
             <div className="input-group">
               <label className="input-label">Corroborating Documentation <span style={{ fontSize:"0.72rem", color:"#888" }}>(optional)</span></label>
               <div style={{ fontSize:"0.72rem", color:"#666", marginBottom:"0.4rem" }}>
-                Add or remove supporting documents (medical notes, screenshots, etc.). Any file type. Max 10 MB per file.
+                Add or remove supporting documents (screenshots, schedules, etc.). Any file type. Max 10 MB per file.
               </div>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
                 <label className="btn btn-outline btn-sm" style={{ cursor:"pointer" }}>
