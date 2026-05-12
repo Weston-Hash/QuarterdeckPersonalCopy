@@ -26916,8 +26916,14 @@
   var canPostAnnouncement = (u) => u && (isBigFour(u) || ["co_cdr", "plt_cdr", "moi", "unit_co", "unit_xo"].includes(u.role));
   var CHIT_SIGNER_ROLES = ["adj", "plt_cdr", "co_cdr", "bn_cdr", "xo", "unit_xo", "moi", "swo", "sub"];
   var canSignChits = (u) => u && CHIT_SIGNER_ROLES.includes(u.role);
-  var CHIT_SIGNATURE_ROLES = ["adj", "xo", "bn_cdr"];
-  var stageRequiresSignature = (stage) => !!stage && CHIT_SIGNATURE_ROLES.includes(stage.approverRole);
+  var LEGACY_SIGNATURE_ROLES = ["adj", "xo", "bn_cdr"];
+  var stageRequiresSignature = (stage) => {
+    if (!stage) return false;
+    if (stage.routingCode) return stage.routingCode === "S";
+    return LEGACY_SIGNATURE_ROLES.includes(stage.approverRole);
+  };
+  var stageIsInformOnly = (stage) => stage?.routingCode === "I";
+  var stageIsAdvisorAck = (stage) => stage?.routingCode === "A";
   var NOTICE_CHIT_RANK_PREFIXES = ["OC", "Sgt", "SSgt", "GySgt"];
   var usesNoticeChit = (u) => {
     if (!u || isUnitStaff(u)) return false;
@@ -27131,54 +27137,80 @@
     const role = isUpperclassOrOC ? "swo" : "sub";
     return userList.find((u) => u.role === role) || null;
   }
-  function makeChitChainNode(label, stageName, person, approverRole, icon) {
+  function makeChitChainNode(label, stageName, person, approverRole, icon, routingCode) {
     return {
       label: formatRouteNode(label, person),
       stageName,
       approverId: person?.id || null,
       approverName: person ? `${person.rank} ${person.name}` : label,
       approverRole: approverRole || person?.role || null,
-      icon
+      icon,
+      routingCode: routingCode || "S"
     };
   }
-  function buildChitApprovalChain(userList, user, routeContext, chitType = "recurring") {
-    const { company, platoon } = routeContext;
-    const adj = userList.find((u) => u.role === "adj");
-    const bnxo = userList.find((u) => u.role === "xo");
-    const bnco = userList.find((u) => u.role === "bn_cdr");
-    const cc = getCompanyCommander(userList, company);
-    const pc = getPlatoonCommander(userList, company, platoon);
-    const advisor = getUnitStaffAdvisor(userList, user);
-    const unitXo = userList.find((u) => u.role === "unit_xo");
+  var CHIT_CHAIN_TEMPLATES = {
+    mir: [
+      { role: "co_cdr", code: "I", stageName: "CC Review", icon: "\u2B50", labelFor: (ctx) => `${getCompanyShortName(ctx.company)} CC` },
+      { role: "adj", code: "S", stageName: "ADJ Review", icon: "\u270F\uFE0F", labelFor: () => "ADJ" },
+      { role: "xo", code: "S", stageName: "BNXO Review", icon: "\u{1F948}", labelFor: () => "BNXO" },
+      { role: "bn_cdr", code: "S", stageName: "BNCO Approval", icon: "\u{1F947}", labelFor: () => "BNCO" },
+      { role: "advisor", code: "A", stageName: "Advisor Ack", icon: "\u{1F396}", labelFor: () => "Unit Advisor" }
+    ],
+    pc: [
+      { role: "co_cdr", code: "I", stageName: "CC Review", icon: "\u2B50", labelFor: (ctx) => `${getCompanyShortName(ctx.company)} CC` },
+      { role: "adj", code: "S", stageName: "ADJ Review", icon: "\u270F\uFE0F", labelFor: () => "ADJ" },
+      { role: "xo", code: "S", stageName: "BNXO Review", icon: "\u{1F948}", labelFor: () => "BNXO" },
+      { role: "bn_cdr", code: "S", stageName: "BNCO Approval", icon: "\u{1F947}", labelFor: () => "BNCO" },
+      { role: "advisor", code: "A", stageName: "Advisor Ack", icon: "\u{1F396}", labelFor: () => "Unit Advisor" }
+    ],
+    staff: [
+      { role: "adj", code: "I", stageName: "ADJ Review", icon: "\u270F\uFE0F", labelFor: () => "ADJ" },
+      { role: "xo", code: "S", stageName: "BNXO Review", icon: "\u{1F948}", labelFor: () => "BNXO" },
+      { role: "bn_cdr", code: "S", stageName: "BNCO Approval", icon: "\u{1F947}", labelFor: () => "BNCO" },
+      { role: "advisor", code: "A", stageName: "Advisor Ack", icon: "\u{1F396}", labelFor: () => "Unit Advisor" }
+    ],
+    // Notice CHITs (OC/MECEP) — leave already approved externally; everyone in
+    // the chain just acknowledges and forwards. No signature, no approve/deny.
+    notice: [
+      { role: "plt_cdr", code: "I", stageName: "PC Notify", icon: "\u{1F464}", labelFor: (ctx) => formatPlatoonLabel(ctx.platoon) },
+      { role: "co_cdr", code: "I", stageName: "CC Notify", icon: "\u2B50", labelFor: (ctx) => `${getCompanyShortName(ctx.company)} CC` },
+      { role: "adj", code: "I", stageName: "ADJ Notify", icon: "\u270F\uFE0F", labelFor: () => "ADJ" },
+      { role: "xo", code: "I", stageName: "BNXO Notify", icon: "\u{1F948}", labelFor: () => "BNXO" },
+      { role: "bn_cdr", code: "I", stageName: "BNCO Notify", icon: "\u{1F947}", labelFor: () => "BNCO" },
+      { role: "advisor", code: "I", stageName: "Advisor Notify", icon: "\u{1F396}", labelFor: () => "Unit Advisor" },
+      { role: "unit_xo", code: "I", stageName: "Unit XO Notify", icon: "\u{1F3C5}", labelFor: () => "Unit XO" }
+    ]
+  };
+  function resolveChitApprover(userList, role, routeContext, submitter) {
+    if (role === "advisor") return getUnitStaffAdvisor(userList, submitter);
+    if (role === "plt_cdr") return getPlatoonCommander(userList, routeContext.company, routeContext.platoon);
+    if (role === "co_cdr") return getCompanyCommander(userList, routeContext.company);
+    return userList.find((u) => u.role === role) || null;
+  }
+  function buildChitApprovalChain(userList, user, routeContext, chitType = "mir") {
+    const template = CHIT_CHAIN_TEMPLATES[chitType];
+    if (!template) return [];
     const chain = [];
-    if (user.role === "adj") {
-    } else if (user.role === "co_cdr") {
-      chain.push(makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F"));
-    } else if (user.role === "plt_cdr") {
-      chain.push(
-        makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
-        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F")
-      );
-    } else {
-      chain.push(
-        makeChitChainNode(formatPlatoonLabel(platoon), "PC Review", pc, "plt_cdr", "\u{1F464}"),
-        makeChitChainNode(`${getCompanyShortName(company)} CC`, "CC Review", cc, "co_cdr", "\u2B50"),
-        makeChitChainNode("ADJ", "ADJ Review", adj, "adj", "\u270F\uFE0F")
-      );
+    for (const step of template) {
+      const person = resolveChitApprover(userList, step.role, routeContext, user);
+      if (!person) return [];
+      if (person.id === user.id) continue;
+      chain.push(makeChitChainNode(
+        step.labelFor(routeContext),
+        step.stageName,
+        person,
+        // Advisor's stored approverRole is the actual person's role (moi/swo/sub)
+        // so canActOnChit's user.role match keeps working.
+        step.role === "advisor" ? person.role : step.role,
+        step.icon,
+        step.code
+      ));
     }
-    chain.push(
-      makeChitChainNode("BNXO", "BNXO Review", bnxo, "xo", "\u{1F948}"),
-      makeChitChainNode("BNCO", "BNCO Approval", bnco, "bn_cdr", "\u{1F947}"),
-      makeChitChainNode("Unit Staff Advisor", "Advisor Review", advisor, advisor?.role || "moi", "\u{1F396}")
-    );
-    if (chitType === "recurring" || chitType === "notice") {
-      chain.push(makeChitChainNode("Unit XO", "Unit XO Approval", unitXo, "unit_xo", "\u{1F3C5}"));
-    }
-    return chain.length > 0 && chain.every((node) => node.approverId) ? chain : [];
+    return chain;
   }
   function buildChitStages(submitterName, submittedAt, approvalChain) {
     return [
-      { name: "Submitted", routeLabel: submitterName, approverId: null, approverRole: null, approverName: submitterName, icon: "\u{1F4DD}", completedBy: submitterName, completedAt: submittedAt, comment: "" },
+      { name: "Submitted", routeLabel: submitterName, approverId: null, approverRole: null, approverName: submitterName, icon: "\u{1F4DD}", completedBy: submitterName, completedAt: submittedAt, comment: "", routingCode: "O" },
       ...approvalChain.map((node) => ({
         name: node.stageName,
         routeLabel: node.label,
@@ -27188,9 +27220,10 @@
         icon: node.icon,
         completedBy: null,
         completedAt: null,
-        comment: ""
+        comment: "",
+        routingCode: node.routingCode
       })),
-      { name: "Complete", routeLabel: "", approverId: null, approverRole: null, approverName: "", icon: "\u2705", completedBy: null, completedAt: null, comment: "" }
+      { name: "Complete", routeLabel: "", approverId: null, approverRole: null, approverName: "", icon: "\u2705", completedBy: null, completedAt: null, comment: "", routingCode: "end" }
     ];
   }
   var DEFAULT_NOTIF_PREFS = {
@@ -27284,7 +27317,11 @@
   }
   function canTakeChitAction(user, chit, action) {
     if (!canActOnChit(user, chit)) return false;
+    const stage = chit.stages?.[chit.currentStage];
     if (isNoticeChit(chit)) return action === "forwarded";
+    if (stageRequiresSignature(stage)) return ["approved", "denied", "returned"].includes(action);
+    if (stageIsAdvisorAck(stage)) return ["forwarded", "escalated", "returned"].includes(action);
+    if (stageIsInformOnly(stage)) return ["forwarded", "returned"].includes(action);
     return ["approved", "denied", "returned"].includes(action);
   }
   var GCAL_API_KEY = window.__QD_GCAL_API_KEY || "";
@@ -29021,7 +29058,8 @@
     const [showModal, setShowModal] = (0, import_react.useState)(false);
     const [toast, setToast] = (0, import_react.useState)("");
     const isNoticeUser = usesNoticeChit(user);
-    const initialChitType = isNoticeUser ? "notice" : "single";
+    const defaultChitCategory = isNoticeUser ? "notice" : user.role === "plt_cdr" ? "pc" : user.role === "mid" ? "mir" : "staff";
+    const initialChitType = defaultChitCategory;
     const [form, setForm] = (0, import_react.useState)({ startDate: "", endDate: "", reason: "", notes: "", routeCompany: "", routePlatoon: "", chitDoc: null, corroboratingDocs: [], chitType: initialChitType, acknowledgeSystem: "NSIPS", acknowledged: false });
     const [chitSubmitAttempted, setChitSubmitAttempted] = (0, import_react.useState)(false);
     const [activeComment, setActiveComment] = (0, import_react.useState)(null);
@@ -29074,15 +29112,9 @@
       return [...new Set(pcs.map((u) => normalizePlatoon(u.platoon)).filter(Boolean))].sort();
     };
     const routeHint = () => {
-      if (form.chitType === "single") {
-        if (user.role === "co_cdr") return "ADJ";
-        if (user.role === "plt_cdr") return "CC";
-        return "PC \u2192 CC";
-      }
-      if (user.role === "adj") return "BNXO \u2192 BNCO";
-      if (user.role === "co_cdr") return "ADJ \u2192 BNXO \u2192 BNCO";
-      if (user.role === "plt_cdr") return "CC \u2192 ADJ \u2192 BNXO \u2192 BNCO";
-      return "PC \u2192 CC \u2192 ADJ \u2192 BNXO \u2192 BNCO";
+      if (form.chitType === "notice") return "PC \u2192 CC \u2192 ADJ \u2192 BNXO \u2192 BNCO \u2192 Advisor \u2192 Unit XO (all notify-only)";
+      if (form.chitType === "staff") return "ADJ (FYI) \u2192 BNXO \u2192 BNCO \u2192 Unit Advisor";
+      return "CC (FYI) \u2192 ADJ \u2192 BNXO \u2192 BNCO \u2192 Unit Advisor";
     };
     const submit = () => {
       setChitSubmitAttempted(true);
@@ -29207,32 +29239,55 @@ Please log in to The Quarterdeck to review and take action.
       }
       const noticeChit = isNoticeChit(chit);
       const currentStage = chit.stages[chit.currentStage];
-      const needsSignature = !noticeChit && action !== "returned" && stageRequiresSignature(currentStage);
+      const needsSignature = !noticeChit && (action === "approved" || action === "denied") && stageRequiresSignature(currentStage);
       if (needsSignature && !signedDoc) {
         fire("\u26A0 Upload the signed CHIT document before approving or denying.");
         return;
       }
+      const unitXoUser = action === "escalated" ? userList.find((u) => u.role === "unit_xo") : null;
+      if (action === "escalated" && !unitXoUser) {
+        fire("\u26A0 No Unit XO assigned in the roster \u2014 cannot escalate.");
+        return;
+      }
       setChits((prev) => prev.map((c) => {
         if (c.id !== id) return c;
-        const updated = [...c.stages];
+        let updated = [...c.stages];
         updated[c.currentStage] = {
           ...updated[c.currentStage],
           completedBy: reviewerFullName,
           completedAt: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
           comment,
           action,
-          // "approved" | "denied" | "returned"
+          // "approved" | "denied" | "returned" | "forwarded" | "escalated"
           signedDoc: needsSignature ? signedDoc : updated[c.currentStage].signedDoc || null
         };
-        const next = action === "returned" ? c.currentStage : Math.min(c.currentStage + 1, c.stages.length - 1);
+        if (action === "escalated") {
+          const xoStage = {
+            name: "Unit XO Final",
+            routeLabel: formatRouteNode("Unit XO", unitXoUser),
+            approverId: unitXoUser.id,
+            approverRole: "unit_xo",
+            approverName: `${unitXoUser.rank} ${unitXoUser.name}`,
+            icon: "\u{1F3C5}",
+            completedBy: null,
+            completedAt: null,
+            comment: "",
+            routingCode: "S"
+            // Unit XO has final-say approve/deny authority when invoked
+          };
+          updated = [...updated.slice(0, -1), xoStage, updated[updated.length - 1]];
+        }
+        const next = action === "returned" ? c.currentStage : Math.min(c.currentStage + 1, updated.length - 1);
         let status;
         if (action === "returned") {
           status = "Returned";
-        } else if (next === c.stages.length - 1) {
+        } else if (next === updated.length - 1) {
           if (noticeChit) {
             status = "Tracked";
           } else {
-            status = updated.some((s) => s.action === "denied") ? "Denied" : "Approved";
+            const completedSigners = updated.filter((s) => stageRequiresSignature(s) && s.action);
+            const topDecision = completedSigners[completedSigners.length - 1]?.action;
+            status = topDecision === "denied" ? "Denied" : "Approved";
           }
         } else {
           status = "Pending";
@@ -29260,15 +29315,25 @@ ${comment ? "Comments: " + comment + "\n\n" : ""}Please log in to The Quarterdec
             );
           }
         } else {
-          const nextStageIdx = Math.min(chit.currentStage + 1, chit.stages.length - 1);
-          const isFinal = nextStageIdx >= chit.stages.length - 1;
+          const postStages = action === "escalated" ? [
+            ...chit.stages.slice(0, -1),
+            {
+              approverId: unitXoUser.id,
+              approverName: `${unitXoUser.rank} ${unitXoUser.name}`,
+              approverRole: "unit_xo",
+              routingCode: "S"
+            },
+            chit.stages[chit.stages.length - 1]
+          ] : chit.stages;
+          const nextStageIdx = Math.min(chit.currentStage + 1, postStages.length - 1);
+          const isFinal = nextStageIdx >= postStages.length - 1;
           if (action === "denied" && !isFinal && originatorEmail) {
             sendNotification(
               originatorEmail,
               `CHIT ${id} \u2014 ${reviewerFullName} disagreed`,
               `Hello ${chit.name},
 
-Your CHIT (${id}) for "${chit.reason}" was denied by ${reviewerFullName}, but it will continue routing through the rest of your chain of command for the remaining members to weigh in.
+Your CHIT (${id}) for "${chit.reason}" was denied by ${reviewerFullName}, but routing continues so the rest of your chain of command can weigh in. The final outcome is set by the senior signer at the top of the chain.
 
 ${comment ? "Comments: " + comment + "\n\n" : ""}\u2014 The Quarterdeck`,
               "return",
@@ -29291,17 +29356,18 @@ Your leave notice (${id}) for ${chit.date} has been forwarded through the entire
                   chit.userId
                 );
               } else {
-                const finalStages = chit.stages.map(
+                const finalStages = postStages.map(
                   (s, i) => i === chit.currentStage ? { ...s, action } : s
                 );
-                const anyDenied = finalStages.some((s) => s.action === "denied");
-                if (anyDenied) {
+                const completedSigners = finalStages.filter((s) => stageRequiresSignature(s) && s.action);
+                const topDecision = completedSigners[completedSigners.length - 1]?.action;
+                if (topDecision === "denied") {
                   sendNotification(
                     originatorEmail,
                     `CHIT ${id} \u2014 Denied`,
                     `Hello ${chit.name},
 
-Your CHIT (${id}) for "${chit.reason}" has completed routing through the chain of command and was denied. See The Quarterdeck for per-stage decisions.
+Your CHIT (${id}) for "${chit.reason}" has completed routing and was denied. The top of the chain had final say. See The Quarterdeck for per-stage decisions.
 
 \u2014 The Quarterdeck`,
                     "return",
@@ -29323,7 +29389,7 @@ Your CHIT (${id}) for "${chit.reason}" has been fully approved through the chain
               }
             }
           } else {
-            const nextStage = chit.stages[nextStageIdx];
+            const nextStage = postStages[nextStageIdx];
             if (nextStage?.approverId) {
               const nextEmail = getUserEmail(userList, nextStage.approverId);
               if (nextEmail) {
@@ -29334,6 +29400,30 @@ Your CHIT (${id}) for "${chit.reason}" has been fully approved through the chain
                     `Hello ${nextStage.approverName},
 
 ${chit.name} has filed a leave notice (${id}) for ${chit.date}. Their leave was already approved on ${chit.acknowledgeSystem || "NSIPS/MOL"}; this is informational so the chain is tracking. Please log in to The Quarterdeck to acknowledge and forward.
+
+\u2014 The Quarterdeck`,
+                    "approval",
+                    nextStage.approverId
+                  );
+                } else if (action === "escalated") {
+                  sendNotification(
+                    nextEmail,
+                    `CHIT ${id} \u2014 Escalated to You by Unit Advisor`,
+                    `Hello ${nextStage.approverName},
+
+The Unit Advisor has escalated CHIT ${id} from ${chit.name} ("${chit.reason}") to you for a final decision. Your decision is binding \u2014 you are the top of the chain. Please log in to The Quarterdeck to review, sign, and approve or deny.
+
+\u2014 The Quarterdeck`,
+                    "approval",
+                    nextStage.approverId
+                  );
+                } else if (action === "forwarded") {
+                  sendNotification(
+                    nextEmail,
+                    `CHIT ${id} \u2014 Forwarded for Your Review`,
+                    `Hello ${nextStage.approverName},
+
+CHIT ${id} from ${chit.name} ("${chit.reason}") has been forwarded to you. Please log in to The Quarterdeck to review and take action.
 
 \u2014 The Quarterdeck`,
                     "approval",
@@ -29364,7 +29454,7 @@ Please log in to The Quarterdeck to review and take action.
       setActiveComment(null);
       setCommentText("");
       setSignedDoc(null);
-      fire(action === "denied" ? "CHIT marked as denied \u2014 continues routing for remaining CoC review." : action === "returned" ? "CHIT returned to originator." : action === "forwarded" ? "Leave notice forwarded up the chain." : "CHIT updated.");
+      fire(action === "denied" ? "CHIT marked as denied \u2014 continues routing; the top signer has final say." : action === "returned" ? "CHIT returned to originator." : action === "escalated" ? "CHIT escalated to Unit XO for final decision." : action === "forwarded" ? noticeChit ? "Leave notice forwarded up the chain." : "CHIT forwarded to the next reviewer." : "CHIT updated.");
     };
     const openReviseModal = (chit) => {
       setReviseId(chit.id);
@@ -29464,7 +29554,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
       const noticeChit = isNoticeChit(c);
       const isOriginator = matchesUserIdentity(user, { id: c.userId, name: c.name });
       const denialsSoFar = (c.stages || []).filter((s) => s.action === "denied").length;
-      const chitTypeLabel = noticeChit ? `Leave Notice \xB7 ${c.acknowledgeSystem || "NSIPS/MOL"}` : c.chitType === "recurring" ? "Every LL/PT" : "Single Event";
+      const chitTypeLabel = noticeChit ? `Leave Notice \xB7 ${c.acknowledgeSystem || "NSIPS/MOL"}` : c.chitType === "pc" ? "PC Chit" : c.chitType === "staff" ? "Staff Chit" : c.chitType === "mir" ? "MIR Chit" : c.chitType === "recurring" ? "Every LL/PT" : c.chitType === "single" ? "Single Event" : "CHIT";
       const timer = !isDone ? getRoutingTimerInfo(c.stages?.[0]?.completedAt) : null;
       return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chit-card", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.3rem" }, children: [
@@ -29552,8 +29642,11 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
           ] }, idx)) });
         })(),
         canAct && !isDone && (() => {
-          const needsSig = !noticeChit && stageRequiresSignature(c.stages?.[c.currentStage]);
-          const reviewLabel = noticeChit ? `\u{1F4E8} Acknowledge & Forward \u2014 ${currentStageName}` : `\u2B50 Your Review \u2014 ${currentStageName}`;
+          const stage = c.stages?.[c.currentStage];
+          const needsSig = !noticeChit && stageRequiresSignature(stage);
+          const isInform = !noticeChit && stageIsInformOnly(stage);
+          const isAdvAck = !noticeChit && stageIsAdvisorAck(stage);
+          const reviewLabel = noticeChit ? `\u{1F4E8} Acknowledge & Forward \u2014 ${currentStageName}` : isAdvAck ? `\u{1F396} Advisor Acknowledgment \u2014 ${currentStageName}` : isInform ? `\u{1F441} Informational \u2014 ${currentStageName}` : `\u2B50 Your Review \u2014 ${currentStageName}`;
           return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", style: { marginTop: "0.75rem" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "stage-action-label", children: reviewLabel }),
             activeComment === c.id ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
@@ -29563,7 +29656,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { display: "block", color: "#888", marginTop: "0.15rem" }, children: [
                     "Required for ",
-                    displayRole(c.stages[c.currentStage].approverRole),
+                    displayRole(stage.approverRole),
                     " approval or denial. Replaces the current CHIT doc for the next reviewer."
                   ] })
                 ] }),
@@ -29599,21 +29692,23 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
                   className: "input",
                   style: { minHeight: "70px", resize: "vertical", marginBottom: "0.65rem", fontSize: "0.85rem" },
                   maxLength: 1e3,
-                  placeholder: noticeChit ? "Add comments (optional)\u2026" : "Add comments (optional)\u2026",
+                  placeholder: "Add comments (optional)\u2026",
                   value: commentText,
                   onChange: (e) => setCommentText(e.target.value)
                 }
               ),
-              noticeChit ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "forwarded"), children: "\u{1F4E8} Forward" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
-                  setActiveComment(null);
-                  setCommentText("");
-                }, children: "Cancel" })
-              ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "approved"), children: "\u2713 Approve" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "returned"), children: "\u21A9 Return" }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "denied"), children: "\u2715 Deny" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" }, children: [
+                noticeChit && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "forwarded"), children: "\u{1F4E8} Forward" }),
+                !noticeChit && needsSig && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "approved"), children: "\u2713 Approve" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "denied"), children: "\u2715 Deny" })
+                ] }),
+                !noticeChit && isInform && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "forwarded"), children: "\u{1F4E8} Forward (FYI)" }),
+                !noticeChit && isAdvAck && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-green btn-sm", onClick: () => advanceStage(c.id, "forwarded"), children: "\u{1F396} Acknowledge & Complete" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-navy btn-sm", onClick: () => advanceStage(c.id, "escalated"), children: "\u2197 Escalate to Unit XO" })
+                ] }),
+                !noticeChit && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-red btn-sm", onClick: () => advanceStage(c.id, "returned"), children: "\u21A9 Return" }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline btn-sm", onClick: () => {
                   setActiveComment(null);
                   setCommentText("");
@@ -29624,7 +29719,7 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
               setActiveComment(c.id);
               setCommentText("");
               setSignedDoc(null);
-            }, children: noticeChit ? "\u{1F4E8} Acknowledge & Forward" : "\u270F Review CHIT" })
+            }, children: noticeChit ? "\u{1F4E8} Acknowledge & Forward" : isAdvAck ? "\u{1F396} Advisor Action" : isInform ? "\u{1F441} Acknowledge & Forward" : "\u270F Review CHIT" })
           ] });
         })(),
         c.status === "Returned" && isOriginator && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stage-action-box", style: { marginTop: "0.75rem", borderLeft: "4px solid #BF5700" }, children: [
@@ -29653,33 +29748,59 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
             children: showLegend ? "\u25BC Hide CoC Action Legend" : "\u24D8 Show CoC Action Legend"
           }
         ),
-        showLegend && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "card", style: { marginTop: "0.5rem", padding: "0.85rem 1rem", fontSize: "0.85rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "grid", gap: "0.5rem" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-green", style: { marginRight: "0.5rem" }, children: "\u2713 Approve" }),
-            "Sign off on the CHIT and advance it to the next reviewer in the chain. ADJ, BNXO, and BNCO must upload a signed copy of the CHIT PDF \u2014 that signed copy then becomes the working CHIT document for everyone above them."
+        showLegend && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "card", style: { marginTop: "0.5rem", padding: "0.85rem 1rem", fontSize: "0.85rem" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.78rem", color: "#666", marginBottom: "0.4rem" }, children: [
+            "Each routing stage carries a code from the Routing Sequence: ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "(S)" }),
+            " signature required, ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "(I)" }),
+            " informational, ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "(A)" }),
+            " advisor acknowledge. The action buttons shown to you depend on the code at your stage."
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-red", style: { marginRight: "0.5rem" }, children: "\u2715 Deny" }),
-            "Record your disagreement, but routing ",
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "continues up the chain" }),
-            ` so every reviewer still gets a chance to weigh in. The CHIT's final outcome is "Denied" if anyone in the chain denied; otherwise "Approved" once it reaches the top. ADJ/BNXO/BNCO denials also require a signed PDF.`
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { marginRight: "0.5rem", background: "#9b1c1c", color: "white" }, children: "\u21A9 Return" }),
-            "Send the CHIT back to the originator to fix or add documentation. They edit the submission directly (replace the CHIT PDF, add/remove corroborating files, update notes) and resubmit; it routes ",
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "back to you" }),
-            ", not to the top, and the routing timer resets. No signature required to return."
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-green", style: { marginRight: "0.5rem" }, children: "\u{1F4E8} Forward" }),
-            "The only action available on a ",
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Leave Notice" }),
-            " from an OC or MECEP. Their leave is already approved on NSIPS/MOL \u2014 the BN can't approve or deny, just acknowledge and forward up the chain so everyone is tracking. No signature, no document upload required."
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#666", borderTop: "1px solid #eee", paddingTop: "0.4rem", marginTop: "0.2rem" }, children: "Comments you leave are visible to other CoC reviewers but never to the originator \u2014 except for the comment from the most recent return, which the originator sees so they can fix what you flagged." })
-        ] }) })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "grid", gap: "0.5rem" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-green", style: { marginRight: "0.5rem" }, children: "\u2713 Approve (S)" }),
+              "Sign off and advance to the next reviewer. ADJ, BNXO, and BNCO are (S) signers \u2014 they must upload a signed copy of the CHIT PDF. The signed copy becomes the working CHIT document for everyone above."
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-red", style: { marginRight: "0.5rem" }, children: "\u2715 Deny (S)" }),
+              "Record your disagreement. Routing ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "continues up the chain" }),
+              " so every reviewer still weighs in, but ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "the top of the chain has final say" }),
+              ": a senior approval can override your denial. Also requires a signed PDF."
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge badge-green", style: { marginRight: "0.5rem" }, children: "\u{1F4E8} Forward (I)" }),
+              "For (I) reviewers (CC on MIR/PC chits, ADJ on Staff chits, and every stage on a Leave Notice). You acknowledge and pass to the next person \u2014 no signature, your name doesn't appear on the chit."
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { marginRight: "0.5rem", background: "#BF5700", color: "white" }, children: "\u{1F396} Advisor Ack (A)" }),
+              "For the Unit Advisor at the end of the chain. Either ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Acknowledge & Complete" }),
+              " the chit (final outcome stands) or ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Escalate to Unit XO" }),
+              " if you want a senior officer to make the final call."
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { marginRight: "0.5rem", background: "#002B5C", color: "white" }, children: "\u2197 Escalate to Unit XO" }),
+              "Only on the Advisor's stage. Appends a Unit XO (S) stage at the top of the chain. Unit XO's decision becomes the final say and is visible to everyone tracking the chit."
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "badge", style: { marginRight: "0.5rem", background: "#9b1c1c", color: "white" }, children: "\u21A9 Return" }),
+              "Available on every stage. Send the CHIT back to the originator to fix or add documentation. They edit the submission directly and resubmit; it routes ",
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "back to you" }),
+              ", not to the top, and the routing timer resets."
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.78rem", color: "#666", borderTop: "1px solid #eee", paddingTop: "0.4rem", marginTop: "0.2rem" }, children: "Comments you leave are visible to other CoC reviewers but never to the originator \u2014 except for the most recent return's comment, which the originator sees so they can fix what you flagged." })
+          ] })
+        ] })
       ] }),
-      canSubmit && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: isNoticeUser ? "+ Submit Leave Notice" : "+ Submit New CHIT" }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "flex-end", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", { href: "/Chit_Form.pdf", download: "Chit_Form.pdf", className: "btn btn-outline", title: "Download a blank CHIT form to fill out", children: "\u{1F4C4} Blank CHIT Form" }),
+        canSubmit && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-orange", onClick: () => setShowModal(true), children: isNoticeUser ? "+ Submit Leave Notice" : "+ Submit New CHIT" })
+      ] }),
       visible.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "empty", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "2rem" }, children: "\u{1F4CB}" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: "0.5rem" }, children: "No CHITs on file." })
@@ -29756,14 +29877,19 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
         ] }),
         !isNoticeUser && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
-            "Type of Absence ",
+            "CHIT Category ",
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#C0392B" }, children: "*" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { className: "input", value: form.chitType, onChange: (e) => setForm((s) => ({ ...s, chitType: e.target.value })), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "single", children: "Missing Single Event" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "recurring", children: "Missing Every LL/PT" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "mir", children: "MIR Chit \u2014 Midshipman individual request" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "pc", children: "PC Chit \u2014 Platoon Commander request" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "staff", children: "Staff Chit \u2014 Any other billet holder" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "0.72rem", color: "#888", marginTop: "0.25rem" }, children: form.chitType === "single" ? "Routes to your PC/CC for approval." : "Routes up through BNXO/BNCO for approval." })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { fontSize: "0.72rem", color: "#888", marginTop: "0.25rem" }, children: [
+            form.chitType === "mir" && "Routes: CC (FYI) \u2192 ADJ \u2192 BNXO \u2192 BNCO \u2192 Unit Advisor.",
+            form.chitType === "pc" && "Routes: CC (FYI) \u2192 ADJ \u2192 BNXO \u2192 BNCO \u2192 Unit Advisor.",
+            form.chitType === "staff" && "Routes: ADJ (FYI) \u2192 BNXO \u2192 BNCO \u2192 Unit Advisor."
+          ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "input-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { className: "input-label", children: [
@@ -29894,9 +30020,9 @@ ${reviseDraft.reply.trim() ? "Reply from submitter:\n" + reviseDraft.reply.trim(
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "route-hint", children: [
-          isNoticeUser ? "Your notice routes to" : "Your CHIT routes to",
+          form.chitType === "notice" ? "Your notice routes to" : "Your CHIT routes to",
           ": ",
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: isNoticeUser ? "PC \u2192 CC \u2192 ADJ \u2192 BNXO \u2192 BNCO \u2192 Advisor \u2192 Unit XO" : routeHint() })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: routeHint() })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "0.75rem", justifyContent: "flex-end" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-outline", onClick: () => setShowModal(false), children: "Cancel" }),
