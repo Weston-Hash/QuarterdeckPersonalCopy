@@ -94,6 +94,7 @@ const COMPANY_META = {
   Alpha:   { short: "Alpha",   full: "Alpha Company" },
   Bravo:   { short: "Bravo",   full: "Bravo Company" },
   Charlie: { short: "Charlie", full: "Charlie Company" },
+  Delta:   { short: "Delta",   full: "Delta Company" },
 };
 
 const COMPANY_COLORS = {
@@ -101,7 +102,13 @@ const COMPANY_COLORS = {
   Alpha:   "#8B0000",
   Bravo:   "#003087",
   Charlie: "#B8860B",
+  Delta:   "#5DAB48",
 };
+
+// Single source of truth for the midshipman companies (everything except BN
+// Staff and Unit Staff). Add a new company here and the dropdowns, BN
+// Structure, roster filter, and routing-route checks all pick it up.
+const MIDSHIPMAN_COMPANIES = ["Alpha", "Bravo", "Charlie", "Delta"];
 
 const STRUCTURE_BILLET_ORDER = ["PTO", "APTO", "ADJ", "SUPPO", "PAO", "TRAINO", "ATRAINO", "AO", "BGDO", "CGC", "AOPS"];
 
@@ -170,10 +177,10 @@ function getBilletLabel(user) {
 function normalizePlatoon(platoon) {
   const value = (platoon || "").trim().replace(/\s+/g, " ");
   if (!value) return "";
-  const companyPrefixedPlatoon = value.match(/^[ABC]\s+(\d+(?:st|nd|rd|th))(?:\s*(?:PC|PLT))?$/i);
+  const companyPrefixedPlatoon = value.match(/^[A-Z]\s+(\d+(?:st|nd|rd|th))(?:\s*(?:PC|PLT))?$/i);
   if (companyPrefixedPlatoon) return `${companyPrefixedPlatoon[1]} PC`;
-  if (/^(?:[ABC]\s+)?CC$/i.test(value) || /^CO$/i.test(value)) return "CO";
-  if (/^(?:[ABC]\s+)?SEL$/i.test(value)) return "SEL";
+  if (/^(?:[A-Z]\s+)?CC$/i.test(value) || /^CO$/i.test(value)) return "CO";
+  if (/^(?:[A-Z]\s+)?SEL$/i.test(value)) return "SEL";
   if (/^\d+(?:st|nd|rd|th)\s*PLT$/i.test(value)) return value.replace(/\s*PLT$/i, " PC");
   if (/^\d+(?:st|nd|rd|th)$/i.test(value)) return `${value} PC`;
   return value;
@@ -190,12 +197,21 @@ function getPlatoonSortValue(platoon) {
   return match ? Number(match[1]) : 99;
 }
 
-const ROSTER_COMPANY_ORDER = ["Unit", "BN", "Alpha", "Bravo", "Charlie"];
+const ROSTER_COMPANY_ORDER = ["Unit", "BN", ...MIDSHIPMAN_COMPANIES];
 const UNIT_ROSTER_ASSIGNMENT_ORDER = ["Unit CO", "Unit XO", "SUB", "SWO", "MOI", "SEA", "AMOI"];
 const BN_ROSTER_ASSIGNMENT_ORDER = ["BNCO", "BNXO", "OPS", "SEL", "PTO", "APTO", "ADJ", "SUPPO", "PAO", "TRAINO", "ATRAINO", "AO", "BGDO", "CGC", "AOPS", "MIR"];
 // Display mapping for unit staff billets (sheet value → display label)
 const UNIT_BILLET_DISPLAY = { "SUB": "SUBO", "SWO": "SWO", "MOI": "MOI", "SEA": "SEA", "AMOI": "AMOI", "Unit CO": "Unit CO", "Unit XO": "Unit XO" };
-const COMPANY_ROSTER_ASSIGNMENT_ORDER = ["CO", "SEL", "1st PC", "2nd PC", "3rd PC", "4th PC", "MIR"];
+// Roster ordering for a midshipman company: CO and SEL pinned at the top, MIR
+// pinned at the bottom; any "Nst/nd/rd/th PC" platoon assignment sorts in
+// between by its numeric prefix. This is now fluid — no hardcoded platoon
+// count, so the roster handles however many PCs the sheet defines.
+const COMPANY_ROSTER_FIXED_TOP    = ["CO", "SEL"];
+const COMPANY_ROSTER_FIXED_BOTTOM = ["MIR"];
+const platoonOrdinalOf = (assignment) => {
+  const m = /^(\d+)(?:st|nd|rd|th)\s*PC$/i.exec(assignment || "");
+  return m ? parseInt(m[1], 10) : null;
+};
 
 function normalizePhone(phone) {
   return (phone || "").replace(/\D/g, "");
@@ -223,9 +239,21 @@ function getRosterProfilePriority(user) {
 function getRosterAssignmentSort(user) {
   const assignment = getRosterAssignment(user);
   const co = normalizeCompany(user.company);
-  const order = co === "Unit" ? UNIT_ROSTER_ASSIGNMENT_ORDER : co === "BN" ? BN_ROSTER_ASSIGNMENT_ORDER : COMPANY_ROSTER_ASSIGNMENT_ORDER;
-  const idx = order.indexOf(assignment);
-  return idx === -1 ? order.length : idx;
+  // Unit / BN: fixed billet ordering.
+  if (co === "Unit" || co === "BN") {
+    const order = co === "Unit" ? UNIT_ROSTER_ASSIGNMENT_ORDER : BN_ROSTER_ASSIGNMENT_ORDER;
+    const idx = order.indexOf(assignment);
+    return idx === -1 ? order.length : idx;
+  }
+  // Midshipman company: CO / SEL pinned at top, MIR pinned at bottom, all
+  // platoon PCs sort by their numeric ordinal in between — no fixed list.
+  const topIdx = COMPANY_ROSTER_FIXED_TOP.indexOf(assignment);
+  if (topIdx !== -1) return topIdx;
+  const ordinal = platoonOrdinalOf(assignment);
+  if (ordinal !== null) return COMPANY_ROSTER_FIXED_TOP.length + ordinal;
+  const bottomIdx = COMPANY_ROSTER_FIXED_BOTTOM.indexOf(assignment);
+  if (bottomIdx !== -1) return 10000 + bottomIdx;
+  return 9999; // anything unrecognized sorts just above MIR
 }
 
 function getRosterSectionLabel(company) {
@@ -361,7 +389,7 @@ function canSubmitChit(user) {
 
 function requiresChitRouteSelection(user) {
   if (!user || isBigFour(user) || ["adj", "co_cdr", "plt_cdr"].includes(user.role)) return false;
-  return !["Alpha", "Bravo", "Charlie"].includes(normalizeCompany(user.company)) || !/^\d+(?:st|nd|rd|th)\s*PC$/i.test(normalizePlatoon(user.platoon));
+  return !MIDSHIPMAN_COMPANIES.includes(normalizeCompany(user.company)) || !/^\d+(?:st|nd|rd|th)\s*PC$/i.test(normalizePlatoon(user.platoon));
 }
 
 function getCompanyCommander(userList, company) {
@@ -819,12 +847,21 @@ const PT = [
 
 const LEADLAB_INIT = [];
 
-// Three fixed PT sessions per week. OPS (and other seniors) upload PDFs here.
+// Weekly PT sessions. OPS (and other seniors) upload PDFs here. The Wednesday
+// company-PT slots are derived from MIDSHIPMAN_COMPANIES (minus Alpha, which
+// is Marine option and PTs on its own schedule), so adding a new company adds
+// a new Wednesday slot automatically.
+const NON_ALPHA_MIDS_COMPANIES = MIDSHIPMAN_COMPANIES.filter(c => c !== "Alpha");
 const PT_SESSIONS = [
-  { key:"monday",       day:"Monday",    type:"BN PT",         desc:"Battalion-wide formation PT",        color:"#BF5700" },
-  { key:"wed_bravo",    day:"Wednesday", type:"Bravo Co PT",   desc:"Bravo Company physical training",    color:"#003087" },
-  { key:"wed_charlie",  day:"Wednesday", type:"Charlie Co PT", desc:"Charlie Company physical training",  color:"#B8860B" },
-  { key:"thursday",     day:"Thursday",  type:"FEP",           desc:"Fitness Enhancement Program",        color:"#2A7D4F" },
+  { key:"monday",   day:"Monday",   type:"BN PT", desc:"Battalion-wide formation PT", color:"#BF5700" },
+  ...NON_ALPHA_MIDS_COMPANIES.map(co => ({
+    key:  `wed_${co.toLowerCase()}`,
+    day:  "Wednesday",
+    type: `${co} Co PT`,
+    desc: `${co} Company physical training`,
+    color: COMPANY_COLORS[co],
+  })),
+  { key:"thursday", day:"Thursday", type:"FEP",   desc:"Fitness Enhancement Program", color:"#2A7D4F" },
 ];
 
 const INIT_CHITS = [];
@@ -877,35 +914,27 @@ const SHEET_ONLY_MODE  = true;
 
 // Sheet row 1 must be a header row with these exact names (any column order):
 //   company | name | class | email | phone_number | major | campus | eid | billet
-// Maps sheet company prefix → app company name
+// Maps sheet company prefix → app company name. Letter prefixes are derived
+// from MIDSHIPMAN_COMPANIES so adding "Echo" gives you "E" → "Echo" for free.
 const COMPANY_MAP = {
   "BN Staff":    "BN",
   "Unit Staff":  "Unit",
-  "A":           "Alpha",
-  "B":           "Bravo",
-  "C":           "Charlie",
+  ...Object.fromEntries(MIDSHIPMAN_COMPANIES.map(c => [c.charAt(0), c])),
 };
 
-// Maps sheet billet → app role
+// Maps sheet billet → app role. Only billets without a structural pattern
+// need to be listed here; pattern-based billets (any "Xst/nd/rd/th PC", any
+// "<letter> CC", any "<letter> SEL") are resolved by resolveRoleForBillet
+// below, so adding a new company or a 5th platoon to the sheet requires no
+// code change.
 const BILLET_TO_ROLE = {
   "BNCO":   "bn_cdr",
   "BNXO":   "xo",
   "OPS":    "ops",
-  "SEL":    "sel",
   "ADJ":    "adj",
   "PTO":    "pto",
   "TRAINO": "traino",
   "AO":     "academics",
-  "A CC":   "co_cdr",
-  "B CC":   "co_cdr",
-  "C CC":   "co_cdr",
-  "A SEL":  "sel",
-  "B SEL":  "sel",
-  "C SEL":  "sel",
-  "1st PC":   "plt_cdr",
-  "2nd PC":   "plt_cdr",
-  "3rd PC":   "plt_cdr",
-  "CC":       "co_cdr",
   "AOPS":   "mid",
   "PAO":    "mid",
   "SUPPO":  "mid",
@@ -925,6 +954,18 @@ const BILLET_TO_ROLE = {
   "Unit XO":   "unit_xo",
 };
 
+// Resolves a billet to a role. Tries exact lookups first, then pattern matches
+// so the roster can grow without code changes: any "Nst/nd/rd/th PC" maps to
+// plt_cdr, any "X CC" / "CC" maps to co_cdr, any "X SEL" / "SEL" maps to sel.
+function resolveRoleForBillet(billetRaw, billetNorm) {
+  const exact = BILLET_TO_ROLE[billetRaw] || BILLET_TO_ROLE[billetNorm];
+  if (exact) return exact;
+  if (/^\d+(?:st|nd|rd|th)\s*PC$/i.test(billetNorm)) return "plt_cdr";
+  if (/^(?:[A-Z]\s+)?CC$/i.test(billetRaw))          return "co_cdr";
+  if (/^(?:[A-Z]\s+)?SEL$/i.test(billetRaw))         return "sel";
+  return "mid";
+}
+
 // Converts a sheet row object → app user object
 function sheetRowToUser(row, index) {
   const companyRaw = (row.company || "").trim();
@@ -937,8 +978,8 @@ function sheetRowToUser(row, index) {
   let companyKey;
   if (companyRaw === "BN Staff") companyKey = "BN Staff";
   else if (companyRaw === "Unit Staff") companyKey = "Unit Staff";
-  else if (/^[ABC]\b/.test(companyRaw)) companyKey = companyRaw.charAt(0);
-  else if (/^[ABC]\s/.test(billetRaw)) companyKey = billetRaw.charAt(0);
+  else if (/^[A-Z]\b/.test(companyRaw) && COMPANY_MAP[companyRaw.charAt(0)]) companyKey = companyRaw.charAt(0);
+  else if (/^[A-Z]\s/.test(billetRaw)  && COMPANY_MAP[billetRaw.charAt(0)])  companyKey = billetRaw.charAt(0);
   else companyKey = companyRaw;
   const company = normalizeCompany(COMPANY_MAP[companyKey] || companyRaw);
 
@@ -956,8 +997,10 @@ function sheetRowToUser(row, index) {
   const name = nameRaw.replace(/^(MIDN|CAPT|CMDR|CDR|LCDR|LT|LTJG|ENS|SCPO|CPO|PO1|PO2|PO3|GySgt|GySGT|MSgt|SSgt|SSGT|OC|Sgt|SGT|Cpl|CPL|LCpl|PFC)\s+/i, "").trim();
 
   // Role from billet — strip company letter prefix for matching (e.g. "A 1st PC" → "1st PC")
-  const billetNorm = billetRaw.replace(/^[ABC]\s+/, "");
-  const role = BILLET_TO_ROLE[billetRaw] || BILLET_TO_ROLE[billetNorm] || "mid";
+  // Strip any leading single-letter company prefix (A/B/C/D/…) so "A 1st PC"
+  // looks up the same role as "1st PC".
+  const billetNorm = billetRaw.replace(/^[A-Z]\s+/, "");
+  const role = resolveRoleForBillet(billetRaw, billetNorm);
 
   // Rank: "1/C"→"MIDN 1/C", "GySgt"→"GySgt", etc.
   // Display normalization:
@@ -1488,14 +1531,14 @@ function ViewTracker({ viewedBy, userList }) {
   const notViewed = userList.filter(u => !viewedBy?.[u.id]);
   const viewed = userList.filter(u => viewedBy?.[u.id]);
 
-  // Categorize: Unit Staff, Big Four, BN Staff, Alpha, Bravo, Charlie
-  const VIEW_GROUPS = ["Unit Staff", "Big Four", "BN Staff", "Alpha", "Bravo", "Charlie"];
+  // Categorize: Unit Staff, Big Four, BN Staff, then each midshipman company.
+  const VIEW_GROUPS = ["Unit Staff", "Big Four", "BN Staff", ...MIDSHIPMAN_COMPANIES];
   const categoryFor = (u) => {
     if (isUnitStaff(u) || normalizeCompany(u.company) === "Unit") return "Unit Staff";
     if (isBigFour(u)) return "Big Four";
     const co = normalizeCompany(u.company);
     if (co === "BN") return "BN Staff";
-    if (co === "Alpha" || co === "Bravo" || co === "Charlie") return co;
+    if (MIDSHIPMAN_COMPANIES.includes(co)) return co;
     return "BN Staff";
   };
   const groupUsers = (users) => {
@@ -2215,12 +2258,13 @@ function StructurePage({ userList }) {
     userList.filter(u => getBilletLabel(u) === billet)
   );
 
-  // Company definitions derived from live data
-  const COMPANY_DEFS = [
-    { key: "Alpha",   name: getCompanyFullName("Alpha"),   color: COMPANY_COLORS.Alpha },
-    { key: "Bravo",   name: getCompanyFullName("Bravo"),   color: COMPANY_COLORS.Bravo },
-    { key: "Charlie", name: getCompanyFullName("Charlie"), color: COMPANY_COLORS.Charlie },
-  ];
+  // Company definitions derived from MIDSHIPMAN_COMPANIES so adding a new
+  // company (or removing one) flows through automatically.
+  const COMPANY_DEFS = MIDSHIPMAN_COMPANIES.map(key => ({
+    key,
+    name: getCompanyFullName(key),
+    color: COMPANY_COLORS[key],
+  }));
 
   // Build companies dynamically from userList
   const companies = COMPANY_DEFS.map(def => {
@@ -3396,7 +3440,7 @@ function ChitsPage({ chits, setChits, userList }) {
                 <label className="input-label">Your Company</label>
                 <select className="input" value={form.routeCompany} onChange={e => setForm(s => ({ ...s, routeCompany:e.target.value, routePlatoon:"" }))}>
                   <option value="">Select company…</option>
-                  {["Alpha","Bravo","Charlie"].map(co => <option key={co} value={co}>{co}</option>)}
+                  {MIDSHIPMAN_COMPANIES.map(co => <option key={co} value={co}>{co}</option>)}
                 </select>
               </div>
               {form.routeCompany && (
@@ -3648,7 +3692,8 @@ function RosterPage({ userList }) {
         </div>
         <select className="input" style={{ maxWidth:"170px" }} value={co} onChange={e => setCo(e.target.value)}>
           <option value="">All Companies</option>
-          <option value="Unit">Unit Staff</option><option value="BN">Big Four</option><option value="Alpha">Alpha</option><option value="Bravo">Bravo</option><option value="Charlie">Charlie</option>
+          <option value="Unit">Unit Staff</option><option value="BN">Big Four</option>
+          {MIDSHIPMAN_COMPANIES.map(co => <option key={co} value={co}>{co}</option>)}
         </select>
       </div>
       <div className="card">
@@ -4360,7 +4405,7 @@ function FitrepsPage({ fitrebs, setFitrebs, userList }) {
                 <label className="input-label">Your Company</label>
                 <select className="input" value={submitForm.routeCompany} onChange={e => setSubmitForm(s => ({ ...s, routeCompany:e.target.value, routePlatoon:"" }))}>
                   <option value="">Select company…</option>
-                  {["Alpha","Bravo","Charlie"].map(co => <option key={co} value={co}>{co}</option>)}
+                  {MIDSHIPMAN_COMPANIES.map(co => <option key={co} value={co}>{co}</option>)}
                 </select>
               </div>
               {submitForm.routeCompany && (
@@ -5080,7 +5125,11 @@ export default function App() {
   // POTW approvals: OPS sends POTW file to MOI for pre-approval before Weekly Word publishes.
   const [potwApprovals, setPotwApprovals] = useState([]);
   // PT plan PDFs: one per session key (monday/wednesday/thursday). Null until OPS uploads.
-  const [ptPlans, setPtPlans]     = useState({ monday:null, wed_bravo:null, wed_charlie:null, thursday:null });
+  // ptPlans is keyed by PT_SESSIONS[i].key — initialized to null for every
+  // session so adding a new midshipman company picks up its slot for free.
+  const [ptPlans, setPtPlans]     = useState(() =>
+    Object.fromEntries(PT_SESSIONS.map(s => [s.key, null]))
+  );
   // LL session list: TRAINO manages text notes; everyone reads.
   const [llSessions, setLlSessions] = useState(LEADLAB_INIT);
   // userList: populated from Google Sheet on mount; empty until fetch completes
